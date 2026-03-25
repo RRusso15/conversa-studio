@@ -112,7 +112,7 @@ namespace ConversaStudio.Web.Host.Startup
                 // specifying the Swagger JSON endpoint.
                 options.SwaggerEndpoint($"/swagger/{_apiVersion}/swagger.json", $"ConversaStudio API {_apiVersion}");
                 options.IndexStream = () => Assembly.GetExecutingAssembly()
-                    .GetManifestResourceStream("ConversaStudio.Web.Host.wwwroot.swagger.ui.index.html");
+                    .GetManifestResourceStream("conversa-studio.Web.Host.wwwroot.swagger.ui.index.html");
                 options.DisplayRequestDuration(); // Controls the display of the request duration (in milliseconds) for "Try it out" requests.
             }); // URL: /swagger
         }
@@ -159,11 +159,11 @@ namespace ConversaStudio.Web.Host.Startup
                     var hostXmlPath = Path.Combine(AppContext.BaseDirectory, hostXmlFile);
                     options.IncludeXmlComments(hostXmlPath);
 
-                    var applicationXml = $"ConversaStudio.Application.xml";
+                    var applicationXml = $"conversa-studio.Application.xml";
                     var applicationXmlPath = Path.Combine(AppContext.BaseDirectory, applicationXml);
                     options.IncludeXmlComments(applicationXmlPath);
 
-                    var webCoreXmlFile = $"ConversaStudio.Web.Core.xml";
+                    var webCoreXmlFile = $"conversa-studio.Web.Core.xml";
                     var webCoreXmlPath = Path.Combine(AppContext.BaseDirectory, webCoreXmlFile);
                     options.IncludeXmlComments(webCoreXmlPath);
                 }

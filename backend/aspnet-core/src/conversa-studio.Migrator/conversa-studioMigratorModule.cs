@@ -19,7 +19,9 @@ public class ConversaStudioMigratorModule : AbpModule
         abpProjectNameEntityFrameworkModule.SkipDbSeed = true;
 
         _appConfiguration = AppConfigurations.Get(
-            typeof(ConversaStudioMigratorModule).GetAssembly().GetDirectoryPathOrNull()
+            typeof(ConversaStudioMigratorModule).GetAssembly().GetDirectoryPathOrNull(),
+            AppConfigurations.GetEnvironmentName(),
+            addUserSecrets: true
         );
     }
 

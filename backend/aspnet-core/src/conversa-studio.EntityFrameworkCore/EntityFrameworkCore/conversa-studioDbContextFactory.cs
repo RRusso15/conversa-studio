@@ -19,7 +19,11 @@ public class ConversaStudioDbContextFactory : IDesignTimeDbContextFactory<Conver
          Use Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") method or from string[] args to get environment if necessary.
          https://docs.microsoft.com/en-us/ef/core/cli/dbcontext-creation?tabs=dotnet-core-cli#args
          */
-        var configuration = AppConfigurations.Get(WebContentDirectoryFinder.CalculateContentRootFolder());
+        var configuration = AppConfigurations.Get(
+            WebContentDirectoryFinder.CalculateContentRootFolder(),
+            AppConfigurations.GetEnvironmentName(),
+            addUserSecrets: true
+        );
 
         ConversaStudioDbContextConfigurer.Configure(builder, configuration.GetConnectionString(ConversaStudioConsts.ConnectionStringName));
 

@@ -2,6 +2,7 @@ using Abp.Extensions;
 using Abp.Reflection.Extensions;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Concurrent;
+using System;
 
 namespace ConversaStudio.Configuration;
 
@@ -42,5 +43,11 @@ public static class AppConfigurations
         }
 
         return builder.Build();
+    }
+
+    public static string GetEnvironmentName()
+    {
+        return Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+            ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
     }
 }

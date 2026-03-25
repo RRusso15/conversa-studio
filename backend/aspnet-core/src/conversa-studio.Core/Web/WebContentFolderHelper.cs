@@ -20,7 +20,7 @@ public static class WebContentDirectoryFinder
         }
 
         var directoryInfo = new DirectoryInfo(coreAssemblyDirectoryPath);
-        while (!DirectoryContains(directoryInfo.FullName, "ConversaStudio.sln"))
+        while (!DirectoryContains(directoryInfo.FullName, "conversa-studio.sln"))
         {
             if (directoryInfo.Parent == null)
             {
@@ -30,13 +30,13 @@ public static class WebContentDirectoryFinder
             directoryInfo = directoryInfo.Parent;
         }
 
-        var webMvcFolder = Path.Combine(directoryInfo.FullName, "src", "ConversaStudio.Web.Mvc");
+        var webMvcFolder = Path.Combine(directoryInfo.FullName, "src", "conversa-studio.Web.Mvc");
         if (Directory.Exists(webMvcFolder))
         {
             return webMvcFolder;
         }
 
-        var webHostFolder = Path.Combine(directoryInfo.FullName, "src", "ConversaStudio.Web.Host");
+        var webHostFolder = Path.Combine(directoryInfo.FullName, "src", "conversa-studio.Web.Host");
         if (Directory.Exists(webHostFolder))
         {
             return webHostFolder;
