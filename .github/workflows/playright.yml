@@ -1,0 +1,74 @@
+name: Playwright
+
+on:
+  push:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/playright.yml"
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/playright.yml"
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect Playwright setup
+        id: detect
+        shell: bash
+        run: |
+          if [ ! -f "playwright.config.ts" ] && [ ! -f "playwright.config.js" ] && [ ! -f "playwright.config.mjs" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=No Playwright config file is present in frontend/." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! grep -q '"@playwright/test"' package.json; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=@playwright/test is not declared in frontend/package.json." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "reason=Playwright is configured." >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        if: steps.detect.outputs.enabled == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        if: steps.detect.outputs.enabled == 'true'
+        run: npm ci
+
+      - name: Install Playwright browsers
+        if: steps.detect.outputs.enabled == 'true'
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        if: steps.detect.outputs.enabled == 'true'
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: failure() && steps.detect.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          if-no-files-found: ignore
+
+      - name: Explain skipped Playwright run
+        if: steps.detect.outputs.enabled != 'true'
+        run: echo "${{ steps.detect.outputs.reason }}"
