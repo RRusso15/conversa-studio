@@ -1,3 +1,17 @@
+# Repository Structure Notes
+
+## Backend Architecture Source of Truth
+
+For backend work in `backend/aspnet-core`, follow `backend/aspnet-core/BACKEND_STRUCTURE.md` as the canonical architecture and folder-structure guide.
+
+Key enforcement points:
+
+- Keep the existing `conversa-studio.*` project names unchanged.
+- Place new business-domain entities and domain services in `Core/Domains/<Capability>/`.
+- Place new app services and DTOs in `Application/Services/<Capability>/`.
+- Treat the visual builder as a frontend concern; backend owns bot definitions, graph validation, versioning, publishing, and runtime contracts.
+- Keep business logic out of `Web.Core` and `Web.Host`.
+
 # Updated C Sharp Coding Standards
 
 > **NOTE:** This page is still very much a work in progress.
