@@ -1,9 +1,9 @@
-﻿using Abp.Extensions;
+using Abp.Extensions;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 
-namespace conversa-studio.Identity
+namespace ConversaStudio.Identity
 {
     public class ExternalLoginInfoHelper
     {

@@ -1,12 +1,12 @@
 using Abp.Configuration;
 using Abp.Zero.Configuration;
-using conversa-studio.Authorization.Accounts.Dto;
-using conversa-studio.Authorization.Users;
+using ConversaStudio.Authorization.Accounts.Dto;
+using ConversaStudio.Authorization.Users;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Authorization.Accounts;
+namespace ConversaStudio.Authorization.Accounts;
 
-public class AccountAppService : conversa-studioAppServiceBase, IAccountAppService
+public class AccountAppService : ConversaStudioAppServiceBase, IAccountAppService
 {
     // from: http://regexlib.com/REDetails.aspx?regexp_id=1923
     public const string PasswordRegex = "(?=^.{8,}$)(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?!.*\\s)[0-9a-zA-Z!@#$%^&*()]*$";

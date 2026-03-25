@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace conversa-studio.Users.Dto;
+namespace ConversaStudio.Users.Dto;
 
 public class ChangeUserLanguageDto
 {

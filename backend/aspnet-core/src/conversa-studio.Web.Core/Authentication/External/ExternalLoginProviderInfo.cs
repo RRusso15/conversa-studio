@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 
-namespace conversa-studio.Authentication.External
+namespace ConversaStudio.Authentication.External
 {
     public class ExternalLoginProviderInfo
     {

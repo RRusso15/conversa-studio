@@ -3,7 +3,7 @@ using Abp.AutoMapper;
 using Abp.MultiTenancy;
 using System.ComponentModel.DataAnnotations;
 
-namespace conversa-studio.MultiTenancy.Dto;
+namespace ConversaStudio.MultiTenancy.Dto;
 
 [AutoMapFrom(typeof(Tenant))]
 public class TenantDto : EntityDto

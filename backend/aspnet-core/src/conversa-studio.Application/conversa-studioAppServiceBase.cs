@@ -1,26 +1,26 @@
-﻿using Abp.Application.Services;
+using Abp.Application.Services;
 using Abp.IdentityFramework;
 using Abp.Runtime.Session;
-using conversa-studio.Authorization.Users;
-using conversa-studio.MultiTenancy;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.MultiTenancy;
 using Microsoft.AspNetCore.Identity;
 using System;
 using System.Threading.Tasks;
 
-namespace conversa-studio;
+namespace ConversaStudio;
 
 /// <summary>
 /// Derive your application services from this class.
 /// </summary>
-public abstract class conversa-studioAppServiceBase : ApplicationService
+public abstract class ConversaStudioAppServiceBase : ApplicationService
 {
     public TenantManager TenantManager { get; set; }
 
     public UserManager UserManager { get; set; }
 
-    protected conversa-studioAppServiceBase()
+    protected ConversaStudioAppServiceBase()
     {
-        LocalizationSourceName = conversa-studioConsts.LocalizationSourceName;
+        LocalizationSourceName = ConversaStudioConsts.LocalizationSourceName;
     }
 
     protected virtual async Task<User> GetCurrentUserAsync()

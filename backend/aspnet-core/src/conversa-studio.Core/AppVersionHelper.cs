@@ -1,8 +1,8 @@
-﻿using Abp.Reflection.Extensions;
+using Abp.Reflection.Extensions;
 using System;
 using System.IO;
 
-namespace conversa-studio;
+namespace ConversaStudio;
 
 /// <summary>
 /// Central point for application version.

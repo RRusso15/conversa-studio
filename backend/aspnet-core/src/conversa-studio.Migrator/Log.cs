@@ -3,7 +3,7 @@ using Abp.Timing;
 using Castle.Core.Logging;
 using System;
 
-namespace conversa-studio.Migrator;
+namespace ConversaStudio.Migrator;
 
 public class Log : ITransientDependency
 {

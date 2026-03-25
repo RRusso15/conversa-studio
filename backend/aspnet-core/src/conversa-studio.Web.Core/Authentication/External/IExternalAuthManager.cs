@@ -1,6 +1,6 @@
-﻿using System.Threading.Tasks;
+using System.Threading.Tasks;
 
-namespace conversa-studio.Authentication.External
+namespace ConversaStudio.Authentication.External
 {
     public interface IExternalAuthManager
     {

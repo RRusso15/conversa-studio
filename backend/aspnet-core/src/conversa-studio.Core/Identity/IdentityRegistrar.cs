@@ -1,12 +1,12 @@
-﻿using conversa-studio.Authorization;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.Authorization.Users;
-using conversa-studio.Editions;
-using conversa-studio.MultiTenancy;
+using ConversaStudio.Authorization;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.Editions;
+using ConversaStudio.MultiTenancy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace conversa-studio.Identity;
+namespace ConversaStudio.Identity;
 
 public static class IdentityRegistrar
 {

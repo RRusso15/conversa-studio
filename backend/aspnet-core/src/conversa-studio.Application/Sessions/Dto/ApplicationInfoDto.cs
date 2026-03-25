@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
-namespace conversa-studio.Sessions.Dto;
+namespace ConversaStudio.Sessions.Dto;
 
 public class ApplicationInfoDto
 {

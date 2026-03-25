@@ -1,7 +1,7 @@
-﻿using Abp.MultiTenancy;
+using Abp.MultiTenancy;
 using System.ComponentModel.DataAnnotations;
 
-namespace conversa-studio.Authorization.Accounts.Dto;
+namespace ConversaStudio.Authorization.Accounts.Dto;
 
 public class IsTenantAvailableInput
 {

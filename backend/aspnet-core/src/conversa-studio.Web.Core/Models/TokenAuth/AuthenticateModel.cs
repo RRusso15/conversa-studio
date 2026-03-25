@@ -1,8 +1,8 @@
-﻿using Abp.Auditing;
+using Abp.Auditing;
 using Abp.Authorization.Users;
 using System.ComponentModel.DataAnnotations;
 
-namespace conversa-studio.Models.TokenAuth
+namespace ConversaStudio.Models.TokenAuth
 {
     public class AuthenticateModel
     {

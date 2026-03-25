@@ -9,7 +9,7 @@
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
     <UserSecretsId>AbpCompanyName-conversa-studio-56C2EF2F-ABD6-4EFC-AAF2-2E81C34E8FB1</UserSecretsId>
-    <RootNamespace>conversa-studio</RootNamespace>
+    <RootNamespace>ConversaStudio</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Localization\SourceFiles\*.xml" Exclude="bin\**;obj\**;**\*.xproj;packages\**;@(EmbeddedResource)" />

@@ -3,10 +3,10 @@ using Abp.Domain.Repositories;
 using Abp.Domain.Uow;
 using Abp.MultiTenancy;
 using Abp.Runtime.Caching;
-using conversa-studio.Authorization.Users;
-using conversa-studio.MultiTenancy;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.MultiTenancy;
 
-namespace conversa-studio.Features;
+namespace ConversaStudio.Features;
 
 public class FeatureValueStore : AbpFeatureValueStore<Tenant, User>
 {

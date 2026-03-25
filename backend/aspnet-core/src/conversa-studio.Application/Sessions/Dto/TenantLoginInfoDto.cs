@@ -1,8 +1,8 @@
-﻿using Abp.Application.Services.Dto;
+using Abp.Application.Services.Dto;
 using Abp.AutoMapper;
-using conversa-studio.MultiTenancy;
+using ConversaStudio.MultiTenancy;
 
-namespace conversa-studio.Sessions.Dto;
+namespace ConversaStudio.Sessions.Dto;
 
 [AutoMapFrom(typeof(Tenant))]
 public class TenantLoginInfoDto : EntityDto

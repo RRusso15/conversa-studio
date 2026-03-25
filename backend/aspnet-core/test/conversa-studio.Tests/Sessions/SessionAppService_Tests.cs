@@ -1,11 +1,11 @@
-﻿using conversa-studio.Sessions;
+using ConversaStudio.Sessions;
 using Shouldly;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace conversa-studio.Tests.Sessions;
+namespace ConversaStudio.Tests.Sessions;
 
-public class SessionAppService_Tests : conversa-studioTestBase
+public class SessionAppService_Tests : ConversaStudioTestBase
 {
     private readonly ISessionAppService _sessionAppService;
 

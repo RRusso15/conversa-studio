@@ -3,11 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
-using conversa-studio.EntityFrameworkCore;
+using ConversaStudio.EntityFrameworkCore;
 
-namespace conversa-studio.Migrations
+namespace ConversaStudio.Migrations
 {
-    [DbContext(typeof(conversa-studioDbContext))]
+    [DbContext(typeof(ConversaStudioDbContext))]
     [Migration("20170608053244_Upgraded_To_Abp_2_1_0")]
     partial class Upgraded_To_Abp_2_1_0
     {
@@ -911,7 +911,7 @@ namespace conversa-studio.Migrations
                     b.ToTable("AbpOrganizationUnits");
                 });
 
-            modelBuilder.Entity("conversa-studio.Authorization.Roles.Role", b =>
+            modelBuilder.Entity("ConversaStudio.Authorization.Roles.Role", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -979,7 +979,7 @@ namespace conversa-studio.Migrations
                     b.ToTable("AbpRoles");
                 });
 
-            modelBuilder.Entity("conversa-studio.Authorization.Users.User", b =>
+            modelBuilder.Entity("ConversaStudio.Authorization.Users.User", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -1105,7 +1105,7 @@ namespace conversa-studio.Migrations
                     b.ToTable("AbpUsers");
                 });
 
-            modelBuilder.Entity("conversa-studio.MultiTenancy.Tenant", b =>
+            modelBuilder.Entity("ConversaStudio.MultiTenancy.Tenant", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -1225,7 +1225,7 @@ namespace conversa-studio.Migrations
 
             modelBuilder.Entity("Abp.Authorization.Roles.RoleClaim", b =>
                 {
-                    b.HasOne("conversa-studio.Authorization.Roles.Role")
+                    b.HasOne("ConversaStudio.Authorization.Roles.Role")
                         .WithMany("Claims")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -1233,7 +1233,7 @@ namespace conversa-studio.Migrations
 
             modelBuilder.Entity("Abp.Authorization.Users.UserClaim", b =>
                 {
-                    b.HasOne("conversa-studio.Authorization.Users.User")
+                    b.HasOne("ConversaStudio.Authorization.Users.User")
                         .WithMany("Claims")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -1241,7 +1241,7 @@ namespace conversa-studio.Migrations
 
             modelBuilder.Entity("Abp.Authorization.Users.UserLogin", b =>
                 {
-                    b.HasOne("conversa-studio.Authorization.Users.User")
+                    b.HasOne("ConversaStudio.Authorization.Users.User")
                         .WithMany("Logins")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -1249,7 +1249,7 @@ namespace conversa-studio.Migrations
 
             modelBuilder.Entity("Abp.Authorization.Users.UserRole", b =>
                 {
-                    b.HasOne("conversa-studio.Authorization.Users.User")
+                    b.HasOne("ConversaStudio.Authorization.Users.User")
                         .WithMany("Roles")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -1257,7 +1257,7 @@ namespace conversa-studio.Migrations
 
             modelBuilder.Entity("Abp.Authorization.Users.UserToken", b =>
                 {
-                    b.HasOne("conversa-studio.Authorization.Users.User")
+                    b.HasOne("ConversaStudio.Authorization.Users.User")
                         .WithMany("Tokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -1265,7 +1265,7 @@ namespace conversa-studio.Migrations
 
             modelBuilder.Entity("Abp.Configuration.Setting", b =>
                 {
-                    b.HasOne("conversa-studio.Authorization.Users.User")
+                    b.HasOne("ConversaStudio.Authorization.Users.User")
                         .WithMany("Settings")
                         .HasForeignKey("UserId");
                 });
@@ -1277,43 +1277,43 @@ namespace conversa-studio.Migrations
                         .HasForeignKey("ParentId");
                 });
 
-            modelBuilder.Entity("conversa-studio.Authorization.Roles.Role", b =>
+            modelBuilder.Entity("ConversaStudio.Authorization.Roles.Role", b =>
                 {
-                    b.HasOne("conversa-studio.Authorization.Users.User", "CreatorUser")
+                    b.HasOne("ConversaStudio.Authorization.Users.User", "CreatorUser")
                         .WithMany()
                         .HasForeignKey("CreatorUserId");
 
-                    b.HasOne("conversa-studio.Authorization.Users.User", "DeleterUser")
+                    b.HasOne("ConversaStudio.Authorization.Users.User", "DeleterUser")
                         .WithMany()
                         .HasForeignKey("DeleterUserId");
 
-                    b.HasOne("conversa-studio.Authorization.Users.User", "LastModifierUser")
+                    b.HasOne("ConversaStudio.Authorization.Users.User", "LastModifierUser")
                         .WithMany()
                         .HasForeignKey("LastModifierUserId");
                 });
 
-            modelBuilder.Entity("conversa-studio.Authorization.Users.User", b =>
+            modelBuilder.Entity("ConversaStudio.Authorization.Users.User", b =>
                 {
-                    b.HasOne("conversa-studio.Authorization.Users.User", "CreatorUser")
+                    b.HasOne("ConversaStudio.Authorization.Users.User", "CreatorUser")
                         .WithMany()
                         .HasForeignKey("CreatorUserId");
 
-                    b.HasOne("conversa-studio.Authorization.Users.User", "DeleterUser")
+                    b.HasOne("ConversaStudio.Authorization.Users.User", "DeleterUser")
                         .WithMany()
                         .HasForeignKey("DeleterUserId");
 
-                    b.HasOne("conversa-studio.Authorization.Users.User", "LastModifierUser")
+                    b.HasOne("ConversaStudio.Authorization.Users.User", "LastModifierUser")
                         .WithMany()
                         .HasForeignKey("LastModifierUserId");
                 });
 
-            modelBuilder.Entity("conversa-studio.MultiTenancy.Tenant", b =>
+            modelBuilder.Entity("ConversaStudio.MultiTenancy.Tenant", b =>
                 {
-                    b.HasOne("conversa-studio.Authorization.Users.User", "CreatorUser")
+                    b.HasOne("ConversaStudio.Authorization.Users.User", "CreatorUser")
                         .WithMany()
                         .HasForeignKey("CreatorUserId");
 
-                    b.HasOne("conversa-studio.Authorization.Users.User", "DeleterUser")
+                    b.HasOne("ConversaStudio.Authorization.Users.User", "DeleterUser")
                         .WithMany()
                         .HasForeignKey("DeleterUserId");
 
@@ -1321,7 +1321,7 @@ namespace conversa-studio.Migrations
                         .WithMany()
                         .HasForeignKey("EditionId");
 
-                    b.HasOne("conversa-studio.Authorization.Users.User", "LastModifierUser")
+                    b.HasOne("ConversaStudio.Authorization.Users.User", "LastModifierUser")
                         .WithMany()
                         .HasForeignKey("LastModifierUserId");
                 });
@@ -1336,7 +1336,7 @@ namespace conversa-studio.Migrations
 
             modelBuilder.Entity("Abp.Authorization.Roles.RolePermissionSetting", b =>
                 {
-                    b.HasOne("conversa-studio.Authorization.Roles.Role")
+                    b.HasOne("ConversaStudio.Authorization.Roles.Role")
                         .WithMany("Permissions")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -1344,7 +1344,7 @@ namespace conversa-studio.Migrations
 
             modelBuilder.Entity("Abp.Authorization.Users.UserPermissionSetting", b =>
                 {
-                    b.HasOne("conversa-studio.Authorization.Users.User")
+                    b.HasOne("ConversaStudio.Authorization.Users.User")
                         .WithMany("Permissions")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);

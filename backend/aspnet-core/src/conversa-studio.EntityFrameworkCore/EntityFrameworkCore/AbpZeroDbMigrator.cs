@@ -1,11 +1,11 @@
-﻿using Abp.Domain.Uow;
+using Abp.Domain.Uow;
 using Abp.EntityFrameworkCore;
 using Abp.MultiTenancy;
 using Abp.Zero.EntityFrameworkCore;
 
-namespace conversa-studio.EntityFrameworkCore;
+namespace ConversaStudio.EntityFrameworkCore;
 
-public class AbpZeroDbMigrator : AbpZeroDbMigrator<conversa-studioDbContext>
+public class AbpZeroDbMigrator : AbpZeroDbMigrator<ConversaStudioDbContext>
 {
     public AbpZeroDbMigrator(
         IUnitOfWorkManager unitOfWorkManager,

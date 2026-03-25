@@ -1,4 +1,4 @@
-namespace conversa-studio.Configuration.Ui;
+namespace ConversaStudio.Configuration.Ui;
 
 public class UiThemeInfo
 {

@@ -14,7 +14,7 @@
     <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
     <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
     <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
-    <RootNamespace>conversa-studio</RootNamespace>
+    <RootNamespace>ConversaStudio</RootNamespace>
     <LangVersion>7.2</LangVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>

@@ -1,15 +1,15 @@
-﻿using Abp.EntityFrameworkCore.Configuration;
+using Abp.EntityFrameworkCore.Configuration;
 using Abp.Modules;
 using Abp.Reflection.Extensions;
 using Abp.Zero.EntityFrameworkCore;
-using conversa-studio.EntityFrameworkCore.Seed;
+using ConversaStudio.EntityFrameworkCore.Seed;
 
-namespace conversa-studio.EntityFrameworkCore;
+namespace ConversaStudio.EntityFrameworkCore;
 
 [DependsOn(
-    typeof(conversa-studioCoreModule),
+    typeof(ConversaStudioCoreModule),
     typeof(AbpZeroCoreEntityFrameworkCoreModule))]
-public class conversa-studioEntityFrameworkModule : AbpModule
+public class ConversaStudioEntityFrameworkModule : AbpModule
 {
     /* Used it tests to skip dbcontext registration, in order to use in-memory database of EF Core */
     public bool SkipDbContextRegistration { get; set; }
@@ -20,15 +20,15 @@ public class conversa-studioEntityFrameworkModule : AbpModule
     {
         if (!SkipDbContextRegistration)
         {
-            Configuration.Modules.AbpEfCore().AddDbContext<conversa-studioDbContext>(options =>
+            Configuration.Modules.AbpEfCore().AddDbContext<ConversaStudioDbContext>(options =>
             {
                 if (options.ExistingConnection != null)
                 {
-                    conversa-studioDbContextConfigurer.Configure(options.DbContextOptions, options.ExistingConnection);
+                    ConversaStudioDbContextConfigurer.Configure(options.DbContextOptions, options.ExistingConnection);
                 }
                 else
                 {
-                    conversa-studioDbContextConfigurer.Configure(options.DbContextOptions, options.ConnectionString);
+                    ConversaStudioDbContextConfigurer.Configure(options.DbContextOptions, options.ConnectionString);
                 }
             });
         }
@@ -36,7 +36,7 @@ public class conversa-studioEntityFrameworkModule : AbpModule
 
     public override void Initialize()
     {
-        IocManager.RegisterAssemblyByConvention(typeof(conversa-studioEntityFrameworkModule).GetAssembly());
+        IocManager.RegisterAssemblyByConvention(typeof(ConversaStudioEntityFrameworkModule).GetAssembly());
     }
 
     public override void PostInitialize()

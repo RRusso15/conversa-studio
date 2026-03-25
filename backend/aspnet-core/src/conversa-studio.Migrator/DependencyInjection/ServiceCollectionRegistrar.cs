@@ -1,9 +1,9 @@
-﻿using Abp.Dependency;
-using conversa-studio.Identity;
+using Abp.Dependency;
+using ConversaStudio.Identity;
 using Castle.Windsor.MsDependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace conversa-studio.Migrator.DependencyInjection;
+namespace ConversaStudio.Migrator.DependencyInjection;
 
 public static class ServiceCollectionRegistrar
 {

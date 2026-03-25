@@ -1,4 +1,4 @@
-﻿using Abp.Runtime.Security;
+using Abp.Runtime.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Web.Host.Startup
+namespace ConversaStudio.Web.Host.Startup
 {
     public static class AuthConfigurer
     {

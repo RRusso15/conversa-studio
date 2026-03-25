@@ -1,6 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
-namespace conversa-studio.Configuration.Dto;
+namespace ConversaStudio.Configuration.Dto;
 
 public class ChangeUiThemeInput
 {

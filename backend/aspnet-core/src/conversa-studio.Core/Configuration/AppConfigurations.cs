@@ -1,9 +1,9 @@
-﻿using Abp.Extensions;
+using Abp.Extensions;
 using Abp.Reflection.Extensions;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Concurrent;
 
-namespace conversa-studio.Configuration;
+namespace ConversaStudio.Configuration;
 
 public static class AppConfigurations
 {

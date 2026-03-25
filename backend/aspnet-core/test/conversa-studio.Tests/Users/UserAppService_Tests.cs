@@ -1,13 +1,13 @@
-﻿using conversa-studio.Users;
-using conversa-studio.Users.Dto;
+using ConversaStudio.Users;
+using ConversaStudio.Users.Dto;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace conversa-studio.Tests.Users;
+namespace ConversaStudio.Tests.Users;
 
-public class UserAppService_Tests : conversa-studioTestBase
+public class UserAppService_Tests : ConversaStudioTestBase
 {
     private readonly IUserAppService _userAppService;
 

@@ -1,6 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace conversa-studio.Migrations;
+namespace ConversaStudio.Migrations;
 
 public partial class Upgrade_To_ABP_6_4_rc1 : Migration
 {

@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using System;
 
-namespace conversa-studio.Migrations;
+namespace ConversaStudio.Migrations;
 
 public partial class Upgraded_To_Abp_v340 : Migration
 {

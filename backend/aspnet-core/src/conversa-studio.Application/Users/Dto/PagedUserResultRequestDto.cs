@@ -1,7 +1,7 @@
-﻿using Abp.Application.Services.Dto;
+using Abp.Application.Services.Dto;
 using Abp.Runtime.Validation;
 
-namespace conversa-studio.Users.Dto;
+namespace ConversaStudio.Users.Dto;
 
 //custom PagedResultRequestDto
 public class PagedUserResultRequestDto : PagedResultRequestDto, IShouldNormalize

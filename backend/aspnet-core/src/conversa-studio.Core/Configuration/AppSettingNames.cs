@@ -1,4 +1,4 @@
-﻿namespace conversa-studio.Configuration;
+namespace ConversaStudio.Configuration;
 
 public static class AppSettingNames
 {

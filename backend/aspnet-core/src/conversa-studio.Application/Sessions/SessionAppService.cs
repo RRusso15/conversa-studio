@@ -1,11 +1,11 @@
-﻿using Abp.Auditing;
-using conversa-studio.Sessions.Dto;
+using Abp.Auditing;
+using ConversaStudio.Sessions.Dto;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Sessions;
+namespace ConversaStudio.Sessions;
 
-public class SessionAppService : conversa-studioAppServiceBase, ISessionAppService
+public class SessionAppService : ConversaStudioAppServiceBase, ISessionAppService
 {
     [DisableAuditing]
     public async Task<GetCurrentLoginInformationsOutput> GetCurrentLoginInformations()

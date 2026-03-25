@@ -1,8 +1,8 @@
-﻿using Abp.Application.Services.Dto;
+using Abp.Application.Services.Dto;
 using Abp.AutoMapper;
-using conversa-studio.Authorization.Users;
+using ConversaStudio.Authorization.Users;
 
-namespace conversa-studio.Sessions.Dto;
+namespace ConversaStudio.Sessions.Dto;
 
 [AutoMapFrom(typeof(User))]
 public class UserLoginInfoDto : EntityDto<long>

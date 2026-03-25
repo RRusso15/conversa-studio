@@ -1,9 +1,9 @@
-﻿using Abp.Dependency;
+using Abp.Dependency;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Authentication.External
+namespace ConversaStudio.Authentication.External
 {
     public class ExternalAuthManager : IExternalAuthManager, ITransientDependency
     {

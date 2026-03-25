@@ -1,4 +1,4 @@
-﻿namespace conversa-studio.Authentication.External
+namespace ConversaStudio.Authentication.External
 {
     public class ExternalAuthUserInfo
     {

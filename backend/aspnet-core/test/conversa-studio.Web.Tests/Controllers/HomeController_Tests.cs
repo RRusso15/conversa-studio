@@ -1,12 +1,12 @@
-﻿using conversa-studio.Models.TokenAuth;
-using conversa-studio.Web.Controllers;
+using ConversaStudio.Models.TokenAuth;
+using ConversaStudio.Web.Controllers;
 using Shouldly;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace conversa-studio.Web.Tests.Controllers;
+namespace ConversaStudio.Web.Tests.Controllers;
 
-public class HomeController_Tests : conversa-studioWebTestBase
+public class HomeController_Tests : ConversaStudioWebTestBase
 {
     [Fact]
     public async Task Index_Test()

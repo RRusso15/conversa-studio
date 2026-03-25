@@ -1,10 +1,10 @@
-﻿using Abp.Authorization;
+using Abp.Authorization;
 using Abp.Localization;
 using Abp.MultiTenancy;
 
-namespace conversa-studio.Authorization;
+namespace ConversaStudio.Authorization;
 
-public class conversa-studioAuthorizationProvider : AuthorizationProvider
+public class ConversaStudioAuthorizationProvider : AuthorizationProvider
 {
     public override void SetPermissions(IPermissionDefinitionContext context)
     {
@@ -16,6 +16,6 @@ public class conversa-studioAuthorizationProvider : AuthorizationProvider
 
     private static ILocalizableString L(string name)
     {
-        return new LocalizableString(name, conversa-studioConsts.LocalizationSourceName);
+        return new LocalizableString(name, ConversaStudioConsts.LocalizationSourceName);
     }
 }

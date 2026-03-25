@@ -1,23 +1,23 @@
-﻿using Abp.Authorization;
+using Abp.Authorization;
 using Abp.Authorization.Roles;
 using Abp.Authorization.Users;
 using Abp.MultiTenancy;
-using conversa-studio.Authorization;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.Authorization.Users;
+using ConversaStudio.Authorization;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Linq;
 
-namespace conversa-studio.EntityFrameworkCore.Seed.Tenants;
+namespace ConversaStudio.EntityFrameworkCore.Seed.Tenants;
 
 public class TenantRoleAndUserBuilder
 {
-    private readonly conversa-studioDbContext _context;
+    private readonly ConversaStudioDbContext _context;
     private readonly int _tenantId;
 
-    public TenantRoleAndUserBuilder(conversa-studioDbContext context, int tenantId)
+    public TenantRoleAndUserBuilder(ConversaStudioDbContext context, int tenantId)
     {
         _context = context;
         _tenantId = tenantId;
@@ -48,7 +48,7 @@ public class TenantRoleAndUserBuilder
             .ToList();
 
         var permissions = PermissionFinder
-            .GetAllPermissions(new conversa-studioAuthorizationProvider())
+            .GetAllPermissions(new ConversaStudioAuthorizationProvider())
             .Where(p => p.MultiTenancySides.HasFlag(MultiTenancySides.Tenant) &&
                         !grantedPermissions.Contains(p.Name))
             .ToList();

@@ -1,7 +1,7 @@
-﻿using Abp.Dependency;
+using Abp.Dependency;
 using System.Collections.Generic;
 
-namespace conversa-studio.Authentication.External
+namespace ConversaStudio.Authentication.External
 {
     public class ExternalAuthConfiguration : IExternalAuthConfiguration, ISingletonDependency
     {

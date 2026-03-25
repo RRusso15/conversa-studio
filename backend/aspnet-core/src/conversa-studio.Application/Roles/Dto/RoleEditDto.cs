@@ -1,9 +1,9 @@
-﻿using Abp.Application.Services.Dto;
+using Abp.Application.Services.Dto;
 using Abp.Authorization.Roles;
-using conversa-studio.Authorization.Roles;
+using ConversaStudio.Authorization.Roles;
 using System.ComponentModel.DataAnnotations;
 
-namespace conversa-studio.Roles.Dto;
+namespace ConversaStudio.Roles.Dto;
 
 public class RoleEditDto : EntityDto<int>
 {

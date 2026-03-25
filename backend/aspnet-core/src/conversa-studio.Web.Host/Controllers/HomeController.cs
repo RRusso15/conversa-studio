@@ -2,13 +2,13 @@ using Abp;
 using Abp.Extensions;
 using Abp.Notifications;
 using Abp.Timing;
-using conversa-studio.Controllers;
+using ConversaStudio.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Web.Host.Controllers
+namespace ConversaStudio.Web.Host.Controllers
 {
-    public class HomeController : conversa-studioControllerBase
+    public class HomeController : ConversaStudioControllerBase
     {
         private readonly INotificationPublisher _notificationPublisher;
 

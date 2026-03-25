@@ -1,7 +1,7 @@
-﻿using Abp.Configuration;
+using Abp.Configuration;
 using System.Collections.Generic;
 
-namespace conversa-studio.Configuration;
+namespace ConversaStudio.Configuration;
 
 public class AppSettingProvider : SettingProvider
 {

@@ -2,21 +2,21 @@ using Abp.Authorization;
 using Abp.Authorization.Roles;
 using Abp.Authorization.Users;
 using Abp.MultiTenancy;
-using conversa-studio.Authorization;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.Authorization.Users;
+using ConversaStudio.Authorization;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Linq;
 
-namespace conversa-studio.EntityFrameworkCore.Seed.Host;
+namespace ConversaStudio.EntityFrameworkCore.Seed.Host;
 
 public class HostRoleAndUserCreator
 {
-    private readonly conversa-studioDbContext _context;
+    private readonly ConversaStudioDbContext _context;
 
-    public HostRoleAndUserCreator(conversa-studioDbContext context)
+    public HostRoleAndUserCreator(ConversaStudioDbContext context)
     {
         _context = context;
     }
@@ -46,7 +46,7 @@ public class HostRoleAndUserCreator
             .ToList();
 
         var permissions = PermissionFinder
-            .GetAllPermissions(new conversa-studioAuthorizationProvider())
+            .GetAllPermissions(new ConversaStudioAuthorizationProvider())
             .Where(p => p.MultiTenancySides.HasFlag(MultiTenancySides.Host) &&
                         !grantedPermissions.Contains(p.Name))
             .ToList();

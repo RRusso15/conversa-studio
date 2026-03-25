@@ -1,12 +1,12 @@
-﻿using Abp.AspNetCore.TestBase;
+using Abp.AspNetCore.TestBase;
 using Abp.Authorization.Users;
 using Abp.Extensions;
 using Abp.Json;
 using Abp.MultiTenancy;
 using Abp.Web.Models;
-using conversa-studio.EntityFrameworkCore;
-using conversa-studio.Models.TokenAuth;
-using conversa-studio.Web.Startup;
+using ConversaStudio.EntityFrameworkCore;
+using ConversaStudio.Models.TokenAuth;
+using ConversaStudio.Web.Startup;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
 using Microsoft.AspNetCore.Hosting;
@@ -20,13 +20,13 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Web.Tests;
+namespace ConversaStudio.Web.Tests;
 
-public abstract class conversa-studioWebTestBase : AbpAspNetCoreIntegratedTestBase<Startup>
+public abstract class ConversaStudioWebTestBase : AbpAspNetCoreIntegratedTestBase<Startup>
 {
     protected static readonly Lazy<string> ContentRootFolder;
 
-    static conversa-studioWebTestBase()
+    static ConversaStudioWebTestBase()
     {
         ContentRootFolder = new Lazy<string>(WebContentDirectoryFinder.CalculateContentRootFolder, true);
     }
@@ -36,7 +36,7 @@ public abstract class conversa-studioWebTestBase : AbpAspNetCoreIntegratedTestBa
         return base
             .CreateWebHostBuilder()
             .UseContentRoot(ContentRootFolder.Value)
-            .UseSetting(WebHostDefaults.ApplicationKey, typeof(conversa-studioWebMvcModule).Assembly.FullName);
+            .UseSetting(WebHostDefaults.ApplicationKey, typeof(ConversaStudioWebMvcModule).Assembly.FullName);
     }
 
     #region Get response
@@ -157,20 +157,20 @@ public abstract class conversa-studioWebTestBase : AbpAspNetCoreIntegratedTestBa
 
     #region UsingDbContext
 
-    protected void UsingDbContext(Action<conversa-studioDbContext> action)
+    protected void UsingDbContext(Action<ConversaStudioDbContext> action)
     {
-        using (var context = IocManager.Resolve<conversa-studioDbContext>())
+        using (var context = IocManager.Resolve<ConversaStudioDbContext>())
         {
             action(context);
             context.SaveChanges();
         }
     }
 
-    protected T UsingDbContext<T>(Func<conversa-studioDbContext, T> func)
+    protected T UsingDbContext<T>(Func<ConversaStudioDbContext, T> func)
     {
         T result;
 
-        using (var context = IocManager.Resolve<conversa-studioDbContext>())
+        using (var context = IocManager.Resolve<ConversaStudioDbContext>())
         {
             result = func(context);
             context.SaveChanges();
@@ -179,20 +179,20 @@ public abstract class conversa-studioWebTestBase : AbpAspNetCoreIntegratedTestBa
         return result;
     }
 
-    protected async Task UsingDbContextAsync(Func<conversa-studioDbContext, Task> action)
+    protected async Task UsingDbContextAsync(Func<ConversaStudioDbContext, Task> action)
     {
-        using (var context = IocManager.Resolve<conversa-studioDbContext>())
+        using (var context = IocManager.Resolve<ConversaStudioDbContext>())
         {
             await action(context);
             await context.SaveChangesAsync(true);
         }
     }
 
-    protected async Task<T> UsingDbContextAsync<T>(Func<conversa-studioDbContext, Task<T>> func)
+    protected async Task<T> UsingDbContextAsync<T>(Func<ConversaStudioDbContext, Task<T>> func)
     {
         T result;
 
-        using (var context = IocManager.Resolve<conversa-studioDbContext>())
+        using (var context = IocManager.Resolve<ConversaStudioDbContext>())
         {
             result = await func(context);
             await context.SaveChangesAsync(true);

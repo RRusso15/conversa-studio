@@ -1,23 +1,23 @@
-﻿using Abp.Dependency;
+using Abp.Dependency;
 using Abp.Domain.Uow;
 using Abp.EntityFrameworkCore.Uow;
 using Abp.MultiTenancy;
-using conversa-studio.EntityFrameworkCore.Seed.Host;
-using conversa-studio.EntityFrameworkCore.Seed.Tenants;
+using ConversaStudio.EntityFrameworkCore.Seed.Host;
+using ConversaStudio.EntityFrameworkCore.Seed.Tenants;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Transactions;
 
-namespace conversa-studio.EntityFrameworkCore.Seed;
+namespace ConversaStudio.EntityFrameworkCore.Seed;
 
 public static class SeedHelper
 {
     public static void SeedHostDb(IIocResolver iocResolver)
     {
-        WithDbContext<conversa-studioDbContext>(iocResolver, SeedHostDb);
+        WithDbContext<ConversaStudioDbContext>(iocResolver, SeedHostDb);
     }
 
-    public static void SeedHostDb(conversa-studioDbContext context)
+    public static void SeedHostDb(ConversaStudioDbContext context)
     {
         context.SuppressAutoSetTenantId = true;
 

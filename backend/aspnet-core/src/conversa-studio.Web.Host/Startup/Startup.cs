@@ -1,10 +1,10 @@
-﻿using Abp.AspNetCore;
+using Abp.AspNetCore;
 using Abp.AspNetCore.Mvc.Antiforgery;
 using Abp.AspNetCore.SignalR.Hubs;
 using Abp.Castle.Logging.Log4Net;
 using Abp.Extensions;
-using conversa-studio.Configuration;
-using conversa-studio.Identity;
+using ConversaStudio.Configuration;
+using ConversaStudio.Identity;
 using Castle.Facilities.Logging;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -18,7 +18,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 
-namespace conversa-studio.Web.Host.Startup
+namespace ConversaStudio.Web.Host.Startup
 {
     public class Startup
     {
@@ -70,7 +70,7 @@ namespace conversa-studio.Web.Host.Startup
             ConfigureSwagger(services);
 
             // Configure Abp and Dependency Injection
-            services.AddAbpWithoutCreatingServiceProvider<conversa-studioWebHostModule>(
+            services.AddAbpWithoutCreatingServiceProvider<ConversaStudioWebHostModule>(
                 // Configure Log4Net logging
                 options => options.IocManager.IocContainer.AddFacility<LoggingFacility>(
                     f => f.UseAbpLog4Net().WithConfig(_hostingEnvironment.IsDevelopment()
@@ -110,9 +110,9 @@ namespace conversa-studio.Web.Host.Startup
             app.UseSwaggerUI(options =>
             {
                 // specifying the Swagger JSON endpoint.
-                options.SwaggerEndpoint($"/swagger/{_apiVersion}/swagger.json", $"conversa-studio API {_apiVersion}");
+                options.SwaggerEndpoint($"/swagger/{_apiVersion}/swagger.json", $"ConversaStudio API {_apiVersion}");
                 options.IndexStream = () => Assembly.GetExecutingAssembly()
-                    .GetManifestResourceStream("conversa-studio.Web.Host.wwwroot.swagger.ui.index.html");
+                    .GetManifestResourceStream("ConversaStudio.Web.Host.wwwroot.swagger.ui.index.html");
                 options.DisplayRequestDuration(); // Controls the display of the request duration (in milliseconds) for "Try it out" requests.
             }); // URL: /swagger
         }
@@ -124,12 +124,12 @@ namespace conversa-studio.Web.Host.Startup
                 options.SwaggerDoc(_apiVersion, new OpenApiInfo
                 {
                     Version = _apiVersion,
-                    Title = "conversa-studio API",
-                    Description = "conversa-studio",
+                    Title = "ConversaStudio API",
+                    Description = "ConversaStudio",
                     // uncomment if needed TermsOfService = new Uri("https://example.com/terms"),
                     Contact = new OpenApiContact
                     {
-                        Name = "conversa-studio",
+                        Name = "ConversaStudio",
                         Email = string.Empty,
                         Url = new Uri("https://twitter.com/aspboilerplate"),
                     },
@@ -159,11 +159,11 @@ namespace conversa-studio.Web.Host.Startup
                     var hostXmlPath = Path.Combine(AppContext.BaseDirectory, hostXmlFile);
                     options.IncludeXmlComments(hostXmlPath);
 
-                    var applicationXml = $"conversa-studio.Application.xml";
+                    var applicationXml = $"ConversaStudio.Application.xml";
                     var applicationXmlPath = Path.Combine(AppContext.BaseDirectory, applicationXml);
                     options.IncludeXmlComments(applicationXmlPath);
 
-                    var webCoreXmlFile = $"conversa-studio.Web.Core.xml";
+                    var webCoreXmlFile = $"ConversaStudio.Web.Core.xml";
                     var webCoreXmlPath = Path.Combine(AppContext.BaseDirectory, webCoreXmlFile);
                     options.IncludeXmlComments(webCoreXmlPath);
                 }

@@ -1,17 +1,17 @@
-﻿using conversa-studio.Configuration;
-using conversa-studio.Web;
+using ConversaStudio.Configuration;
+using ConversaStudio.Web;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 
-namespace conversa-studio.EntityFrameworkCore;
+namespace ConversaStudio.EntityFrameworkCore;
 
 /* This class is needed to run "dotnet ef ..." commands from command line on development. Not used anywhere else */
-public class conversa-studioDbContextFactory : IDesignTimeDbContextFactory<conversa-studioDbContext>
+public class ConversaStudioDbContextFactory : IDesignTimeDbContextFactory<ConversaStudioDbContext>
 {
-    public conversa-studioDbContext CreateDbContext(string[] args)
+    public ConversaStudioDbContext CreateDbContext(string[] args)
     {
-        var builder = new DbContextOptionsBuilder<conversa-studioDbContext>();
+        var builder = new DbContextOptionsBuilder<ConversaStudioDbContext>();
 
         /*
          You can provide an environmentName parameter to the AppConfigurations.Get method. 
@@ -21,8 +21,8 @@ public class conversa-studioDbContextFactory : IDesignTimeDbContextFactory<conve
          */
         var configuration = AppConfigurations.Get(WebContentDirectoryFinder.CalculateContentRootFolder());
 
-        conversa-studioDbContextConfigurer.Configure(builder, configuration.GetConnectionString(conversa-studioConsts.ConnectionStringName));
+        ConversaStudioDbContextConfigurer.Configure(builder, configuration.GetConnectionString(ConversaStudioConsts.ConnectionStringName));
 
-        return new conversa-studioDbContext(builder.Options);
+        return new ConversaStudioDbContext(builder.Options);
     }
 }

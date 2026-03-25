@@ -1,7 +1,7 @@
-﻿using conversa-studio.Authorization.Users;
+using ConversaStudio.Authorization.Users;
 using AutoMapper;
 
-namespace conversa-studio.Users.Dto;
+namespace ConversaStudio.Users.Dto;
 
 public class UserMapProfile : Profile
 {

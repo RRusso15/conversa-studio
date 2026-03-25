@@ -1,10 +1,10 @@
-﻿namespace conversa-studio.EntityFrameworkCore.Seed.Host;
+namespace ConversaStudio.EntityFrameworkCore.Seed.Host;
 
 public class InitialHostDbBuilder
 {
-    private readonly conversa-studioDbContext _context;
+    private readonly ConversaStudioDbContext _context;
 
-    public InitialHostDbBuilder(conversa-studioDbContext context)
+    public InitialHostDbBuilder(ConversaStudioDbContext context)
     {
         _context = context;
     }

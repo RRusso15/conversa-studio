@@ -1,11 +1,11 @@
-﻿using Abp.Auditing;
+using Abp.Auditing;
 using Abp.Authorization.Users;
 using Abp.Extensions;
-using conversa-studio.Validation;
+using ConversaStudio.Validation;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace conversa-studio.Authorization.Accounts.Dto;
+namespace ConversaStudio.Authorization.Accounts.Dto;
 
 public class RegisterInput : IValidatableObject
 {

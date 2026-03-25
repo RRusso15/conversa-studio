@@ -6,22 +6,22 @@ using Abp.Net.Mail;
 using Abp.TestBase;
 using Abp.Zero.Configuration;
 using Abp.Zero.EntityFrameworkCore;
-using conversa-studio.EntityFrameworkCore;
-using conversa-studio.Tests.DependencyInjection;
+using ConversaStudio.EntityFrameworkCore;
+using ConversaStudio.Tests.DependencyInjection;
 using Castle.MicroKernel.Registration;
 using NSubstitute;
 using System;
 
-namespace conversa-studio.Tests;
+namespace ConversaStudio.Tests;
 
 [DependsOn(
-    typeof(conversa-studioApplicationModule),
-    typeof(conversa-studioEntityFrameworkModule),
+    typeof(ConversaStudioApplicationModule),
+    typeof(ConversaStudioEntityFrameworkModule),
     typeof(AbpTestBaseModule)
     )]
-public class conversa-studioTestModule : AbpModule
+public class ConversaStudioTestModule : AbpModule
 {
-    public conversa-studioTestModule(conversa-studioEntityFrameworkModule abpProjectNameEntityFrameworkModule)
+    public ConversaStudioTestModule(ConversaStudioEntityFrameworkModule abpProjectNameEntityFrameworkModule)
     {
         abpProjectNameEntityFrameworkModule.SkipDbContextRegistration = true;
         abpProjectNameEntityFrameworkModule.SkipDbSeed = true;
@@ -40,7 +40,7 @@ public class conversa-studioTestModule : AbpModule
         // Use database for language management
         Configuration.Modules.Zero().LanguageManagement.EnableDbLocalization();
 
-        RegisterFakeService<AbpZeroDbMigrator<conversa-studioDbContext>>();
+        RegisterFakeService<AbpZeroDbMigrator<ConversaStudioDbContext>>();
 
         Configuration.ReplaceService<IEmailSender, NullEmailSender>(DependencyLifeStyle.Transient);
     }

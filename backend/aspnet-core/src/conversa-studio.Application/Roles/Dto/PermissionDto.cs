@@ -2,7 +2,7 @@ using Abp.Application.Services.Dto;
 using Abp.Authorization;
 using Abp.AutoMapper;
 
-namespace conversa-studio.Roles.Dto;
+namespace ConversaStudio.Roles.Dto;
 
 [AutoMapFrom(typeof(Permission))]
 public class PermissionDto : EntityDto<long>

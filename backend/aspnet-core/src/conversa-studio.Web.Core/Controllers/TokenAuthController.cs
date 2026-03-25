@@ -1,12 +1,12 @@
-﻿using Abp.Authorization;
+using Abp.Authorization;
 using Abp.Authorization.Users;
 using Abp.MultiTenancy;
 using Abp.Runtime.Security;
-using conversa-studio.Authentication.JwtBearer;
-using conversa-studio.Authorization;
-using conversa-studio.Authorization.Users;
-using conversa-studio.Models.TokenAuth;
-using conversa-studio.MultiTenancy;
+using ConversaStudio.Authentication.JwtBearer;
+using ConversaStudio.Authorization;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.Models.TokenAuth;
+using ConversaStudio.MultiTenancy;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -15,10 +15,10 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Controllers
+namespace ConversaStudio.Controllers
 {
     [Route("api/[controller]/[action]")]
-    public class TokenAuthController : conversa-studioControllerBase
+    public class TokenAuthController : ConversaStudioControllerBase
     {
         private readonly LogInManager _logInManager;
         private readonly ITenantCache _tenantCache;

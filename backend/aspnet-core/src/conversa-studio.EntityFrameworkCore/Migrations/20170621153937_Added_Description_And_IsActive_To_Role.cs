@@ -1,6 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace conversa-studio.Migrations;
+namespace ConversaStudio.Migrations;
 
 public partial class Added_Description_And_IsActive_To_Role : Migration
 {

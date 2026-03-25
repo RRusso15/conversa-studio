@@ -2,10 +2,10 @@ using Abp.Auditing;
 using Abp.Authorization.Users;
 using Abp.AutoMapper;
 using Abp.Runtime.Validation;
-using conversa-studio.Authorization.Users;
+using ConversaStudio.Authorization.Users;
 using System.ComponentModel.DataAnnotations;
 
-namespace conversa-studio.Users.Dto;
+namespace ConversaStudio.Users.Dto;
 
 [AutoMapTo(typeof(User))]
 public class CreateUserDto : IShouldNormalize

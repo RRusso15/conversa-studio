@@ -1,4 +1,4 @@
-﻿namespace conversa-studio.Authorization;
+namespace ConversaStudio.Authorization;
 
 public static class PermissionNames
 {

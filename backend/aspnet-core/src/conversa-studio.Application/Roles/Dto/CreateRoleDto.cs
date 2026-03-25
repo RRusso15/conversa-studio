@@ -1,9 +1,9 @@
 using Abp.Authorization.Roles;
-using conversa-studio.Authorization.Roles;
+using ConversaStudio.Authorization.Roles;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace conversa-studio.Roles.Dto;
+namespace ConversaStudio.Roles.Dto;
 
 public class CreateRoleDto
 {

@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
-namespace conversa-studio.Configuration.Ui;
+namespace ConversaStudio.Configuration.Ui;
 
 public static class UiThemes
 {

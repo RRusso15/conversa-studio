@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
-namespace conversa-studio.Configuration
+namespace ConversaStudio.Configuration
 {
     public static class HostingEnvironmentExtensions
     {

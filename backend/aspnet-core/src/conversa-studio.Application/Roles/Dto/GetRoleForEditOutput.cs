@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
-namespace conversa-studio.Roles.Dto;
+namespace ConversaStudio.Roles.Dto;
 
 public class GetRoleForEditOutput
 {

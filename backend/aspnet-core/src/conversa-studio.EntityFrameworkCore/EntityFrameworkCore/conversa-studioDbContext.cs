@@ -1,16 +1,16 @@
-﻿using Abp.Zero.EntityFrameworkCore;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.Authorization.Users;
-using conversa-studio.MultiTenancy;
+using Abp.Zero.EntityFrameworkCore;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.MultiTenancy;
 using Microsoft.EntityFrameworkCore;
 
-namespace conversa-studio.EntityFrameworkCore;
+namespace ConversaStudio.EntityFrameworkCore;
 
-public class conversa-studioDbContext : AbpZeroDbContext<Tenant, Role, User, conversa-studioDbContext>
+public class ConversaStudioDbContext : AbpZeroDbContext<Tenant, Role, User, ConversaStudioDbContext>
 {
     /* Define a DbSet for each entity of the application */
 
-    public conversa-studioDbContext(DbContextOptions<conversa-studioDbContext> options)
+    public ConversaStudioDbContext(DbContextOptions<ConversaStudioDbContext> options)
         : base(options)
     {
     }

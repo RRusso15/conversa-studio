@@ -1,8 +1,8 @@
-﻿using Abp.Application.Services;
-using conversa-studio.Sessions.Dto;
+using Abp.Application.Services;
+using ConversaStudio.Sessions.Dto;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Sessions;
+namespace ConversaStudio.Sessions;
 
 public interface ISessionAppService : IApplicationService
 {

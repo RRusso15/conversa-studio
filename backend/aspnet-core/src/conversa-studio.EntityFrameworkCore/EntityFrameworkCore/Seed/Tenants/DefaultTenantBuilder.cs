@@ -1,16 +1,16 @@
-﻿using Abp.MultiTenancy;
-using conversa-studio.Editions;
-using conversa-studio.MultiTenancy;
+using Abp.MultiTenancy;
+using ConversaStudio.Editions;
+using ConversaStudio.MultiTenancy;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 
-namespace conversa-studio.EntityFrameworkCore.Seed.Tenants;
+namespace ConversaStudio.EntityFrameworkCore.Seed.Tenants;
 
 public class DefaultTenantBuilder
 {
-    private readonly conversa-studioDbContext _context;
+    private readonly ConversaStudioDbContext _context;
 
-    public DefaultTenantBuilder(conversa-studioDbContext context)
+    public DefaultTenantBuilder(ConversaStudioDbContext context)
     {
         _context = context;
     }

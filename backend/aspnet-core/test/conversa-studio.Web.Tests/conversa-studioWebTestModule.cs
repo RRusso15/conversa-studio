@@ -1,20 +1,20 @@
-﻿using Abp.AspNetCore;
+using Abp.AspNetCore;
 using Abp.AspNetCore.TestBase;
 using Abp.Modules;
 using Abp.Reflection.Extensions;
-using conversa-studio.EntityFrameworkCore;
-using conversa-studio.Web.Startup;
+using ConversaStudio.EntityFrameworkCore;
+using ConversaStudio.Web.Startup;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 
-namespace conversa-studio.Web.Tests;
+namespace ConversaStudio.Web.Tests;
 
 [DependsOn(
-    typeof(conversa-studioWebMvcModule),
+    typeof(ConversaStudioWebMvcModule),
     typeof(AbpAspNetCoreTestBaseModule)
 )]
-public class conversa-studioWebTestModule : AbpModule
+public class ConversaStudioWebTestModule : AbpModule
 {
-    public conversa-studioWebTestModule(conversa-studioEntityFrameworkModule abpProjectNameEntityFrameworkModule)
+    public ConversaStudioWebTestModule(ConversaStudioEntityFrameworkModule abpProjectNameEntityFrameworkModule)
     {
         abpProjectNameEntityFrameworkModule.SkipDbContextRegistration = true;
     }
@@ -26,12 +26,12 @@ public class conversa-studioWebTestModule : AbpModule
 
     public override void Initialize()
     {
-        IocManager.RegisterAssemblyByConvention(typeof(conversa-studioWebTestModule).GetAssembly());
+        IocManager.RegisterAssemblyByConvention(typeof(ConversaStudioWebTestModule).GetAssembly());
     }
 
     public override void PostInitialize()
     {
         IocManager.Resolve<ApplicationPartManager>()
-            .AddApplicationPartsIfNotAddedBefore(typeof(conversa-studioWebMvcModule).Assembly);
+            .AddApplicationPartsIfNotAddedBefore(typeof(ConversaStudioWebMvcModule).Assembly);
     }
 }

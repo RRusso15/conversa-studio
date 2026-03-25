@@ -1,7 +1,7 @@
-﻿using conversa-studio.Configuration.Dto;
+using ConversaStudio.Configuration.Dto;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Configuration;
+namespace ConversaStudio.Configuration;
 
 public interface IConfigurationAppService
 {

@@ -1,4 +1,4 @@
-﻿using Abp.Application.Services;
+using Abp.Application.Services;
 using Abp.Application.Services.Dto;
 using Abp.Authorization;
 using Abp.Domain.Repositories;
@@ -7,17 +7,17 @@ using Abp.IdentityFramework;
 using Abp.Linq.Extensions;
 using Abp.MultiTenancy;
 using Abp.Runtime.Security;
-using conversa-studio.Authorization;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.Authorization.Users;
-using conversa-studio.Editions;
-using conversa-studio.MultiTenancy.Dto;
+using ConversaStudio.Authorization;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.Editions;
+using ConversaStudio.MultiTenancy.Dto;
 using Microsoft.AspNetCore.Identity;
 using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Threading.Tasks;
 
-namespace conversa-studio.MultiTenancy;
+namespace ConversaStudio.MultiTenancy;
 
 [AbpAuthorize(PermissionNames.Pages_Tenants)]
 public class TenantAppService : AsyncCrudAppService<Tenant, TenantDto, int, PagedTenantResultRequestDto, CreateTenantDto, TenantDto>, ITenantAppService

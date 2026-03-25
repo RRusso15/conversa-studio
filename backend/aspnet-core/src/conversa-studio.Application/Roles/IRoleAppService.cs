@@ -1,9 +1,9 @@
-﻿using Abp.Application.Services;
+using Abp.Application.Services;
 using Abp.Application.Services.Dto;
-using conversa-studio.Roles.Dto;
+using ConversaStudio.Roles.Dto;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Roles;
+namespace ConversaStudio.Roles;
 
 public interface IRoleAppService : IAsyncCrudAppService<RoleDto, int, PagedRoleResultRequestDto, CreateRoleDto, RoleDto>
 {

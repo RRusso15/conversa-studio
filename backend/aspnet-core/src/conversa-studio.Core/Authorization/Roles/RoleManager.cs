@@ -5,12 +5,12 @@ using Abp.Domain.Uow;
 using Abp.Organizations;
 using Abp.Runtime.Caching;
 using Abp.Zero.Configuration;
-using conversa-studio.Authorization.Users;
+using ConversaStudio.Authorization.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 
-namespace conversa-studio.Authorization.Roles;
+namespace ConversaStudio.Authorization.Roles;
 
 public class RoleManager : AbpRoleManager<Role, User>
 {

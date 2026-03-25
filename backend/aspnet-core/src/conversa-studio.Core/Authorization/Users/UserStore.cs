@@ -2,9 +2,9 @@ using Abp.Authorization.Users;
 using Abp.Domain.Repositories;
 using Abp.Domain.Uow;
 using Abp.Organizations;
-using conversa-studio.Authorization.Roles;
+using ConversaStudio.Authorization.Roles;
 
-namespace conversa-studio.Authorization.Users;
+namespace ConversaStudio.Authorization.Users;
 
 public class UserStore : AbpUserStore<Role, User>
 {

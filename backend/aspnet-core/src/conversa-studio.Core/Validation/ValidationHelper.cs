@@ -1,7 +1,7 @@
-﻿using Abp.Extensions;
+using Abp.Extensions;
 using System.Text.RegularExpressions;
 
-namespace conversa-studio.Validation;
+namespace ConversaStudio.Validation;
 
 public static class ValidationHelper
 {

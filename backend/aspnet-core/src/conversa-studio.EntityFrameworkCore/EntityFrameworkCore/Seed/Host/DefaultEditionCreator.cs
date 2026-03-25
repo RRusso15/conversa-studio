@@ -1,16 +1,16 @@
 using Abp.Application.Editions;
 using Abp.Application.Features;
-using conversa-studio.Editions;
+using ConversaStudio.Editions;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 
-namespace conversa-studio.EntityFrameworkCore.Seed.Host;
+namespace ConversaStudio.EntityFrameworkCore.Seed.Host;
 
 public class DefaultEditionCreator
 {
-    private readonly conversa-studioDbContext _context;
+    private readonly ConversaStudioDbContext _context;
 
-    public DefaultEditionCreator(conversa-studioDbContext context)
+    public DefaultEditionCreator(ConversaStudioDbContext context)
     {
         _context = context;
     }

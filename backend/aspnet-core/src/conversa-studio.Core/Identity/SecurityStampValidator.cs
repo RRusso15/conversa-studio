@@ -1,13 +1,13 @@
-﻿using Abp.Authorization;
+using Abp.Authorization;
 using Abp.Domain.Uow;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.Authorization.Users;
-using conversa-studio.MultiTenancy;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.MultiTenancy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace conversa-studio.Identity;
+namespace ConversaStudio.Identity;
 
 public class SecurityStampValidator : AbpSecurityStampValidator<Tenant, Role, User>
 {

@@ -1,32 +1,32 @@
 using Abp.Events.Bus;
 using Abp.Modules;
 using Abp.Reflection.Extensions;
-using conversa-studio.Configuration;
-using conversa-studio.EntityFrameworkCore;
-using conversa-studio.Migrator.DependencyInjection;
+using ConversaStudio.Configuration;
+using ConversaStudio.EntityFrameworkCore;
+using ConversaStudio.Migrator.DependencyInjection;
 using Castle.MicroKernel.Registration;
 using Microsoft.Extensions.Configuration;
 
-namespace conversa-studio.Migrator;
+namespace ConversaStudio.Migrator;
 
-[DependsOn(typeof(conversa-studioEntityFrameworkModule))]
-public class conversa-studioMigratorModule : AbpModule
+[DependsOn(typeof(ConversaStudioEntityFrameworkModule))]
+public class ConversaStudioMigratorModule : AbpModule
 {
     private readonly IConfigurationRoot _appConfiguration;
 
-    public conversa-studioMigratorModule(conversa-studioEntityFrameworkModule abpProjectNameEntityFrameworkModule)
+    public ConversaStudioMigratorModule(ConversaStudioEntityFrameworkModule abpProjectNameEntityFrameworkModule)
     {
         abpProjectNameEntityFrameworkModule.SkipDbSeed = true;
 
         _appConfiguration = AppConfigurations.Get(
-            typeof(conversa-studioMigratorModule).GetAssembly().GetDirectoryPathOrNull()
+            typeof(ConversaStudioMigratorModule).GetAssembly().GetDirectoryPathOrNull()
         );
     }
 
     public override void PreInitialize()
     {
         Configuration.DefaultNameOrConnectionString = _appConfiguration.GetConnectionString(
-            conversa-studioConsts.ConnectionStringName
+            ConversaStudioConsts.ConnectionStringName
         );
 
         Configuration.BackgroundJobs.IsJobExecutionEnabled = false;
@@ -40,7 +40,7 @@ public class conversa-studioMigratorModule : AbpModule
 
     public override void Initialize()
     {
-        IocManager.RegisterAssemblyByConvention(typeof(conversa-studioMigratorModule).GetAssembly());
+        IocManager.RegisterAssemblyByConvention(typeof(ConversaStudioMigratorModule).GetAssembly());
         ServiceCollectionRegistrar.Register(IocManager);
     }
 }

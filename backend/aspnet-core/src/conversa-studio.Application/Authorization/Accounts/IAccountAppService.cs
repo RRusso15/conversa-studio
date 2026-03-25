@@ -1,8 +1,8 @@
-﻿using Abp.Application.Services;
-using conversa-studio.Authorization.Accounts.Dto;
+using Abp.Application.Services;
+using ConversaStudio.Authorization.Accounts.Dto;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Authorization.Accounts;
+namespace ConversaStudio.Authorization.Accounts;
 
 public interface IAccountAppService : IApplicationService
 {

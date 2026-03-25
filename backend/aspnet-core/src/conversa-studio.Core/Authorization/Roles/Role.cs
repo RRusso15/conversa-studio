@@ -1,8 +1,8 @@
-﻿using Abp.Authorization.Roles;
-using conversa-studio.Authorization.Users;
+using Abp.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
 using System.ComponentModel.DataAnnotations;
 
-namespace conversa-studio.Authorization.Roles;
+namespace ConversaStudio.Authorization.Roles;
 
 public class Role : AbpRole<User>
 {

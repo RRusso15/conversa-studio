@@ -1,23 +1,23 @@
-﻿using Abp.AutoMapper;
+using Abp.AutoMapper;
 using Abp.Modules;
 using Abp.Reflection.Extensions;
-using conversa-studio.Authorization;
+using ConversaStudio.Authorization;
 
-namespace conversa-studio;
+namespace ConversaStudio;
 
 [DependsOn(
-    typeof(conversa-studioCoreModule),
+    typeof(ConversaStudioCoreModule),
     typeof(AbpAutoMapperModule))]
-public class conversa-studioApplicationModule : AbpModule
+public class ConversaStudioApplicationModule : AbpModule
 {
     public override void PreInitialize()
     {
-        Configuration.Authorization.Providers.Add<conversa-studioAuthorizationProvider>();
+        Configuration.Authorization.Providers.Add<ConversaStudioAuthorizationProvider>();
     }
 
     public override void Initialize()
     {
-        var thisAssembly = typeof(conversa-studioApplicationModule).GetAssembly();
+        var thisAssembly = typeof(ConversaStudioApplicationModule).GetAssembly();
 
         IocManager.RegisterAssemblyByConvention(thisAssembly);
 

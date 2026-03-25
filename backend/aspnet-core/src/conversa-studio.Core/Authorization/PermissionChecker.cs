@@ -1,8 +1,8 @@
-﻿using Abp.Authorization;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.Authorization.Users;
+using Abp.Authorization;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
 
-namespace conversa-studio.Authorization;
+namespace ConversaStudio.Authorization;
 
 public class PermissionChecker : PermissionChecker<Role, User>
 {

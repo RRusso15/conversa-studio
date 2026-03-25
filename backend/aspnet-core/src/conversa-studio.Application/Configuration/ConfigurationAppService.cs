@@ -1,12 +1,12 @@
-﻿using Abp.Authorization;
+using Abp.Authorization;
 using Abp.Runtime.Session;
-using conversa-studio.Configuration.Dto;
+using ConversaStudio.Configuration.Dto;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Configuration;
+namespace ConversaStudio.Configuration;
 
 [AbpAuthorize]
-public class ConfigurationAppService : conversa-studioAppServiceBase, IConfigurationAppService
+public class ConfigurationAppService : ConversaStudioAppServiceBase, IConfigurationAppService
 {
     public async Task ChangeUiTheme(ChangeUiThemeInput input)
     {

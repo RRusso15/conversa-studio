@@ -1,10 +1,10 @@
 using Abp.Authorization;
 using Abp.Authorization.Roles;
-using conversa-studio.Authorization.Roles;
+using ConversaStudio.Authorization.Roles;
 using AutoMapper;
 using System.Linq;
 
-namespace conversa-studio.Roles.Dto;
+namespace ConversaStudio.Roles.Dto;
 
 public class RoleMapProfile : Profile
 {

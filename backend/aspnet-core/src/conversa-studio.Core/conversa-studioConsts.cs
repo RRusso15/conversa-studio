@@ -1,10 +1,10 @@
-﻿using conversa-studio.Debugging;
+using ConversaStudio.Debugging;
 
-namespace conversa-studio;
+namespace ConversaStudio;
 
-public class conversa-studioConsts
+public class ConversaStudioConsts
 {
-    public const string LocalizationSourceName = "conversa-studio";
+    public const string LocalizationSourceName = "ConversaStudio";
 
     public const string ConnectionStringName = "Default";
 

@@ -1,10 +1,10 @@
-﻿using Abp.Authorization.Users;
+using Abp.Authorization.Users;
 using Abp.Domain.Services;
 using Abp.IdentityFramework;
 using Abp.Runtime.Session;
 using Abp.UI;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.MultiTenancy;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.MultiTenancy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Authorization.Users;
+namespace ConversaStudio.Authorization.Users;
 
 public class UserRegistrationManager : DomainService
 {

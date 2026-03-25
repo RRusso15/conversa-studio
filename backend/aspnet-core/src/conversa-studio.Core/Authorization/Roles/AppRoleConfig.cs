@@ -1,7 +1,7 @@
-﻿using Abp.MultiTenancy;
+using Abp.MultiTenancy;
 using Abp.Zero.Configuration;
 
-namespace conversa-studio.Authorization.Roles;
+namespace ConversaStudio.Authorization.Roles;
 
 public static class AppRoleConfig
 {

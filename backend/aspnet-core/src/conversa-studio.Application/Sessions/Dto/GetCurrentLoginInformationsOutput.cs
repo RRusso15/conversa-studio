@@ -1,4 +1,4 @@
-﻿namespace conversa-studio.Sessions.Dto;
+namespace ConversaStudio.Sessions.Dto;
 
 public class GetCurrentLoginInformationsOutput
 {

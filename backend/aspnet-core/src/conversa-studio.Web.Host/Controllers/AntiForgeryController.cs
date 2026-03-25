@@ -1,10 +1,10 @@
 using Abp.Web.Security.AntiForgery;
-using conversa-studio.Controllers;
+using ConversaStudio.Controllers;
 using Microsoft.AspNetCore.Antiforgery;
 
-namespace conversa-studio.Web.Host.Controllers
+namespace ConversaStudio.Web.Host.Controllers
 {
-    public class AntiForgeryController : conversa-studioControllerBase
+    public class AntiForgeryController : ConversaStudioControllerBase
     {
         private readonly IAntiforgery _antiforgery;
         private readonly IAbpAntiForgeryManager _antiForgeryManager;

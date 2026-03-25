@@ -1,7 +1,7 @@
-﻿using Abp.Application.Services.Dto;
+using Abp.Application.Services.Dto;
 using Abp.Runtime.Validation;
 
-namespace conversa-studio.MultiTenancy.Dto;
+namespace ConversaStudio.MultiTenancy.Dto;
 
 public class PagedTenantResultRequestDto : PagedResultRequestDto, IShouldNormalize
 {

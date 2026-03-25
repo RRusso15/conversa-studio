@@ -1,21 +1,21 @@
-﻿using Abp.Localization;
+using Abp.Localization;
 using Abp.Modules;
 using Abp.Reflection.Extensions;
 using Abp.Runtime.Security;
 using Abp.Timing;
 using Abp.Zero;
 using Abp.Zero.Configuration;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.Authorization.Users;
-using conversa-studio.Configuration;
-using conversa-studio.Localization;
-using conversa-studio.MultiTenancy;
-using conversa-studio.Timing;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.Configuration;
+using ConversaStudio.Localization;
+using ConversaStudio.MultiTenancy;
+using ConversaStudio.Timing;
 
-namespace conversa-studio;
+namespace ConversaStudio;
 
 [DependsOn(typeof(AbpZeroCoreModule))]
-public class conversa-studioCoreModule : AbpModule
+public class ConversaStudioCoreModule : AbpModule
 {
     public override void PreInitialize()
     {
@@ -26,10 +26,10 @@ public class conversa-studioCoreModule : AbpModule
         Configuration.Modules.Zero().EntityTypes.Role = typeof(Role);
         Configuration.Modules.Zero().EntityTypes.User = typeof(User);
 
-        conversa-studioLocalizationConfigurer.Configure(Configuration.Localization);
+        ConversaStudioLocalizationConfigurer.Configure(Configuration.Localization);
 
         // Enable this line to create a multi-tenant application.
-        Configuration.MultiTenancy.IsEnabled = conversa-studioConsts.MultiTenancyEnabled;
+        Configuration.MultiTenancy.IsEnabled = ConversaStudioConsts.MultiTenancyEnabled;
 
         // Configure roles
         AppRoleConfig.Configure(Configuration.Modules.Zero().RoleManagement);
@@ -38,13 +38,13 @@ public class conversa-studioCoreModule : AbpModule
 
         Configuration.Localization.Languages.Add(new LanguageInfo("fa", "فارسی", "famfamfam-flags ir"));
 
-        Configuration.Settings.SettingEncryptionConfiguration.DefaultPassPhrase = conversa-studioConsts.DefaultPassPhrase;
-        SimpleStringCipher.DefaultPassPhrase = conversa-studioConsts.DefaultPassPhrase;
+        Configuration.Settings.SettingEncryptionConfiguration.DefaultPassPhrase = ConversaStudioConsts.DefaultPassPhrase;
+        SimpleStringCipher.DefaultPassPhrase = ConversaStudioConsts.DefaultPassPhrase;
     }
 
     public override void Initialize()
     {
-        IocManager.RegisterAssemblyByConvention(typeof(conversa-studioCoreModule).GetAssembly());
+        IocManager.RegisterAssemblyByConvention(typeof(ConversaStudioCoreModule).GetAssembly());
     }
 
     public override void PostInitialize()

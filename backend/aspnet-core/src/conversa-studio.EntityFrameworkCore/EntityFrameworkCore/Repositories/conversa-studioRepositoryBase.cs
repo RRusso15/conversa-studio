@@ -1,19 +1,19 @@
-﻿using Abp.Domain.Entities;
+using Abp.Domain.Entities;
 using Abp.Domain.Repositories;
 using Abp.EntityFrameworkCore;
 using Abp.EntityFrameworkCore.Repositories;
 
-namespace conversa-studio.EntityFrameworkCore.Repositories;
+namespace ConversaStudio.EntityFrameworkCore.Repositories;
 
 /// <summary>
 /// Base class for custom repositories of the application.
 /// </summary>
 /// <typeparam name="TEntity">Entity type</typeparam>
 /// <typeparam name="TPrimaryKey">Primary key type of the entity</typeparam>
-public abstract class conversa-studioRepositoryBase<TEntity, TPrimaryKey> : EfCoreRepositoryBase<conversa-studioDbContext, TEntity, TPrimaryKey>
+public abstract class ConversaStudioRepositoryBase<TEntity, TPrimaryKey> : EfCoreRepositoryBase<ConversaStudioDbContext, TEntity, TPrimaryKey>
     where TEntity : class, IEntity<TPrimaryKey>
 {
-    protected conversa-studioRepositoryBase(IDbContextProvider<conversa-studioDbContext> dbContextProvider)
+    protected ConversaStudioRepositoryBase(IDbContextProvider<ConversaStudioDbContext> dbContextProvider)
         : base(dbContextProvider)
     {
     }
@@ -23,13 +23,13 @@ public abstract class conversa-studioRepositoryBase<TEntity, TPrimaryKey> : EfCo
 
 /// <summary>
 /// Base class for custom repositories of the application.
-/// This is a shortcut of <see cref="conversa-studioRepositoryBase{TEntity,TPrimaryKey}"/> for <see cref="int"/> primary key.
+/// This is a shortcut of <see cref="ConversaStudioRepositoryBase{TEntity,TPrimaryKey}"/> for <see cref="int"/> primary key.
 /// </summary>
 /// <typeparam name="TEntity">Entity type</typeparam>
-public abstract class conversa-studioRepositoryBase<TEntity> : conversa-studioRepositoryBase<TEntity, int>, IRepository<TEntity>
+public abstract class ConversaStudioRepositoryBase<TEntity> : ConversaStudioRepositoryBase<TEntity, int>, IRepository<TEntity>
     where TEntity : class, IEntity<int>
 {
-    protected conversa-studioRepositoryBase(IDbContextProvider<conversa-studioDbContext> dbContextProvider)
+    protected ConversaStudioRepositoryBase(IDbContextProvider<ConversaStudioDbContext> dbContextProvider)
         : base(dbContextProvider)
     {
     }

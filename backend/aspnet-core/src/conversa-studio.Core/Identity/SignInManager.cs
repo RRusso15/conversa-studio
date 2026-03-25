@@ -1,16 +1,16 @@
-﻿using Abp.Authorization;
+using Abp.Authorization;
 using Abp.Configuration;
 using Abp.Domain.Uow;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.Authorization.Users;
-using conversa-studio.MultiTenancy;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.MultiTenancy;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace conversa-studio.Identity;
+namespace ConversaStudio.Identity;
 
 public class SignInManager : AbpSignInManager<Tenant, Role, User>
 {

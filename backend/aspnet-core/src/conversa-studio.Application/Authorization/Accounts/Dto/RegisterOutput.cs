@@ -1,4 +1,4 @@
-﻿namespace conversa-studio.Authorization.Accounts.Dto;
+namespace ConversaStudio.Authorization.Accounts.Dto;
 
 public class RegisterOutput
 {

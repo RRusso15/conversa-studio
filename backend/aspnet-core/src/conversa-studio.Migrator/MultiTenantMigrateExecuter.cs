@@ -5,14 +5,14 @@ using Abp.Domain.Uow;
 using Abp.Extensions;
 using Abp.MultiTenancy;
 using Abp.Runtime.Security;
-using conversa-studio.EntityFrameworkCore;
-using conversa-studio.EntityFrameworkCore.Seed;
-using conversa-studio.MultiTenancy;
+using ConversaStudio.EntityFrameworkCore;
+using ConversaStudio.EntityFrameworkCore.Seed;
+using ConversaStudio.MultiTenancy;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
 
-namespace conversa-studio.Migrator;
+namespace ConversaStudio.Migrator;
 
 public class MultiTenantMigrateExecuter : ITransientDependency
 {

@@ -1,7 +1,7 @@
-﻿using Abp.Dependency;
+using Abp.Dependency;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Authentication.External
+namespace ConversaStudio.Authentication.External
 {
     public abstract class ExternalAuthProviderApiBase : IExternalAuthProviderApi, ITransientDependency
     {

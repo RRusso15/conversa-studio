@@ -1,12 +1,12 @@
-﻿using Abp.AspNetCore;
+using Abp.AspNetCore;
 using Abp.AspNetCore.TestBase;
 using Abp.Dependency;
-using conversa-studio.Authentication.JwtBearer;
-using conversa-studio.Configuration;
-using conversa-studio.EntityFrameworkCore;
-using conversa-studio.Identity;
-using conversa-studio.Web.Resources;
-using conversa-studio.Web.Startup;
+using ConversaStudio.Authentication.JwtBearer;
+using ConversaStudio.Configuration;
+using ConversaStudio.EntityFrameworkCore;
+using ConversaStudio.Identity;
+using ConversaStudio.Web.Resources;
+using ConversaStudio.Web.Startup;
 using Castle.MicroKernel.Registration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -16,7 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 
-namespace conversa-studio.Web.Tests;
+namespace ConversaStudio.Web.Tests;
 
 public class Startup
 {
@@ -39,7 +39,7 @@ public class Startup
         services.AddScoped<IWebResourceManager, WebResourceManager>();
 
         //Configure Abp and Dependency Injection
-        return services.AddAbp<conversa-studioWebTestModule>(options =>
+        return services.AddAbp<ConversaStudioWebTestModule>(options =>
         {
             options.SetupTest();
         });
@@ -70,14 +70,14 @@ public class Startup
 
     private void UseInMemoryDb(IServiceProvider serviceProvider)
     {
-        var builder = new DbContextOptionsBuilder<conversa-studioDbContext>();
+        var builder = new DbContextOptionsBuilder<ConversaStudioDbContext>();
         builder.UseInMemoryDatabase(Guid.NewGuid().ToString()).UseInternalServiceProvider(serviceProvider);
         var options = builder.Options;
 
         var iocManager = serviceProvider.GetRequiredService<IIocManager>();
         iocManager.IocContainer
             .Register(
-                Component.For<DbContextOptions<conversa-studioDbContext>>()
+                Component.For<DbContextOptions<ConversaStudioDbContext>>()
                     .Instance(options)
                     .LifestyleSingleton()
             );

@@ -1,12 +1,12 @@
-﻿using Abp.AspNetCore;
+using Abp.AspNetCore;
 using Abp.AspNetCore.Configuration;
 using Abp.AspNetCore.SignalR;
 using Abp.Modules;
 using Abp.Reflection.Extensions;
 using Abp.Zero.Configuration;
-using conversa-studio.Authentication.JwtBearer;
-using conversa-studio.Configuration;
-using conversa-studio.EntityFrameworkCore;
+using ConversaStudio.Authentication.JwtBearer;
+using ConversaStudio.Configuration;
+using ConversaStudio.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration;
@@ -14,20 +14,20 @@ using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Text;
 
-namespace conversa-studio
+namespace ConversaStudio
 {
     [DependsOn(
-         typeof(conversa-studioApplicationModule),
-         typeof(conversa-studioEntityFrameworkModule),
+         typeof(ConversaStudioApplicationModule),
+         typeof(ConversaStudioEntityFrameworkModule),
          typeof(AbpAspNetCoreModule)
         , typeof(AbpAspNetCoreSignalRModule)
      )]
-    public class conversa-studioWebCoreModule : AbpModule
+    public class ConversaStudioWebCoreModule : AbpModule
     {
         private readonly IWebHostEnvironment _env;
         private readonly IConfigurationRoot _appConfiguration;
 
-        public conversa-studioWebCoreModule(IWebHostEnvironment env)
+        public ConversaStudioWebCoreModule(IWebHostEnvironment env)
         {
             _env = env;
             _appConfiguration = env.GetAppConfiguration();
@@ -36,7 +36,7 @@ namespace conversa-studio
         public override void PreInitialize()
         {
             Configuration.DefaultNameOrConnectionString = _appConfiguration.GetConnectionString(
-                conversa-studioConsts.ConnectionStringName
+                ConversaStudioConsts.ConnectionStringName
             );
 
             // Use database for language management
@@ -44,7 +44,7 @@ namespace conversa-studio
 
             Configuration.Modules.AbpAspNetCore()
                  .CreateControllersForAppServices(
-                     typeof(conversa-studioApplicationModule).GetAssembly()
+                     typeof(ConversaStudioApplicationModule).GetAssembly()
                  );
 
             ConfigureTokenAuth();
@@ -64,13 +64,13 @@ namespace conversa-studio
 
         public override void Initialize()
         {
-            IocManager.RegisterAssemblyByConvention(typeof(conversa-studioWebCoreModule).GetAssembly());
+            IocManager.RegisterAssemblyByConvention(typeof(ConversaStudioWebCoreModule).GetAssembly());
         }
 
         public override void PostInitialize()
         {
             IocManager.Resolve<ApplicationPartManager>()
-                .AddApplicationPartsIfNotAddedBefore(typeof(conversa-studioWebCoreModule).Assembly);
+                .AddApplicationPartsIfNotAddedBefore(typeof(ConversaStudioWebCoreModule).Assembly);
         }
     }
 }

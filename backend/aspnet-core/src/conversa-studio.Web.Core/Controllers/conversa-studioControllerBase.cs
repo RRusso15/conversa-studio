@@ -2,13 +2,13 @@ using Abp.AspNetCore.Mvc.Controllers;
 using Abp.IdentityFramework;
 using Microsoft.AspNetCore.Identity;
 
-namespace conversa-studio.Controllers
+namespace ConversaStudio.Controllers
 {
-    public abstract class conversa-studioControllerBase : AbpController
+    public abstract class ConversaStudioControllerBase : AbpController
     {
-        protected conversa-studioControllerBase()
+        protected ConversaStudioControllerBase()
         {
-            LocalizationSourceName = conversa-studioConsts.LocalizationSourceName;
+            LocalizationSourceName = ConversaStudioConsts.LocalizationSourceName;
         }
 
         protected void CheckErrors(IdentityResult identityResult)

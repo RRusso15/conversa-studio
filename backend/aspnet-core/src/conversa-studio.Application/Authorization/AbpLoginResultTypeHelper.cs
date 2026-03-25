@@ -1,16 +1,16 @@
-﻿using Abp;
+using Abp;
 using Abp.Authorization;
 using Abp.Dependency;
 using Abp.UI;
 using System;
 
-namespace conversa-studio.Authorization;
+namespace ConversaStudio.Authorization;
 
 public class AbpLoginResultTypeHelper : AbpServiceBase, ITransientDependency
 {
     public AbpLoginResultTypeHelper()
     {
-        LocalizationSourceName = conversa-studioConsts.LocalizationSourceName;
+        LocalizationSourceName = ConversaStudioConsts.LocalizationSourceName;
     }
 
     public Exception CreateExceptionForFailedLoginAttempt(AbpLoginResultType result, string usernameOrEmailAddress, string tenancyName)

@@ -1,12 +1,12 @@
-﻿using Xunit;
+using Xunit;
 
-namespace conversa-studio.Tests;
+namespace ConversaStudio.Tests;
 
 public sealed class MultiTenantFactAttribute : FactAttribute
 {
     public MultiTenantFactAttribute()
     {
-        if (!conversa-studioConsts.MultiTenancyEnabled)
+        if (!ConversaStudioConsts.MultiTenancyEnabled)
         {
             Skip = "MultiTenancy is disabled.";
         }

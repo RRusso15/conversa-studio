@@ -1,9 +1,9 @@
 using Abp.Authorization.Roles;
 using Abp.Domain.Repositories;
 using Abp.Domain.Uow;
-using conversa-studio.Authorization.Users;
+using ConversaStudio.Authorization.Users;
 
-namespace conversa-studio.Authorization.Roles;
+namespace ConversaStudio.Authorization.Roles;
 
 public class RoleStore : AbpRoleStore<Role, User>
 {

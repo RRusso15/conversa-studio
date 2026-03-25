@@ -1,20 +1,20 @@
-﻿using Abp.Localization;
+using Abp.Localization;
 using Abp.MultiTenancy;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace conversa-studio.EntityFrameworkCore.Seed.Host;
+namespace ConversaStudio.EntityFrameworkCore.Seed.Host;
 
 public class DefaultLanguagesCreator
 {
     public static List<ApplicationLanguage> InitialLanguages => GetInitialLanguages();
 
-    private readonly conversa-studioDbContext _context;
+    private readonly ConversaStudioDbContext _context;
 
     private static List<ApplicationLanguage> GetInitialLanguages()
     {
-        var tenantId = conversa-studioConsts.MultiTenancyEnabled ? null : (int?)MultiTenancyConsts.DefaultTenantId;
+        var tenantId = ConversaStudioConsts.MultiTenancyEnabled ? null : (int?)MultiTenancyConsts.DefaultTenantId;
         return new List<ApplicationLanguage>
         {
             new ApplicationLanguage(tenantId, "en", "English", "famfamfam-flags us"),
@@ -33,7 +33,7 @@ public class DefaultLanguagesCreator
         };
     }
 
-    public DefaultLanguagesCreator(conversa-studioDbContext context)
+    public DefaultLanguagesCreator(ConversaStudioDbContext context)
     {
         _context = context;
     }

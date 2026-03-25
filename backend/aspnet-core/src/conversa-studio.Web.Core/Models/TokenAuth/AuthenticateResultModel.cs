@@ -1,4 +1,4 @@
-﻿namespace conversa-studio.Models.TokenAuth
+namespace ConversaStudio.Models.TokenAuth
 {
     public class AuthenticateResultModel
     {

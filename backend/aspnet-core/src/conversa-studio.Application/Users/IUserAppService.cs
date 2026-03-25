@@ -1,10 +1,10 @@
 using Abp.Application.Services;
 using Abp.Application.Services.Dto;
-using conversa-studio.Roles.Dto;
-using conversa-studio.Users.Dto;
+using ConversaStudio.Roles.Dto;
+using ConversaStudio.Users.Dto;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Users;
+namespace ConversaStudio.Users;
 
 public interface IUserAppService : IAsyncCrudAppService<UserDto, long, PagedUserResultRequestDto, CreateUserDto, UserDto>
 {

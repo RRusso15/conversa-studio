@@ -1,7 +1,7 @@
-﻿using Abp.Application.Services.Dto;
+using Abp.Application.Services.Dto;
 using Abp.Runtime.Validation;
 
-namespace conversa-studio.Roles.Dto;
+namespace ConversaStudio.Roles.Dto;
 
 public class PagedRoleResultRequestDto : PagedResultRequestDto, IShouldNormalize
 {

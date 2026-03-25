@@ -1,7 +1,7 @@
-﻿using Microsoft.IdentityModel.Tokens;
+using Microsoft.IdentityModel.Tokens;
 using System;
 
-namespace conversa-studio.Authentication.JwtBearer
+namespace ConversaStudio.Authentication.JwtBearer
 {
     public class TokenAuthConfiguration
     {

@@ -1,14 +1,14 @@
-﻿using Abp.Application.Services;
+using Abp.Application.Services;
 using Abp.Application.Services.Dto;
 using Abp.Authorization;
 using Abp.Domain.Repositories;
 using Abp.Extensions;
 using Abp.IdentityFramework;
 using Abp.Linq.Extensions;
-using conversa-studio.Authorization;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.Authorization.Users;
-using conversa-studio.Roles.Dto;
+using ConversaStudio.Authorization;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.Roles.Dto;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -16,7 +16,7 @@ using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Roles;
+namespace ConversaStudio.Roles;
 
 [AbpAuthorize(PermissionNames.Pages_Roles)]
 public class RoleAppService : AsyncCrudAppService<Role, RoleDto, int, PagedRoleResultRequestDto, CreateRoleDto, RoleDto>, IRoleAppService

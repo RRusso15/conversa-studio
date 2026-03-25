@@ -1,4 +1,4 @@
-﻿using Abp.Application.Services;
+using Abp.Application.Services;
 using Abp.Application.Services.Dto;
 using Abp.Authorization;
 using Abp.Domain.Entities;
@@ -9,11 +9,11 @@ using Abp.Linq.Extensions;
 using Abp.Localization;
 using Abp.Runtime.Session;
 using Abp.UI;
-using conversa-studio.Authorization;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.Authorization.Users;
-using conversa-studio.Roles.Dto;
-using conversa-studio.Users.Dto;
+using ConversaStudio.Authorization;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.Roles.Dto;
+using ConversaStudio.Users.Dto;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -22,7 +22,7 @@ using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Users;
+namespace ConversaStudio.Users;
 
 [AbpAuthorize(PermissionNames.Pages_Users)]
 public class UserAppService : AsyncCrudAppService<User, UserDto, long, PagedUserResultRequestDto, CreateUserDto, UserDto>, IUserAppService

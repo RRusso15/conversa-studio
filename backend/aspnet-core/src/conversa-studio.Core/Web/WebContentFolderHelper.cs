@@ -1,9 +1,9 @@
-﻿using Abp.Reflection.Extensions;
+using Abp.Reflection.Extensions;
 using System;
 using System.IO;
 using System.Linq;
 
-namespace conversa-studio.Web;
+namespace ConversaStudio.Web;
 
 /// <summary>
 /// This class is used to find root path of the web project in;
@@ -13,14 +13,14 @@ public static class WebContentDirectoryFinder
 {
     public static string CalculateContentRootFolder()
     {
-        var coreAssemblyDirectoryPath = Path.GetDirectoryName(typeof(conversa-studioCoreModule).GetAssembly().Location);
+        var coreAssemblyDirectoryPath = Path.GetDirectoryName(typeof(ConversaStudioCoreModule).GetAssembly().Location);
         if (coreAssemblyDirectoryPath == null)
         {
-            throw new Exception("Could not find location of conversa-studio.Core assembly!");
+            throw new Exception("Could not find location of ConversaStudio.Core assembly!");
         }
 
         var directoryInfo = new DirectoryInfo(coreAssemblyDirectoryPath);
-        while (!DirectoryContains(directoryInfo.FullName, "conversa-studio.sln"))
+        while (!DirectoryContains(directoryInfo.FullName, "ConversaStudio.sln"))
         {
             if (directoryInfo.Parent == null)
             {
@@ -30,13 +30,13 @@ public static class WebContentDirectoryFinder
             directoryInfo = directoryInfo.Parent;
         }
 
-        var webMvcFolder = Path.Combine(directoryInfo.FullName, "src", "conversa-studio.Web.Mvc");
+        var webMvcFolder = Path.Combine(directoryInfo.FullName, "src", "ConversaStudio.Web.Mvc");
         if (Directory.Exists(webMvcFolder))
         {
             return webMvcFolder;
         }
 
-        var webHostFolder = Path.Combine(directoryInfo.FullName, "src", "conversa-studio.Web.Host");
+        var webHostFolder = Path.Combine(directoryInfo.FullName, "src", "ConversaStudio.Web.Host");
         if (Directory.Exists(webHostFolder))
         {
             return webHostFolder;

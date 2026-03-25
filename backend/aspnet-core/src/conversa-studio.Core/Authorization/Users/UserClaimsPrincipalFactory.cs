@@ -1,10 +1,10 @@
-﻿using Abp.Authorization;
+using Abp.Authorization;
 using Abp.Domain.Uow;
-using conversa-studio.Authorization.Roles;
+using ConversaStudio.Authorization.Roles;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 
-namespace conversa-studio.Authorization.Users;
+namespace ConversaStudio.Authorization.Users;
 
 public class UserClaimsPrincipalFactory : AbpUserClaimsPrincipalFactory<User, Role>
 {

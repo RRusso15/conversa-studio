@@ -1,13 +1,13 @@
-﻿using Abp.Dependency;
-using conversa-studio.EntityFrameworkCore;
-using conversa-studio.Identity;
+using Abp.Dependency;
+using ConversaStudio.EntityFrameworkCore;
+using ConversaStudio.Identity;
 using Castle.MicroKernel.Registration;
 using Castle.Windsor.MsDependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 
-namespace conversa-studio.Tests.DependencyInjection;
+namespace ConversaStudio.Tests.DependencyInjection;
 
 public static class ServiceCollectionRegistrar
 {
@@ -21,12 +21,12 @@ public static class ServiceCollectionRegistrar
 
         var serviceProvider = WindsorRegistrationHelper.CreateServiceProvider(iocManager.IocContainer, services);
 
-        var builder = new DbContextOptionsBuilder<conversa-studioDbContext>();
+        var builder = new DbContextOptionsBuilder<ConversaStudioDbContext>();
         builder.UseInMemoryDatabase(Guid.NewGuid().ToString()).UseInternalServiceProvider(serviceProvider);
 
         iocManager.IocContainer.Register(
             Component
-                .For<DbContextOptions<conversa-studioDbContext>>()
+                .For<DbContextOptions<ConversaStudioDbContext>>()
                 .Instance(builder.Options)
                 .LifestyleSingleton()
         );

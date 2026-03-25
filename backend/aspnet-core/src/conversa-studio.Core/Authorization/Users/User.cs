@@ -1,9 +1,9 @@
-﻿using Abp.Authorization.Users;
+using Abp.Authorization.Users;
 using Abp.Extensions;
 using System;
 using System.Collections.Generic;
 
-namespace conversa-studio.Authorization.Users;
+namespace ConversaStudio.Authorization.Users;
 
 public class User : AbpUser<User>
 {

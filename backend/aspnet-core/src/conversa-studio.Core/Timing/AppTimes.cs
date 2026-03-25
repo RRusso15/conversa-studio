@@ -1,7 +1,7 @@
-﻿using Abp.Dependency;
+using Abp.Dependency;
 using System;
 
-namespace conversa-studio.Timing;
+namespace ConversaStudio.Timing;
 
 public class AppTimes : ISingletonDependency
 {

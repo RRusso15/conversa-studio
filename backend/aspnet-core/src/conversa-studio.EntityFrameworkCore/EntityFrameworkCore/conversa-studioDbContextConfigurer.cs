@@ -1,16 +1,16 @@
 using Microsoft.EntityFrameworkCore;
 using System.Data.Common;
 
-namespace conversa-studio.EntityFrameworkCore;
+namespace ConversaStudio.EntityFrameworkCore;
 
-public static class conversa-studioDbContextConfigurer
+public static class ConversaStudioDbContextConfigurer
 {
-    public static void Configure(DbContextOptionsBuilder<conversa-studioDbContext> builder, string connectionString)
+    public static void Configure(DbContextOptionsBuilder<ConversaStudioDbContext> builder, string connectionString)
     {
         builder.UseSqlServer(connectionString);
     }
 
-    public static void Configure(DbContextOptionsBuilder<conversa-studioDbContext> builder, DbConnection connection)
+    public static void Configure(DbContextOptionsBuilder<ConversaStudioDbContext> builder, DbConnection connection)
     {
         builder.UseSqlServer(connection);
     }

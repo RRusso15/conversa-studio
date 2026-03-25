@@ -1,8 +1,8 @@
-﻿using Abp.Application.Services.Dto;
+using Abp.Application.Services.Dto;
 using Abp.Domain.Entities.Auditing;
 using System;
 
-namespace conversa-studio.Roles.Dto;
+namespace ConversaStudio.Roles.Dto;
 
 public class RoleListDto : EntityDto, IHasCreationTime
 {

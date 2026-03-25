@@ -1,10 +1,10 @@
-﻿using Abp.Application.Features;
+using Abp.Application.Features;
 using Abp.Domain.Repositories;
 using Abp.MultiTenancy;
-using conversa-studio.Authorization.Users;
-using conversa-studio.Editions;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.Editions;
 
-namespace conversa-studio.MultiTenancy;
+namespace ConversaStudio.MultiTenancy;
 
 public class TenantManager : AbpTenantManager<Tenant, User>
 {

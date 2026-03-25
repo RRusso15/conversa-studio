@@ -1,7 +1,7 @@
-﻿using Abp.MultiTenancy;
-using conversa-studio.Authorization.Users;
+using Abp.MultiTenancy;
+using ConversaStudio.Authorization.Users;
 
-namespace conversa-studio.MultiTenancy;
+namespace ConversaStudio.MultiTenancy;
 
 public class Tenant : AbpTenant<User>
 {

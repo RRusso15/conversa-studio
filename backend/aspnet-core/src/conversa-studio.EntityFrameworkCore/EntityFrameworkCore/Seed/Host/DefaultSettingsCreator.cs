@@ -1,17 +1,17 @@
-﻿using Abp.Configuration;
+using Abp.Configuration;
 using Abp.Localization;
 using Abp.MultiTenancy;
 using Abp.Net.Mail;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 
-namespace conversa-studio.EntityFrameworkCore.Seed.Host;
+namespace ConversaStudio.EntityFrameworkCore.Seed.Host;
 
 public class DefaultSettingsCreator
 {
-    private readonly conversa-studioDbContext _context;
+    private readonly ConversaStudioDbContext _context;
 
-    public DefaultSettingsCreator(conversa-studioDbContext context)
+    public DefaultSettingsCreator(ConversaStudioDbContext context)
     {
         _context = context;
     }
@@ -20,7 +20,7 @@ public class DefaultSettingsCreator
     {
         int? tenantId = null;
 
-        if (conversa-studioConsts.MultiTenancyEnabled == false)
+        if (ConversaStudioConsts.MultiTenancyEnabled == false)
         {
             tenantId = MultiTenancyConsts.DefaultTenantId;
         }

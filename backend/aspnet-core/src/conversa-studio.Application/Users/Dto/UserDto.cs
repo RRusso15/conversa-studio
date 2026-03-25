@@ -1,11 +1,11 @@
 using Abp.Application.Services.Dto;
 using Abp.Authorization.Users;
 using Abp.AutoMapper;
-using conversa-studio.Authorization.Users;
+using ConversaStudio.Authorization.Users;
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace conversa-studio.Users.Dto;
+namespace ConversaStudio.Users.Dto;
 
 [AutoMapFrom(typeof(User))]
 public class UserDto : EntityDto<long>

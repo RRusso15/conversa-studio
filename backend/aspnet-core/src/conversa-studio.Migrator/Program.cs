@@ -1,11 +1,11 @@
-﻿using Abp;
+using Abp;
 using Abp.Castle.Logging.Log4Net;
 using Abp.Collections.Extensions;
 using Abp.Dependency;
 using Castle.Facilities.Logging;
 using System;
 
-namespace conversa-studio.Migrator;
+namespace ConversaStudio.Migrator;
 
 public class Program
 {
@@ -15,7 +15,7 @@ public class Program
     {
         ParseArgs(args);
 
-        using (var bootstrapper = AbpBootstrapper.Create<conversa-studioMigratorModule>())
+        using (var bootstrapper = AbpBootstrapper.Create<ConversaStudioMigratorModule>())
         {
             bootstrapper.IocManager.IocContainer
                 .AddFacility<LoggingFacility>(

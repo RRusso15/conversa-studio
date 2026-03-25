@@ -1,4 +1,4 @@
-﻿using Abp.Authorization;
+using Abp.Authorization;
 using Abp.Authorization.Users;
 using Abp.Configuration;
 using Abp.Configuration.Startup;
@@ -6,12 +6,12 @@ using Abp.Dependency;
 using Abp.Domain.Repositories;
 using Abp.Domain.Uow;
 using Abp.Zero.Configuration;
-using conversa-studio.Authorization.Roles;
-using conversa-studio.Authorization.Users;
-using conversa-studio.MultiTenancy;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.MultiTenancy;
 using Microsoft.AspNetCore.Identity;
 
-namespace conversa-studio.Authorization;
+namespace ConversaStudio.Authorization;
 
 public class LogInManager : AbpLogInManager<Tenant, Role, User>
 {

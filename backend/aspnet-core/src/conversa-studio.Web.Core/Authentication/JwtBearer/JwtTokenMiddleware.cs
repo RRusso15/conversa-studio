@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 
-namespace conversa-studio.Authentication.JwtBearer
+namespace ConversaStudio.Authentication.JwtBearer
 {
     public static class JwtTokenMiddleware
     {

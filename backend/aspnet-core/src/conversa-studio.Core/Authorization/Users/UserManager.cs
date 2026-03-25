@@ -1,18 +1,18 @@
-﻿using Abp.Authorization;
+using Abp.Authorization;
 using Abp.Authorization.Users;
 using Abp.Configuration;
 using Abp.Domain.Repositories;
 using Abp.Domain.Uow;
 using Abp.Organizations;
 using Abp.Runtime.Caching;
-using conversa-studio.Authorization.Roles;
+using ConversaStudio.Authorization.Roles;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 
-namespace conversa-studio.Authorization.Users;
+namespace ConversaStudio.Authorization.Users;
 
 public class UserManager : AbpUserManager<Role, User>
 {

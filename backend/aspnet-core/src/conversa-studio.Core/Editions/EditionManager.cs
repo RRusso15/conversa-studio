@@ -1,9 +1,9 @@
-﻿using Abp.Application.Editions;
+using Abp.Application.Editions;
 using Abp.Application.Features;
 using Abp.Domain.Repositories;
 using Abp.Domain.Uow;
 
-namespace conversa-studio.Editions;
+namespace ConversaStudio.Editions;
 
 public class EditionManager : AbpEditionManager
 {

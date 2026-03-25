@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace conversa-studio.Migrations
+namespace ConversaStudio.Migrations
 {
     /// <inheritdoc />
     public partial class Upgraded_To_Abp_10_2 : Migration

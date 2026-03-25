@@ -1,27 +1,27 @@
-﻿using Abp;
+using Abp;
 using Abp.Authorization.Users;
 using Abp.Events.Bus;
 using Abp.Events.Bus.Entities;
 using Abp.MultiTenancy;
 using Abp.Runtime.Session;
 using Abp.TestBase;
-using conversa-studio.Authorization.Users;
-using conversa-studio.EntityFrameworkCore;
-using conversa-studio.EntityFrameworkCore.Seed.Host;
-using conversa-studio.EntityFrameworkCore.Seed.Tenants;
-using conversa-studio.MultiTenancy;
+using ConversaStudio.Authorization.Users;
+using ConversaStudio.EntityFrameworkCore;
+using ConversaStudio.EntityFrameworkCore.Seed.Host;
+using ConversaStudio.EntityFrameworkCore.Seed.Tenants;
+using ConversaStudio.MultiTenancy;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace conversa-studio.Tests;
+namespace ConversaStudio.Tests;
 
-public abstract class conversa-studioTestBase : AbpIntegratedTestBase<conversa-studioTestModule>
+public abstract class ConversaStudioTestBase : AbpIntegratedTestBase<ConversaStudioTestModule>
 {
-    protected conversa-studioTestBase()
+    protected ConversaStudioTestBase()
     {
-        void NormalizeDbContext(conversa-studioDbContext context)
+        void NormalizeDbContext(ConversaStudioDbContext context)
         {
             context.EntityChangeEventHelper = NullEntityChangeEventHelper.Instance;
             context.EventBus = NullEventBus.Instance;
@@ -57,31 +57,31 @@ public abstract class conversa-studioTestBase : AbpIntegratedTestBase<conversa-s
         return new DisposeAction(() => AbpSession.TenantId = previousTenantId);
     }
 
-    protected void UsingDbContext(Action<conversa-studioDbContext> action)
+    protected void UsingDbContext(Action<ConversaStudioDbContext> action)
     {
         UsingDbContext(AbpSession.TenantId, action);
     }
 
-    protected Task UsingDbContextAsync(Func<conversa-studioDbContext, Task> action)
+    protected Task UsingDbContextAsync(Func<ConversaStudioDbContext, Task> action)
     {
         return UsingDbContextAsync(AbpSession.TenantId, action);
     }
 
-    protected T UsingDbContext<T>(Func<conversa-studioDbContext, T> func)
+    protected T UsingDbContext<T>(Func<ConversaStudioDbContext, T> func)
     {
         return UsingDbContext(AbpSession.TenantId, func);
     }
 
-    protected Task<T> UsingDbContextAsync<T>(Func<conversa-studioDbContext, Task<T>> func)
+    protected Task<T> UsingDbContextAsync<T>(Func<ConversaStudioDbContext, Task<T>> func)
     {
         return UsingDbContextAsync(AbpSession.TenantId, func);
     }
 
-    protected void UsingDbContext(int? tenantId, Action<conversa-studioDbContext> action)
+    protected void UsingDbContext(int? tenantId, Action<ConversaStudioDbContext> action)
     {
         using (UsingTenantId(tenantId))
         {
-            using (var context = LocalIocManager.Resolve<conversa-studioDbContext>())
+            using (var context = LocalIocManager.Resolve<ConversaStudioDbContext>())
             {
                 action(context);
                 context.SaveChanges();
@@ -89,11 +89,11 @@ public abstract class conversa-studioTestBase : AbpIntegratedTestBase<conversa-s
         }
     }
 
-    protected async Task UsingDbContextAsync(int? tenantId, Func<conversa-studioDbContext, Task> action)
+    protected async Task UsingDbContextAsync(int? tenantId, Func<ConversaStudioDbContext, Task> action)
     {
         using (UsingTenantId(tenantId))
         {
-            using (var context = LocalIocManager.Resolve<conversa-studioDbContext>())
+            using (var context = LocalIocManager.Resolve<ConversaStudioDbContext>())
             {
                 await action(context);
                 await context.SaveChangesAsync();
@@ -101,13 +101,13 @@ public abstract class conversa-studioTestBase : AbpIntegratedTestBase<conversa-s
         }
     }
 
-    protected T UsingDbContext<T>(int? tenantId, Func<conversa-studioDbContext, T> func)
+    protected T UsingDbContext<T>(int? tenantId, Func<ConversaStudioDbContext, T> func)
     {
         T result;
 
         using (UsingTenantId(tenantId))
         {
-            using (var context = LocalIocManager.Resolve<conversa-studioDbContext>())
+            using (var context = LocalIocManager.Resolve<ConversaStudioDbContext>())
             {
                 result = func(context);
                 context.SaveChanges();
@@ -117,13 +117,13 @@ public abstract class conversa-studioTestBase : AbpIntegratedTestBase<conversa-s
         return result;
     }
 
-    protected async Task<T> UsingDbContextAsync<T>(int? tenantId, Func<conversa-studioDbContext, Task<T>> func)
+    protected async Task<T> UsingDbContextAsync<T>(int? tenantId, Func<ConversaStudioDbContext, Task<T>> func)
     {
         T result;
 
         using (UsingTenantId(tenantId))
         {
-            using (var context = LocalIocManager.Resolve<conversa-studioDbContext>())
+            using (var context = LocalIocManager.Resolve<ConversaStudioDbContext>())
             {
                 result = await func(context);
                 await context.SaveChangesAsync();

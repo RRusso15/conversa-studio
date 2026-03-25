@@ -1,4 +1,4 @@
-﻿namespace conversa-studio.Debugging;
+namespace ConversaStudio.Debugging;
 
 public static class DebugHelper
 {
