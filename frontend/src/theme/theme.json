@@ -1,0 +1,31 @@
+{
+  "token": {
+    "colorPrimary": "#111111",
+    "colorInfo": "#111111",
+    "colorSuccess": "#10B981",
+    "colorBgLayout": "#F9FAFB",
+    "colorBgContainer": "#FFFFFF",
+    "colorBorder": "#E5E7EB",
+    "colorTextBase": "#111827",
+    "colorTextSecondary": "#6B7280",
+    "colorTextDescription": "#6B7280",
+    "colorLink": "#111111",
+    "colorLinkHover": "#374151",
+    "colorLinkActive": "#111111",
+    "borderRadius": 14,
+    "borderRadiusLG": 22
+  },
+  "components": {
+    "Button": {
+      "borderRadius": 999,
+      "controlHeightLG": 48,
+      "fontWeight": 600
+    },
+    "Card": {
+      "borderRadiusLG": 24
+    },
+    "Input": {
+      "controlHeight": 46
+    }
+  }
+}
