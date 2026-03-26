@@ -1,0 +1,21 @@
+[Unit]
+Description=Conversa Studio Backend
+After=network.target
+
+[Service]
+WorkingDirectory=/var/www/conversa-studio/backend/current
+ExecStart=/usr/bin/dotnet conversa-studio.Web.Host.dll
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+SyslogIdentifier=conversa-studio-backend
+User=conversa
+Group=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
+Environment=App__ServerRootAddress=http://russell.servecounterstrike.com/
+Environment=App__CorsOrigins=http://russell.servecounterstrike.com
+EnvironmentFile=-/etc/conversa-studio/backend.env
+
+[Install]
+WantedBy=multi-user.target
