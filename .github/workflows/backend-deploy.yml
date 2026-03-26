@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-test-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -41,64 +41,130 @@ jobs:
           path: backend-release.tar.gz
           if-no-files-found: error
 
-      - name: Start SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
+      - name: Copy release archive to server
+        uses: appleboy/scp-action@v0.1.7
         with:
-          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          source: "backend-release.tar.gz"
+          target: "/tmp/"
 
-      - name: Configure known hosts
-        shell: bash
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-        run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          if [ -n "${{ secrets.DEPLOY_KNOWN_HOSTS }}" ]; then
-            printf "%s\n" "${{ secrets.DEPLOY_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
-          else
-            ssh-keyscan -p "${DEPLOY_PORT:-22}" "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
-          fi
-          chmod 600 ~/.ssh/known_hosts
+      - name: Bootstrap and deploy on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          command_timeout: 15m
+          script: |
+            set -e
 
-      - name: Upload release to server
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-        run: |
-          scp -P "${DEPLOY_PORT:-22}" backend-release.tar.gz "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/backend-release-${{ github.sha }}.tar.gz"
+            APP_ROOT="/var/www/conversa-studio/backend"
+            RELEASES_DIR="${APP_ROOT}/releases"
+            RELEASE_DIR="${RELEASES_DIR}/${{ github.sha }}"
+            CURRENT_LINK="${APP_ROOT}/current"
+            ARCHIVE="/tmp/backend-release.tar.gz"
+            RUNTIME_USER="${{ secrets.DEPLOY_USER }}"
 
-      - name: Deploy on server
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-        run: |
-          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" <<'EOF'
-          set -euo pipefail
-          RELEASE_ID="${{ github.sha }}"
-          RELEASE_ROOT="/var/www/conversa-studio/backend/releases"
-          RELEASE_DIR="${RELEASE_ROOT}/${RELEASE_ID}"
-          CURRENT_LINK="/var/www/conversa-studio/backend/current"
-          ARCHIVE="/tmp/backend-release-${{ github.sha }}.tar.gz"
-          APP_USER="conversa"
-          APP_GROUP="www-data"
+            if ! command -v nginx >/dev/null 2>&1; then
+              sudo apt-get update
+              sudo apt-get install -y nginx
+            fi
 
-          if id -u "${APP_USER}" >/dev/null 2>&1; then
-            RELEASE_OWNER="${APP_USER}"
-          else
-            RELEASE_OWNER="${USER}"
-            echo "Runtime user '${APP_USER}' does not exist yet. Falling back to '${RELEASE_OWNER}' for release ownership."
-          fi
+            if ! command -v dotnet >/dev/null 2>&1; then
+              wget https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+              sudo dpkg -i packages-microsoft-prod.deb
+              rm -f packages-microsoft-prod.deb
+              sudo apt-get update
+              sudo apt-get install -y aspnetcore-runtime-9.0
+            fi
 
-          sudo install -d -m 775 -o "${RELEASE_OWNER}" -g "${APP_GROUP}" "${RELEASE_ROOT}"
-          sudo install -d -m 775 -o "${RELEASE_OWNER}" -g "${APP_GROUP}" "${RELEASE_DIR}"
-          sudo tar -xzf "${ARCHIVE}" -C "${RELEASE_DIR}"
-          sudo chown -R "${RELEASE_OWNER}:${APP_GROUP}" "${RELEASE_DIR}"
-          rm -f "${ARCHIVE}"
+            sudo mkdir -p "${RELEASES_DIR}"
+            sudo mkdir -p /etc/conversa-studio
+            sudo chown -R "${RUNTIME_USER}:www-data" /var/www/conversa-studio
+            sudo chmod -R 775 /var/www/conversa-studio
 
-          sudo ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
-          sudo systemctl restart conversa-studio-backend.service
-          sudo systemctl status --no-pager conversa-studio-backend.service
-          EOF
+            sudo rm -rf "${RELEASE_DIR}"
+            sudo mkdir -p "${RELEASE_DIR}"
+            sudo tar -xzf "${ARCHIVE}" -C "${RELEASE_DIR}"
+            sudo chown -R "${RUNTIME_USER}:www-data" "${RELEASE_DIR}"
+            rm -f "${ARCHIVE}"
+
+            sudo tee /etc/conversa-studio/backend.env > /dev/null <<EOF
+            ConnectionStrings__Default=${{ secrets.DB_CONNECTION_STRING }}
+            Authentication__JwtBearer__SecurityKey=${{ secrets.JWT_SECURITY_KEY }}
+            Authentication__JwtBearer__Issuer=conversa-studio
+            Authentication__JwtBearer__Audience=conversa-studio
+            EOF
+
+            sudo tee /etc/systemd/system/conversa-studio-backend.service > /dev/null <<EOF
+            [Unit]
+            Description=Conversa Studio Backend
+            After=network.target
+
+            [Service]
+            WorkingDirectory=${CURRENT_LINK}
+            ExecStart=/usr/bin/dotnet ${CURRENT_LINK}/conversa-studio.Web.Host.dll
+            Restart=always
+            RestartSec=5
+            KillSignal=SIGINT
+            SyslogIdentifier=conversa-studio-backend
+            User=${RUNTIME_USER}
+            Group=www-data
+            Environment=ASPNETCORE_ENVIRONMENT=Production
+            Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
+            Environment=App__ServerRootAddress=http://russell.servecounterstrike.com/
+            Environment=App__CorsOrigins=http://russell.servecounterstrike.com
+            EnvironmentFile=-/etc/conversa-studio/backend.env
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+
+            sudo tee /etc/nginx/sites-available/conversa-studio-backend.conf > /dev/null <<'EOF'
+            map $http_upgrade $connection_upgrade {
+                default upgrade;
+                "" close;
+            }
+
+            server {
+                listen 80;
+                listen [::]:80;
+                server_name russell.servecounterstrike.com;
+
+                client_max_body_size 25m;
+
+                location / {
+                    proxy_pass http://127.0.0.1:5000;
+                    proxy_http_version 1.1;
+
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection $connection_upgrade;
+
+                    proxy_read_timeout 120s;
+                    proxy_send_timeout 120s;
+                    proxy_connect_timeout 30s;
+                }
+            }
+            EOF
+
+            sudo ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
+            sudo ln -sfn /etc/nginx/sites-available/conversa-studio-backend.conf /etc/nginx/sites-enabled/conversa-studio-backend.conf
+            if [ -f /etc/nginx/sites-enabled/default ]; then
+              sudo rm -f /etc/nginx/sites-enabled/default
+            fi
+
+            sudo systemctl daemon-reload
+            sudo systemctl enable conversa-studio-backend.service
+            sudo nginx -t
+            sudo systemctl restart conversa-studio-backend.service
+            sudo systemctl reload nginx
+            sudo systemctl status --no-pager conversa-studio-backend.service
