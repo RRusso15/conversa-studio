@@ -22,12 +22,12 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## API Configuration
 
-The frontend is expected to call the deployed backend through the shared Axios client in `src/lib/api-client.ts`.
+The frontend is expected to call the deployed backend through the shared Axios client in `src/utils/axiosInstance.ts`.
 
 Create a local env file when needed:
 
 ```bash
-NEXT_PUBLIC_API_BASE_URL=http://russell.servecounterstrike.com
+NEXT_PUBLIC_API_URL=https://russell.servecounterstrike.com
 ```
 
 The current production frontend origin is `https://conversa-studio.vercel.app`, so the backend deployment config allows that origin for CORS.

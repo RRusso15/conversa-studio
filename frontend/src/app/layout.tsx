@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "antd/dist/reset.css";
 import "reactflow/dist/style.css";
 import "./globals.css";
+import { AuthProvider } from "@/providers/authProvider";
 import { AntdProvider } from "@/providers/antd-provider";
 
 const geistSans = Geist({
@@ -31,7 +32,9 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <AntdRegistry>
-          <AntdProvider>{children}</AntdProvider>
+          <AntdProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </AntdProvider>
         </AntdRegistry>
       </body>
     </html>

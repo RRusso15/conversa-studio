@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { App, Button, Form, Input, Typography } from "antd";
+import { useAuthActions } from "@/providers/authProvider";
 import { useStyles } from "./styles";
 
 export interface SignupFormValues {
@@ -17,15 +18,32 @@ export function SignupForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { message } = App.useApp();
   const { styles } = useStyles();
+  const { signUp } = useAuthActions();
 
   const handleSubmit = async (values: SignupFormValues) => {
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    setIsSubmitting(false);
 
-    message.success(
-      `Welcome, ${values.fullName}. Your Conversa Studio account has been created.`,
-    );
+    try {
+      const { name, surname } = splitFullName(values.fullName);
+
+      await signUp({
+        name,
+        surname,
+        userName: values.email,
+        emailAddress: values.email,
+        password: values.password,
+      });
+
+      message.success(
+        `Welcome, ${values.fullName}. Your Conversa Studio account has been created.`,
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unable to create account.";
+      message.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -91,4 +109,24 @@ export function SignupForm() {
       </div>
     </>
   );
+}
+
+function splitFullName(fullName: string) {
+  const parts = fullName
+    .trim()
+    .split(/\s+/)
+    .filter((part) => part.length > 0);
+
+  if (parts.length === 0) {
+    return { name: "", surname: "" };
+  }
+
+  if (parts.length === 1) {
+    return { name: parts[0], surname: parts[0] };
+  }
+
+  return {
+    name: parts.slice(0, -1).join(" "),
+    surname: parts[parts.length - 1],
+  };
 }

@@ -1,6 +1,6 @@
 # Backend Deployment
 
-This project now uses a self-bootstrapping GitHub Actions deployment flow for `conversa-studio.Web.Host` on Ubuntu behind Nginx at `http://russell.servecounterstrike.com`.
+This project now uses a self-bootstrapping GitHub Actions deployment flow for `conversa-studio.Web.Host` on Ubuntu behind Nginx at `https://russell.servecounterstrike.com`.
 
 ## Overview
 
@@ -66,5 +66,5 @@ curl -H "Host: russell.servecounterstrike.com" http://127.0.0.1
 Then open:
 
 ```text
-http://russell.servecounterstrike.com
+https://russell.servecounterstrike.com
 ```
