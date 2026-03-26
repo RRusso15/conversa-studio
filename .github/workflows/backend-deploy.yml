@@ -117,7 +117,7 @@ jobs:
             Environment=ASPNETCORE_ENVIRONMENT=Production
             Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
             Environment=App__ServerRootAddress=http://russell.servecounterstrike.com/
-            Environment=App__CorsOrigins=http://russell.servecounterstrike.com
+            Environment=App__CorsOrigins=http://russell.servecounterstrike.com,https://conversa-studio.vercel.app
             EnvironmentFile=-/etc/conversa-studio/backend.env
 
             [Install]
