@@ -60,12 +60,12 @@ const DEVELOPER_DASHBOARD_ROUTE = "/developer/dashboard";
 export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [state, dispatch] = useReducer(AuthReducer, INITIAL_STATE);
     const router = useRouter();
-    const instance = getAxiosInstance();
 
     const fetchCurrentUser = async (auth?: IAuthTokenPayload): Promise<ICurrentLoginInformations> => {
         dispatch(fetchCurrentUserPending());
 
         try {
+            const instance = getAxiosInstance();
             const response = await instance.get<IAbpAjaxResponse<ICurrentLoginInformations>>(
                 SESSION_LOGIN_INFO_URL
             );
@@ -93,6 +93,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         dispatch(signInPending());
 
         try {
+            const instance = getAxiosInstance();
             const response = await instance.post<IAbpAjaxResponse<IAuthTokenPayload>>(
                 TOKEN_AUTH_URL,
                 input
@@ -124,6 +125,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         dispatch(signUpPending());
 
         try {
+            const instance = getAxiosInstance();
             const response = await instance.post<IAbpAjaxResponse<IRegisterOutput>>(
                 ACCOUNT_REGISTER_URL,
                 {

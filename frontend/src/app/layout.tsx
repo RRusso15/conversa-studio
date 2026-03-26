@@ -6,6 +6,7 @@ import "reactflow/dist/style.css";
 import "./globals.css";
 import { AuthProvider } from "@/providers/authProvider";
 import { AntdProvider } from "@/providers/antd-provider";
+import { BotProvider } from "@/providers/botProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +34,9 @@ export default function RootLayout({
       <body>
         <AntdRegistry>
           <AntdProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              <BotProvider>{children}</BotProvider>
+            </AuthProvider>
           </AntdProvider>
         </AntdRegistry>
       </body>

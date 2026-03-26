@@ -9,15 +9,17 @@ import {
   SaveOutlined,
   CheckCircleOutlined,
 } from "@ant-design/icons";
-import { Button, Flex, Space, Tag, Typography } from "antd";
+import { Button, Flex, Input, Space, Tag, Typography } from "antd";
 import { useBuilderStyles } from "./styles";
 
-const { Paragraph, Title } = Typography;
+const { Paragraph } = Typography;
 
 interface BuilderToolbarProps {
   botName: string;
   isDirty: boolean;
   validationCount: number;
+  saveStatus: "idle" | "saving" | "saved" | "error";
+  onBotNameChange: (name: string) => void;
   onSave: () => void;
   onValidate: () => void;
   onTest: () => void;
@@ -27,11 +29,28 @@ export function BuilderToolbar({
   botName,
   isDirty,
   validationCount,
+  saveStatus,
+  onBotNameChange,
   onSave,
   onValidate,
   onTest,
 }: BuilderToolbarProps) {
   const { styles } = useBuilderStyles();
+  const statusTag = (() => {
+    if (saveStatus === "saving") {
+      return <Tag color="processing">Saving</Tag>;
+    }
+
+    if (saveStatus === "error") {
+      return <Tag color="error">Save failed</Tag>;
+    }
+
+    if (isDirty) {
+      return <Tag color="default">Unsaved</Tag>;
+    }
+
+    return <Tag color="green">Saved</Tag>;
+  })();
 
   return (
     <header className={styles.builderHeader}>
@@ -43,10 +62,14 @@ export function BuilderToolbar({
 
           <div>
             <Space size={8} wrap>
-              <Title level={4} style={{ margin: 0 }}>
-                {botName}
-              </Title>
-              <Tag color={isDirty ? "default" : "green"}>{isDirty ? "Unsaved" : "Saved"}</Tag>
+              <Input
+                value={botName}
+                onChange={(event) => onBotNameChange(event.target.value)}
+                aria-label="Bot name"
+                placeholder="Untitled Bot"
+                style={{ width: 280, maxWidth: "100%" }}
+              />
+              {statusTag}
               {validationCount > 0 ? (
                 <Tag icon={<ExclamationCircleOutlined />} color="gold">
                   {validationCount} validation result{validationCount === 1 ? "" : "s"}
@@ -61,7 +84,7 @@ export function BuilderToolbar({
       </Flex>
 
       <Space wrap>
-        <Button icon={<SaveOutlined />} onClick={onSave}>
+        <Button icon={<SaveOutlined />} onClick={onSave} loading={saveStatus === "saving"}>
           Save
         </Button>
         <Button icon={<CheckCircleOutlined />} onClick={onValidate}>
