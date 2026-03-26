@@ -11,7 +11,7 @@
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\conversa-studio.Web.Mvc\conversa-studio.Web.Mvc.csproj" />
+    <ProjectReference Include="..\..\src\conversa-studio.Web.Host\conversa-studio.Web.Host.csproj" />
     <ProjectReference Include="..\conversa-studio.Tests\conversa-studio.Tests.csproj" />
   </ItemGroup>
   <ItemGroup>
