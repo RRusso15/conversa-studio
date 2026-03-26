@@ -83,11 +83,13 @@ jobs:
           CURRENT_LINK="/var/www/conversa-studio/backend/current"
           ARCHIVE="/tmp/backend-release-${{ github.sha }}.tar.gz"
 
-          mkdir -p "${RELEASE_DIR}"
-          tar -xzf "${ARCHIVE}" -C "${RELEASE_DIR}"
+          sudo install -d -m 775 -o conversa -g www-data "${RELEASE_ROOT}"
+          sudo install -d -m 775 -o conversa -g www-data "${RELEASE_DIR}"
+          sudo tar -xzf "${ARCHIVE}" -C "${RELEASE_DIR}"
+          sudo chown -R conversa:www-data "${RELEASE_DIR}"
           rm -f "${ARCHIVE}"
 
-          ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
+          sudo ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
           sudo systemctl restart conversa-studio-backend.service
           sudo systemctl status --no-pager conversa-studio-backend.service
           EOF
