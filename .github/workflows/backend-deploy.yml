@@ -1,0 +1,93 @@
+name: Backend Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/aspnet-core/**"
+      - ".github/workflows/backend-deploy.yml"
+  workflow_dispatch:
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore
+        run: dotnet restore backend/aspnet-core/conversa-studio.sln
+
+      - name: Test
+        run: dotnet test backend/aspnet-core/conversa-studio.sln --configuration Release --no-restore
+
+      - name: Publish backend
+        run: dotnet publish backend/aspnet-core/src/conversa-studio.Web.Host/conversa-studio.Web.Host.csproj --configuration Release --no-restore --output publish/backend
+
+      - name: Archive published app
+        run: tar -C publish/backend -czf backend-release.tar.gz .
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-release-${{ github.sha }}
+          path: backend-release.tar.gz
+          if-no-files-found: error
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Configure known hosts
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          if [ -n "${{ secrets.DEPLOY_KNOWN_HOSTS }}" ]; then
+            printf "%s\n" "${{ secrets.DEPLOY_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "${DEPLOY_PORT:-22}" "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Upload release to server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          scp -P "${DEPLOY_PORT:-22}" backend-release.tar.gz "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/backend-release-${{ github.sha }}.tar.gz"
+
+      - name: Deploy on server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" <<'EOF'
+          set -euo pipefail
+          RELEASE_ID="${{ github.sha }}"
+          RELEASE_ROOT="/var/www/conversa-studio/backend/releases"
+          RELEASE_DIR="${RELEASE_ROOT}/${RELEASE_ID}"
+          CURRENT_LINK="/var/www/conversa-studio/backend/current"
+          ARCHIVE="/tmp/backend-release-${{ github.sha }}.tar.gz"
+
+          mkdir -p "${RELEASE_DIR}"
+          tar -xzf "${ARCHIVE}" -C "${RELEASE_DIR}"
+          rm -f "${ARCHIVE}"
+
+          ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
+          sudo systemctl restart conversa-studio-backend.service
+          sudo systemctl status --no-pager conversa-studio-backend.service
+          EOF
