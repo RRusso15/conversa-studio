@@ -20,6 +20,18 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## API Configuration
+
+The frontend is expected to call the deployed backend through the shared Axios client in `src/lib/api-client.ts`.
+
+Create a local env file when needed:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://russell.servecounterstrike.com
+```
+
+The current production frontend origin is `https://conversa-studio.vercel.app`, so the backend deployment config allows that origin for CORS.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
