@@ -107,11 +107,14 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
     border-radius: 14px;
   `,
   flowNode: css`
-    width: 220px;
-    border-radius: 20px;
-    border: 1px solid ${token.colorBorder};
-    background: ${token.colorBgContainer};
-    box-shadow: 0 18px 34px rgba(17, 24, 39, 0.08);
+    width: 240px;
+    border-radius: 22px;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, #f8fafc 100%);
+    box-shadow:
+      0 24px 44px rgba(15, 23, 42, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.84);
     overflow: hidden;
     transition:
       border-color 0.18s ease,
@@ -121,62 +124,114 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
     &[data-selected="true"] {
       border-color: var(--builder-node-accent);
       box-shadow:
-        0 18px 34px rgba(17, 24, 39, 0.08),
-        0 0 0 4px color-mix(in srgb, var(--builder-node-accent) 14%, white);
+        0 24px 44px rgba(15, 23, 42, 0.1),
+        0 0 0 4px color-mix(in srgb, var(--builder-node-accent) 16%, white);
       transform: translateY(-2px);
+    }
+
+    &[data-node-type="condition"] {
+      width: 270px;
     }
   `,
   flowNodeHeader: css`
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 12px;
-    padding: 14px 16px;
-    border-bottom: 1px solid ${token.colorBorder};
-    background: color-mix(in srgb, var(--builder-node-accent) 8%, white);
+    padding: 16px 16px 14px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--builder-node-accent) 8%, white) 0%,
+        color-mix(in srgb, var(--builder-node-accent) 3%, white) 100%
+      );
   `,
   flowNodeIcon: css`
-    width: 34px;
-    height: 34px;
-    border-radius: 12px;
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: color-mix(in srgb, var(--builder-node-accent) 16%, white);
+    background: color-mix(in srgb, var(--builder-node-accent) 18%, white);
     color: var(--builder-node-accent);
-    font-size: 16px;
+    font-size: 17px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--builder-node-accent) 14%, white);
   `,
   flowNodeTitleBlock: css`
     display: flex;
     flex-direction: column;
     gap: 4px;
   `,
+  flowNodeTag: css`
+    margin-inline-end: 0 !important;
+    border-radius: 999px !important;
+    border-color: color-mix(in srgb, var(--builder-node-accent) 18%, white) !important;
+    color: var(--builder-node-accent) !important;
+    background: color-mix(in srgb, var(--builder-node-accent) 8%, white) !important;
+  `,
+  flowNodeMeta: css`
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+  `,
   flowNodeBody: css`
-    padding: 12px 16px 14px;
-    background: #f9fafb;
+    padding: 12px 16px 16px;
+    background: rgba(248, 250, 252, 0.92);
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 1.6;
+  `,
+  flowNodeSummary: css`
+    display: block;
+    color: #475569 !important;
   `,
   flowHandle: css`
     width: 12px !important;
     height: 12px !important;
     border: 2px solid #ffffff !important;
     background: var(--builder-node-accent) !important;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.72);
   `,
-  flowHandleLeft: css`
+  conditionPaths: css`
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 16px 16px;
+    background: rgba(248, 250, 252, 0.92);
+  `,
+  conditionPathRow: css`
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 56px;
+    padding: 12px 18px 12px 14px;
+    border: 1px solid rgba(203, 213, 225, 0.92);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  `,
+  conditionPathLabel: css`
+    display: block;
+    color: #0f172a !important;
+    font-weight: 700;
+    margin-bottom: 2px;
+  `,
+  conditionPathRule: css`
+    display: block;
+    color: #64748b !important;
+    font-size: 12px;
+    max-width: 180px;
+  `,
+  conditionPathHandle: css`
     width: 12px !important;
     height: 12px !important;
-    bottom: -6px !important;
-    left: 34% !important;
+    right: -7px !important;
     border: 2px solid #ffffff !important;
     background: var(--builder-node-accent) !important;
-  `,
-  flowHandleRight: css`
-    width: 12px !important;
-    height: 12px !important;
-    bottom: -6px !important;
-    left: 66% !important;
-    border: 2px solid #ffffff !important;
-    background: #6b7280 !important;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.78);
   `,
   propertiesIcon: css`
     width: 38px;

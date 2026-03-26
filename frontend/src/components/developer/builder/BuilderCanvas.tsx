@@ -88,7 +88,12 @@ function BuilderCanvasInner() {
           setSelectedEdge(undefined);
         }}
         deleteKeyCode={["Backspace", "Delete"]}
-        connectionLineStyle={{ stroke: "#111111", strokeWidth: 2 }}
+        connectionLineStyle={{ stroke: "#0f172a", strokeWidth: 2.2 }}
+        defaultEdgeOptions={{
+          type: "smoothstep",
+          animated: false,
+          style: { stroke: "#94a3b8", strokeWidth: 2 },
+        }}
       >
         <MiniMap
           zoomable

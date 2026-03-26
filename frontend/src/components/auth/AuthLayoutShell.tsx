@@ -22,29 +22,29 @@ export function AuthLayoutShell({ children }: AuthLayoutShellProps) {
         <aside className={styles.promoPanel}>
           <div className={styles.promoGlow} />
           <Tag color="green" bordered={false}>
-            Public auth surface
+            Start your workspace
           </Tag>
           <Title level={2} style={{ color: "white", marginTop: 18 }}>
-            Begin with a cleaner chatbot workspace
+            Build better AI conversations from one place
           </Title>
           <Paragraph style={{ color: "rgba(255,255,255,0.74)", fontSize: 16 }}>
-            Sign in and account creation now share a single route-group layout,
-            so the auth surface stays consistent as we wire real backend flows.
+            Sign in or create your account to design chatbot journeys, manage
+            projects, and move from idea to deployment with clarity.
           </Paragraph>
 
           <Card className={styles.promoCard} bordered={false}>
             <Space direction="vertical" size="middle">
               <Text style={{ color: "white" }}>
-                Conversa Studio is being shaped as a real SaaS platform, not a
-                disposable prototype.
+                Conversa Studio gives teams a focused space to create, test,
+                and improve AI chat experiences that feel intentional.
               </Text>
               <Space align="start">
                 <SafetyCertificateOutlined
                   style={{ color: "#6ee7b7", marginTop: 3 }}
                 />
                 <Text style={{ color: "rgba(255,255,255,0.8)" }}>
-                  UI-only for now, but structured for backend auth and
-                  onboarding next.
+                  Secure account access keeps your bots, collaborators, and
+                  future deployments connected in one workflow.
                 </Text>
               </Space>
             </Space>
