@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { App, Button, Checkbox, Form, Input, Typography } from "antd";
+import { useAuthActions } from "@/providers/authProvider";
 import { useStyles } from "./styles";
 
 export interface LoginFormValues {
@@ -14,21 +14,29 @@ export interface LoginFormValues {
 
 const { Text } = Typography;
 
-const loginNextRoute = "/developer/dashboard";
-
 export function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { message } = App.useApp();
   const { styles } = useStyles();
-  const router = useRouter();
+  const { signIn } = useAuthActions();
 
   const handleSubmit = async (values: LoginFormValues) => {
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    setIsSubmitting(false);
 
-    message.success(`Signed in as Developer: ${values.email}`);
-    router.push(loginNextRoute);
+    try {
+      await signIn({
+        userNameOrEmailAddress: values.email,
+        password: values.password,
+        rememberClient: values.rememberMe ?? false,
+      });
+      message.success("Signed in successfully.");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unable to sign in.";
+      message.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

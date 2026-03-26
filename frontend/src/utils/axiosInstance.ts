@@ -1,0 +1,70 @@
+"use strict";
+
+import axios, { AxiosError } from "axios";
+import { getAuthCookie, removeAuthCookie } from "./cookie";
+
+let axiosInstance: ReturnType<typeof axios.create> | null = null;
+
+/**
+ * Returns the shared Axios instance used for authenticated API calls.
+ */
+export const getAxiosInstance = () => {
+    if (axiosInstance) {
+        return axiosInstance;
+    }
+
+    const baseURL = process.env.NEXT_PUBLIC_API_URL;
+
+    if (!baseURL) {
+        throw new Error("NEXT_PUBLIC_API_URL is not defined");
+    }
+
+    axiosInstance = axios.create({
+        baseURL,
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+
+    axiosInstance.interceptors.request.use((config) => {
+        const token = getAuthCookie();
+
+        if (token) {
+            config.headers = config.headers ?? {};
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+
+        return config;
+    });
+
+    axiosInstance.interceptors.response.use(
+        (response) => response,
+        (error: AxiosError) => {
+            const status = error.response?.status;
+
+            if (status === 401) {
+                removeAuthCookie();
+
+                if (typeof window !== "undefined") {
+                    const currentPath = window.location.pathname;
+
+                    if (!currentPath.startsWith("/login")) {
+                        window.location.href = "/login";
+                    }
+                }
+            }
+
+            if (status === 403 && typeof window !== "undefined") {
+                const currentPath = window.location.pathname;
+
+                if (!currentPath.startsWith("/unauthorized")) {
+                    window.location.href = "/unauthorized";
+                }
+            }
+
+            return Promise.reject(error);
+        }
+    );
+
+    return axiosInstance;
+};

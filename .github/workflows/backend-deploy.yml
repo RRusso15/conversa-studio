@@ -116,8 +116,8 @@ jobs:
             Group=www-data
             Environment=ASPNETCORE_ENVIRONMENT=Production
             Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
-            Environment=App__ServerRootAddress=http://russell.servecounterstrike.com/
-            Environment=App__CorsOrigins=http://russell.servecounterstrike.com
+            Environment=App__ServerRootAddress=https://russell.servecounterstrike.com/
+            Environment=App__CorsOrigins=https://russell.servecounterstrike.com,https://conversa-studio.vercel.app
             EnvironmentFile=-/etc/conversa-studio/backend.env
 
             [Install]
@@ -134,6 +134,19 @@ jobs:
                 listen 80;
                 listen [::]:80;
                 server_name russell.servecounterstrike.com;
+
+                return 301 https://$host$request_uri;
+            }
+
+            server {
+                listen 443 ssl http2;
+                listen [::]:443 ssl http2;
+                server_name russell.servecounterstrike.com;
+
+                ssl_certificate /etc/letsencrypt/live/russell.servecounterstrike.com/fullchain.pem;
+                ssl_certificate_key /etc/letsencrypt/live/russell.servecounterstrike.com/privkey.pem;
+                include /etc/letsencrypt/options-ssl-nginx.conf;
+                ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
                 client_max_body_size 25m;
 
