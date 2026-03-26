@@ -91,6 +91,30 @@ Add these repository secrets:
 - `DEPLOY_PORT`
 - `DEPLOY_KNOWN_HOSTS` (optional but recommended)
 
+## Deploy user permissions
+
+The SSH deploy user must be able to run the deployment commands with passwordless `sudo`.
+
+At minimum, the workflow uses `sudo` for:
+
+- creating release directories under `/var/www/conversa-studio`
+- extracting the published archive into the release directory
+- updating the `/var/www/conversa-studio/backend/current` symlink
+- restarting and checking `conversa-studio-backend.service`
+
+If your deploy user is `ubuntu`, a simple setup is:
+
+```bash
+sudo usermod -aG www-data ubuntu
+sudo visudo
+```
+
+Add a rule like:
+
+```bash
+ubuntu ALL=NOPASSWD: /usr/bin/install, /usr/bin/tar, /usr/bin/chown, /usr/bin/ln, /usr/bin/systemctl
+```
+
 ## Deployment flow
 
 The workflow:
