@@ -36,7 +36,7 @@ interface AuthProviderProps {
 }
 
 interface IAbpAjaxResponse<T> {
-    result: T;
+    result?: T;
     success: boolean;
     targetUrl?: string;
     error?: {
@@ -70,7 +70,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 SESSION_LOGIN_INFO_URL
             );
 
-            const currentLoginInformations = response.data.result;
+            const currentLoginInformations = unwrapResponse(
+                response.data,
+                "We could not load your session."
+            );
 
             dispatch(
                 fetchCurrentUserSuccess({
@@ -95,7 +98,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 input
             );
 
-            const auth = response.data.result;
+            const auth = unwrapResponse(
+                response.data,
+                "We could not sign you in."
+            );
             setAuthCookie(auth.accessToken, auth.expireInSeconds, input.rememberClient);
             const currentLoginInformations = await fetchCurrentUser(auth);
 
@@ -126,9 +132,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 }
             );
 
+            const registerResult = unwrapResponse(
+                response.data,
+                "We could not create your account."
+            );
             dispatch(signUpSuccess());
 
-            if (response.data.result.canLogin) {
+            if (registerResult.canLogin) {
                 await signIn({
                     userNameOrEmailAddress: input.emailAddress,
                     password: input.password,
@@ -236,4 +246,20 @@ function toError(error: unknown, fallbackMessage: string): Error {
     }
 
     return new Error(fallbackMessage);
+}
+
+function unwrapResponse<T>(payload: IAbpAjaxResponse<T> | T, fallbackMessage: string): T {
+    if (isAbpAjaxResponse<T>(payload)) {
+        if (payload.result !== undefined) {
+            return payload.result;
+        }
+
+        throw new Error(payload.error?.message ?? fallbackMessage);
+    }
+
+    return payload;
+}
+
+function isAbpAjaxResponse<T>(payload: IAbpAjaxResponse<T> | T): payload is IAbpAjaxResponse<T> {
+    return typeof payload === "object" && payload !== null && "__abp" in payload;
 }

@@ -100,6 +100,11 @@ jobs:
             Authentication__JwtBearer__Audience=conversa-studio
             EOF
 
+            if grep -q "Host=localhost" /etc/conversa-studio/backend.env; then
+              echo "Refusing to deploy with a localhost database connection string in production."
+              exit 1
+            fi
+
             sudo tee /etc/systemd/system/conversa-studio-backend.service > /dev/null <<EOF
             [Unit]
             Description=Conversa Studio Backend

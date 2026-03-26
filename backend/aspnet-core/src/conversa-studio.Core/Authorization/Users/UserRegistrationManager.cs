@@ -7,7 +7,6 @@ using ConversaStudio.Authorization.Roles;
 using ConversaStudio.MultiTenancy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -39,13 +38,12 @@ public class UserRegistrationManager : DomainService
 
     public async Task<User> RegisterAsync(string name, string surname, string emailAddress, string userName, string plainPassword, bool isEmailConfirmed)
     {
-        CheckForTenant();
-
         var tenant = await GetActiveTenantAsync();
+        var tenantId = tenant?.Id;
 
         var user = new User
         {
-            TenantId = tenant.Id,
+            TenantId = tenantId,
             Name = name,
             Surname = surname,
             EmailAddress = emailAddress,
@@ -57,25 +55,21 @@ public class UserRegistrationManager : DomainService
 
         user.SetNormalizedNames();
 
-        foreach (var defaultRole in await _roleManager.Roles.Where(r => r.IsDefault).ToListAsync())
+        // Public host signups should not inherit the seeded host admin role.
+        if (tenantId.HasValue)
         {
-            user.Roles.Add(new UserRole(tenant.Id, user.Id, defaultRole.Id));
+            foreach (var defaultRole in await _roleManager.Roles.Where(r => r.IsDefault && r.TenantId == tenantId).ToListAsync())
+            {
+                user.Roles.Add(new UserRole(tenantId, user.Id, defaultRole.Id));
+            }
         }
 
-        await _userManager.InitializeOptionsAsync(tenant.Id);
+        await _userManager.InitializeOptionsAsync(tenantId);
 
         CheckErrors(await _userManager.CreateAsync(user, plainPassword));
         await CurrentUnitOfWork.SaveChangesAsync();
 
         return user;
-    }
-
-    private void CheckForTenant()
-    {
-        if (!AbpSession.TenantId.HasValue)
-        {
-            throw new InvalidOperationException("Can not register host users!");
-        }
     }
 
     private async Task<Tenant> GetActiveTenantAsync()

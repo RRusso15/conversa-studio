@@ -23,6 +23,14 @@ Add these repository secrets:
 - `DB_CONNECTION_STRING`
 - `JWT_SECURITY_KEY`
 
+`DB_CONNECTION_STRING` must be a production-ready Npgsql connection string, for example:
+
+```text
+Host=your-db-host;Port=5432;Database=your_db;Username=your_user;Password=your_password;SSL Mode=Require;Trust Server Certificate=true
+```
+
+Do not use `Host=localhost...` unless PostgreSQL is actually running on the same Ubuntu server. The deploy workflow now fails fast if the production env file would be written with a localhost database connection string.
+
 ## Server requirements
 
 The server only needs:
