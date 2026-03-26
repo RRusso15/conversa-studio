@@ -82,11 +82,20 @@ jobs:
           RELEASE_DIR="${RELEASE_ROOT}/${RELEASE_ID}"
           CURRENT_LINK="/var/www/conversa-studio/backend/current"
           ARCHIVE="/tmp/backend-release-${{ github.sha }}.tar.gz"
+          APP_USER="conversa"
+          APP_GROUP="www-data"
 
-          sudo install -d -m 775 -o conversa -g www-data "${RELEASE_ROOT}"
-          sudo install -d -m 775 -o conversa -g www-data "${RELEASE_DIR}"
+          if id -u "${APP_USER}" >/dev/null 2>&1; then
+            RELEASE_OWNER="${APP_USER}"
+          else
+            RELEASE_OWNER="${USER}"
+            echo "Runtime user '${APP_USER}' does not exist yet. Falling back to '${RELEASE_OWNER}' for release ownership."
+          fi
+
+          sudo install -d -m 775 -o "${RELEASE_OWNER}" -g "${APP_GROUP}" "${RELEASE_ROOT}"
+          sudo install -d -m 775 -o "${RELEASE_OWNER}" -g "${APP_GROUP}" "${RELEASE_DIR}"
           sudo tar -xzf "${ARCHIVE}" -C "${RELEASE_DIR}"
-          sudo chown -R conversa:www-data "${RELEASE_DIR}"
+          sudo chown -R "${RELEASE_OWNER}:${APP_GROUP}" "${RELEASE_DIR}"
           rm -f "${ARCHIVE}"
 
           sudo ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"

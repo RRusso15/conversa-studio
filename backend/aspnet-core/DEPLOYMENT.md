@@ -115,6 +115,19 @@ Add a rule like:
 ubuntu ALL=NOPASSWD: /usr/bin/install, /usr/bin/tar, /usr/bin/chown, /usr/bin/ln, /usr/bin/systemctl
 ```
 
+The workflow now falls back to the SSH deploy user for release-file ownership if `conversa` does not exist yet, so deployment can continue. However, the `systemd` service file still runs the app as `User=conversa`, so you should do one of these before expecting the service restart to succeed:
+
+```bash
+sudo useradd --system --create-home --shell /usr/sbin/nologin conversa
+```
+
+Or update `/etc/systemd/system/conversa-studio-backend.service` to use your actual runtime user, then reload systemd:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart conversa-studio-backend.service
+```
+
 ## Deployment flow
 
 The workflow:
