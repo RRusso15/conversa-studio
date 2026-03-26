@@ -3,6 +3,7 @@ namespace ConversaStudio.Authorization;
 public static class PermissionNames
 {
     public const string Pages_Tenants = "Pages.Tenants";
+    public const string Pages_Bots = "Pages.Bots";
 
     public const string Pages_Users = "Pages.Users";
     public const string Pages_Users_Activation = "Pages.Users.Activation";
