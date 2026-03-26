@@ -38,7 +38,8 @@ export function LoginForm() {
           Welcome back
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Sign in to continue building and managing your chatbot workspace.
+          Sign in to manage your bots, review conversations, and keep your team
+          moving.
         </Typography.Paragraph>
       </div>
 

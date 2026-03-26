@@ -9,7 +9,7 @@ import {
   useReducer,
 } from "react";
 import type { Connection, Edge, Node } from "reactflow";
-import { addEdge } from "reactflow";
+import { addEdge, MarkerType } from "reactflow";
 import { getMockGraph } from "./mock-data";
 import { nodeRegistry } from "./node-registry";
 import type {
@@ -167,6 +167,8 @@ function toReactFlowNode(node: BotNode, isSelected: boolean): Node {
       label: node.label,
       nodeType: node.type,
       definition: nodeRegistry[node.type],
+      config: node.config,
+      summary: getNodeSummary(node),
       isSelected,
     },
   };
@@ -180,15 +182,33 @@ function toReactFlowEdge(edge: BotEdge, isSelected: boolean): Edge {
     sourceHandle: edge.sourceHandle,
     label: edge.label,
     selected: isSelected,
+    type: "smoothstep",
+    animated: isSelected,
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      width: 18,
+      height: 18,
+      color: isSelected ? "#0f172a" : "#94a3b8",
+    },
     style: {
       strokeWidth: isSelected ? 2.8 : 2,
-      stroke: isSelected ? "#111111" : "#CBD5E1",
+      stroke: isSelected ? "#0f172a" : "#94A3B8",
     },
     labelStyle: {
-      fill: "#6B7280",
-      fontSize: 12,
+      fill: "#334155",
+      fontSize: 11,
       fontWeight: 600,
     },
+    labelBgStyle: {
+      fill: "#ffffff",
+      fillOpacity: 0.95,
+      stroke: "#e2e8f0",
+      strokeWidth: 1,
+      rx: 8,
+      ry: 8,
+    },
+    labelBgPadding: [8, 4],
+    labelShowBg: Boolean(edge.label),
   };
 }
 
@@ -207,6 +227,37 @@ function findEdgeLabel(sourceNode?: BotNode, sourceHandle?: string) {
 
   const ruleIndex = Number(sourceHandle?.replace("rule-", ""));
   return sourceNode.config.rules[ruleIndex]?.value || "Rule";
+}
+
+function getNodeSummary(node: BotNode) {
+  switch (node.config.kind) {
+    case "start":
+      return "Entry point for this conversation flow.";
+    case "message":
+      return node.config.message.trim() || "Send a fixed message to the user.";
+    case "question":
+      return `${node.config.question.trim() || "Ask for input."} Captures into ${node.config.variableName || "a variable"}.`;
+    case "condition": {
+      const ruleCount = node.config.rules.length;
+      const ruleSummary = ruleCount === 1 ? "1 branch rule" : `${ruleCount} branch rules`;
+      const fallbackLabel = node.config.fallbackLabel.trim() || "Fallback";
+      return `${ruleSummary} with ${fallbackLabel.toLowerCase()} as the default route.`;
+    }
+    case "variable":
+      return `Set ${node.config.variableName || "a variable"} to ${node.config.value || "a value"}.`;
+    case "api":
+      return `${node.config.method} ${node.config.endpoint}`;
+    case "ai":
+      return node.config.instructions.trim() || "Generate a grounded AI response.";
+    case "code":
+      return "Run custom logic before moving to the next step.";
+    case "handoff":
+      return `Route the conversation to ${node.config.queueName || "a live team"}.`;
+    case "end":
+      return node.config.closingText.trim() || "End the conversation.";
+    default:
+      return nodeRegistry[node.type].description;
+  }
 }
 
 export function BuilderProvider({ botId, children }: BuilderProviderProps) {

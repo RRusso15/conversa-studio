@@ -13,8 +13,6 @@ export interface SignupFormValues {
 
 const { Text } = Typography;
 
-const signupNextRoute = "/onboarding";
-
 export function SignupForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { message } = App.useApp();
@@ -26,7 +24,7 @@ export function SignupForm() {
     setIsSubmitting(false);
 
     message.success(
-      `Account stub created for ${values.fullName}. Onboarding will be wired to ${signupNextRoute} next.`,
+      `Welcome, ${values.fullName}. Your Conversa Studio account has been created.`,
     );
   };
 
@@ -37,8 +35,8 @@ export function SignupForm() {
           Create an account
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Start building AI chatbot experiences with a cleaner,
-          production-leaning workflow.
+          Create your workspace and start building AI chat experiences for
+          support, sales, and operations.
         </Typography.Paragraph>
       </div>
 

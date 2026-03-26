@@ -66,7 +66,7 @@ const features = [
     icon: <TeamOutlined />,
     title: "Collaboration",
     description:
-      "Move toward a real SaaS workspace where teams can build, review, and ship together.",
+      "Give product, support, and operations teams one place to build, review, and ship together.",
   },
 ];
 
@@ -151,7 +151,7 @@ export function LandingPage() {
         <section className={styles.heroSection}>
           <span className={styles.heroBadge}>
             <ThunderboltOutlined />
-            Introducting Conversa Studio 1.0
+            Introducing Conversa Studio 1.0
           </span>
 
           <Title className={styles.heroTitle}>
@@ -239,8 +239,8 @@ export function LandingPage() {
           <div className={styles.sectionHeader}>
             <Title level={2}>Everything you need to build better bots</Title>
             <Paragraph type="secondary">
-              Strong builder UX, reliable execution, and real SaaS management
-              tools in one product surface.
+              Strong builder UX, reliable execution, and workspace tools built
+              for teams shipping conversational experiences.
             </Paragraph>
           </div>
 
