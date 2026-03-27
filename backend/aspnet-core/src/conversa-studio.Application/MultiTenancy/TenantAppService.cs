@@ -131,13 +131,14 @@ public class TenantAppService : AsyncCrudAppService<Tenant, TenantDto, int, Page
             .GetAllPermissions(new ConversaStudioAuthorizationProvider())
             .Single(permission => permission.Name == PermissionNames.Pages_Bots);
 
-        var hasPermission = await _roleManager.IsGrantedAsync(developerRole.Name, botPermission);
-        if (hasPermission)
+        var grantedPermissions = (await _roleManager.GetGrantedPermissionsAsync(developerRole)).ToList();
+        if (grantedPermissions.Any(permission => permission.Name == PermissionNames.Pages_Bots))
         {
             return;
         }
 
-        await _roleManager.GrantPermissionAsync(developerRole, botPermission);
+        grantedPermissions.Add(botPermission);
+        await _roleManager.SetGrantedPermissionsAsync(developerRole, grantedPermissions);
         await CurrentUnitOfWork.SaveChangesAsync();
     }
 

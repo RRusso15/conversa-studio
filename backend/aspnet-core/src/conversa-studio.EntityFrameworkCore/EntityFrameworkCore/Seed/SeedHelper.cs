@@ -6,6 +6,7 @@ using ConversaStudio.EntityFrameworkCore.Seed.Host;
 using ConversaStudio.EntityFrameworkCore.Seed.Tenants;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Linq;
 using System.Transactions;
 
 namespace ConversaStudio.EntityFrameworkCore.Seed;
