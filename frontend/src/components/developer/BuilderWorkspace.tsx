@@ -37,7 +37,7 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     markSaved
   } = useBuilder();
   const { activeBot, saveStatus, errorMessage } = useBotState();
-  const { createBotDraft, updateBotDraft, validateBotDraft, setSaveStatus } = useBotActions();
+  const { createBotDraft, updateBotDraft, publishBotDraft, validateBotDraft, setSaveStatus } = useBotActions();
   const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const saveInFlightRef = useRef(false);
   const queuedSaveOriginRef = useRef<"autosave" | "manual" | undefined>(undefined);
@@ -59,7 +59,7 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     if (saveInFlightRef.current) {
       queuedSaveOriginRef.current =
         queuedSaveOriginRef.current === "manual" ? "manual" : origin;
-      return;
+      return undefined;
     }
 
     const localResults = validateBotGraph(graphSnapshot);
@@ -78,7 +78,7 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
           description: localErrors.map((result) => result.message).join(" ")
         });
       }
-      return;
+      return undefined;
     }
 
     saveInFlightRef.current = true;
@@ -98,7 +98,7 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
             description: mutationResult.error?.message ?? errorMessage ?? "The bot could not be saved."
           });
         }
-        return;
+        return undefined;
       }
 
       const savedBot = mutationResult.bot;
@@ -125,6 +125,8 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
           description: "Your bot draft has been persisted."
         });
       }
+
+      return savedBot;
     } finally {
       saveInFlightRef.current = false;
 
@@ -156,6 +158,37 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
 
   const handleSave = async () => {
     await persistGraph("manual");
+  };
+
+  const handleDeploy = async () => {
+    const savedBot = await persistGraph("manual");
+    const persistedBotId = toPersistedBotId(savedBot?.id ?? activeBot?.id);
+
+    if (!persistedBotId) {
+      return;
+    }
+
+    const latestBot = savedBot ?? activeBot;
+    const requiresPublish = !latestBot?.publishedVersion || latestBot.hasUnpublishedChanges;
+
+    if (requiresPublish) {
+      const publishResult = await publishBotDraft(persistedBotId);
+
+      if (!publishResult.bot) {
+        notification.error({
+          message: "Publish failed",
+          description: publishResult.error?.message ?? "The bot could not be published for deployment."
+        });
+        return;
+      }
+
+      notification.success({
+        message: "Bot published",
+        description: "The latest draft is now ready for deployment."
+      });
+    }
+
+    router.push(`/developer/deployments?botId=${encodeURIComponent(persistedBotId)}`);
   };
 
   const handleValidate = async () => {
@@ -193,10 +226,12 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
         isDirty={state.isDirty}
         validationCount={state.validationResults.length}
         saveStatus={saveStatus}
+        deployLabel={activeBot?.publishedVersion && !activeBot.hasUnpublishedChanges ? "Manage Deployments" : "Publish & Deploy"}
         onBotNameChange={updateBotName}
         onSave={handleSave}
         onValidate={handleValidate}
         onTest={() => setSimulatorOpen(true)}
+        onDeploy={handleDeploy}
       />
 
       <div className={styles.builderMain}>

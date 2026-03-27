@@ -33,6 +33,11 @@ public class BotDefinitionDto
     public int? PublishedVersion { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the current draft differs from the published snapshot.
+    /// </summary>
+    public bool HasUnpublishedChanges { get; set; }
+
+    /// <summary>
     /// Gets or sets the last updated timestamp.
     /// </summary>
     public DateTime UpdatedAt { get; set; }

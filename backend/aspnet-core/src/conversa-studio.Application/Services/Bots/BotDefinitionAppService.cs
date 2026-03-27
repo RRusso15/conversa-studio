@@ -104,6 +104,39 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
     }
 
     /// <summary>
+    /// Publishes the current draft snapshot for deployment use.
+    /// </summary>
+    [HttpPost]
+    public async Task<BotDefinitionDto> PublishDraft(EntityDto<Guid> input)
+    {
+        var bot = await GetOwnedBotAsync(input.Id);
+        var graph = DeserializeGraph(bot.DraftGraphJson);
+        ThrowIfInvalid(graph);
+
+        bot.PublishDraft();
+        await _botDefinitionRepository.UpdateAsync(bot);
+        await CurrentUnitOfWork.SaveChangesAsync();
+
+        return MapToDefinitionDto(bot, graph);
+    }
+
+    /// <summary>
+    /// Removes the currently published snapshot while preserving the draft.
+    /// </summary>
+    [HttpPost]
+    public async Task<BotDefinitionDto> Unpublish(EntityDto<Guid> input)
+    {
+        var bot = await GetOwnedBotAsync(input.Id);
+        var graph = DeserializeGraph(bot.DraftGraphJson);
+
+        bot.Unpublish();
+        await _botDefinitionRepository.UpdateAsync(bot);
+        await CurrentUnitOfWork.SaveChangesAsync();
+
+        return MapToDefinitionDto(bot, graph);
+    }
+
+    /// <summary>
     /// Validates a bot graph without persisting it.
     /// </summary>
     [HttpPost]
@@ -245,6 +278,9 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
             Id = bot.Id,
             Name = bot.Name,
             Status = bot.Status,
+            DraftVersion = bot.DraftVersion,
+            PublishedVersion = bot.PublishedVersion,
+            HasUnpublishedChanges = !bot.PublishedVersion.HasValue || bot.PublishedVersion.Value != bot.DraftVersion,
             UpdatedAt = bot.LastModificationTime ?? bot.CreationTime
         };
     }
@@ -265,6 +301,7 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
             Status = bot.Status,
             DraftVersion = bot.DraftVersion,
             PublishedVersion = bot.PublishedVersion,
+            HasUnpublishedChanges = !bot.PublishedVersion.HasValue || bot.PublishedVersion.Value != bot.DraftVersion,
             UpdatedAt = bot.LastModificationTime ?? bot.CreationTime,
             Graph = MapToGraphDto(resolvedGraph)
         };

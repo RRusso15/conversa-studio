@@ -7,12 +7,13 @@ export interface IBotSummary {
     id: string;
     name: string;
     status: "draft" | "published";
+    draftVersion: number;
+    publishedVersion?: number;
+    hasUnpublishedChanges: boolean;
     updatedAt: string;
 }
 
 export interface IBotDefinition extends IBotSummary {
-    draftVersion: number;
-    publishedVersion?: number;
     graph: BotGraph;
 }
 
@@ -59,6 +60,7 @@ export interface IBotActionContext {
     initializeNewBotDraft: () => Promise<IBotDefinition>;
     createBotDraft: (graph: BotGraph) => Promise<IBotMutationResult>;
     updateBotDraft: (id: string, graph: BotGraph) => Promise<IBotMutationResult>;
+    publishBotDraft: (id: string) => Promise<IBotMutationResult>;
     validateBotDraft: (graph: BotGraph) => Promise<IBotValidationOutcome>;
     setSaveStatus: (status: IBotStateContext["saveStatus"], errorMessage?: string) => void;
     clearActiveBot: () => void;
@@ -81,6 +83,7 @@ export const INITIAL_ACTION_STATE: IBotActionContext = {
         status: "draft",
         updatedAt: new Date().toISOString(),
         draftVersion: 1,
+        hasUnpublishedChanges: true,
         graph: {
             metadata: {
                 id: "new-bot",
@@ -94,6 +97,7 @@ export const INITIAL_ACTION_STATE: IBotActionContext = {
     }),
     createBotDraft: async () => ({}),
     updateBotDraft: async () => ({}),
+    publishBotDraft: async () => ({}),
     validateBotDraft: async () => ({}),
     setSaveStatus: () => undefined,
     clearActiveBot: () => undefined
