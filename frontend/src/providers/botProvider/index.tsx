@@ -50,6 +50,10 @@ interface IAbpAjaxResponse<T> {
     error?: {
         message?: string;
         details?: string;
+        validationErrors?: Array<{
+            message?: string;
+            members?: string[];
+        }>;
     };
 }
 
@@ -331,6 +335,7 @@ function toRequestError(error: unknown, fallbackMessage: string): IBotRequestErr
     ) {
         const data = error.response.data as IAbpAjaxResponse<unknown>;
         const status = error.response.status as number | undefined;
+        const backendMessage = buildBackendErrorMessage(data, fallbackMessage);
 
         if (status === 401) {
             return {
@@ -360,14 +365,14 @@ function toRequestError(error: unknown, fallbackMessage: string): IBotRequestErr
             return {
                 code: "server_error",
                 status,
-                message: data?.error?.message ?? fallbackMessage
+                message: backendMessage
             };
         }
 
         return {
             code: "unknown",
             status,
-            message: data?.error?.message ?? fallbackMessage
+            message: backendMessage
         };
     }
 
@@ -382,4 +387,16 @@ function toRequestError(error: unknown, fallbackMessage: string): IBotRequestErr
         code: "unknown",
         message: fallbackMessage
     };
+}
+
+function buildBackendErrorMessage(data: IAbpAjaxResponse<unknown>, fallbackMessage: string): string {
+    const validationMessage = data.error?.validationErrors
+        ?.map((validationError) => validationError.message)
+        .filter((message): message is string => Boolean(message))
+        .join(" ");
+
+    return validationMessage
+        ?? data.error?.details
+        ?? data.error?.message
+        ?? fallbackMessage;
 }
