@@ -59,6 +59,7 @@ interface IIsTenantAvailableOutput {
     tenantId?: number;
 }
 
+const DEFAULT_TENANCY_NAME = process.env.NEXT_PUBLIC_DEFAULT_TENANCY_NAME;
 const ACCOUNT_REGISTER_URL = "/api/services/app/Account/Register";
 const ACCOUNT_IS_TENANT_AVAILABLE_URL = "/api/services/app/Account/IsTenantAvailable";
 const SESSION_LOGIN_INFO_URL = "/api/services/app/Session/GetCurrentLoginInformations";
@@ -113,7 +114,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         dispatch(signInPending());
 
         try {
-            const tenantContext = await resolveTenantContext(input.tenancyName);
+            const tenantContext = await resolveTenantContext();
             setTenantContext(tenantContext);
 
             const instance = getAxiosInstance();
@@ -157,7 +158,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         dispatch(signUpPending());
 
         try {
-            const tenantContext = await resolveTenantContext(input.tenancyName);
+            const tenantContext = await resolveTenantContext();
             setTenantContext(tenantContext);
 
             const instance = getAxiosInstance();
@@ -188,8 +189,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 await signIn({
                     userNameOrEmailAddress: input.emailAddress,
                     password: input.password,
-                    rememberClient: true,
-                    tenancyName: input.tenancyName
+                    rememberClient: true
                 });
             }
         } catch (error) {
@@ -298,12 +298,18 @@ function toError(error: unknown, fallbackMessage: string): Error {
     return new Error(fallbackMessage);
 }
 
-async function resolveTenantContext(tenancyName: string): Promise<ITenantContext> {
-    const normalizedTenancyName = tenancyName.trim();
+function getConfiguredTenancyName(): string {
+    const configuredTenancyName = DEFAULT_TENANCY_NAME?.trim();
 
-    if (!normalizedTenancyName) {
-        throw new Error("Please enter your workspace name.");
+    if (!configuredTenancyName) {
+        throw new Error("Workspace configuration is invalid. Please contact support.");
     }
+
+    return configuredTenancyName;
+}
+
+async function resolveTenantContext(): Promise<ITenantContext> {
+    const normalizedTenancyName = getConfiguredTenancyName();
 
     const instance = getAxiosInstance();
     const response = await instance.post<IAbpAjaxResponse<IIsTenantAvailableOutput>>(
@@ -319,15 +325,15 @@ async function resolveTenantContext(tenancyName: string): Promise<ITenantContext
     );
 
     if (result.state === 1) {
-        throw new Error("We could not find that workspace. Check the workspace name and try again.");
+        throw new Error("Workspace configuration is invalid. Please contact support.");
     }
 
     if (result.state === 2) {
-        throw new Error("That workspace is inactive. Please contact your administrator.");
+        throw new Error("Workspace configuration is invalid. Please contact support.");
     }
 
     if (!result.tenantId) {
-        throw new Error("We could not resolve your workspace.");
+        throw new Error("Workspace configuration is invalid. Please contact support.");
     }
 
     return {
