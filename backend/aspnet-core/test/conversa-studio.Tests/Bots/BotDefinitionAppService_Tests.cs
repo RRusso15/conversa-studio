@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Abp.Application.Services.Dto;
 using Abp.Authorization;
 using Abp.UI;
+using ConversaStudio.Authorization.Accounts;
+using ConversaStudio.Authorization.Accounts.Dto;
 using ConversaStudio.Services.Bots;
 using ConversaStudio.Services.Bots.Dto;
 using ConversaStudio.Authorization;
@@ -113,15 +115,19 @@ public class BotDefinitionAppService_Tests : ConversaStudioTestBase
 
         using (UsingTenantId(tenantId))
         {
-            var registrationManager = Resolve<UserRegistrationManager>();
-            createdUser = await registrationManager.RegisterAsync(
-                "Tenant",
-                "Developer",
-                "developer.permission@conversa.test",
-                "developer.permission@conversa.test",
-                "Password1",
-                true);
+            var accountAppService = Resolve<IAccountAppService>();
+            await accountAppService.Register(new RegisterInput
+            {
+                Name = "Tenant",
+                Surname = "Developer",
+                EmailAddress = "developer.permission@conversa.test",
+                UserName = "developer.permission@conversa.test",
+                Password = "Password1"
+            });
         }
+
+        createdUser = await UsingDbContextAsync(async context =>
+            await context.Users.SingleAsync(user => user.EmailAddress == "developer.permission@conversa.test"));
 
         createdUser.ShouldNotBeNull();
 
