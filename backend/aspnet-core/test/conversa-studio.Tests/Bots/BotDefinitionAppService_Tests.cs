@@ -111,7 +111,7 @@ public class BotDefinitionAppService_Tests : ConversaStudioTestBase
 
         User createdUser = null;
 
-        using (CurrentUnitOfWork.SetTenantId(tenantId))
+        using (UsingTenantId(tenantId))
         {
             var registrationManager = Resolve<UserRegistrationManager>();
             createdUser = await registrationManager.RegisterAsync(
