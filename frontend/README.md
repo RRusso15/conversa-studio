@@ -28,6 +28,7 @@ Create a local env file when needed:
 
 ```bash
 NEXT_PUBLIC_API_URL=https://russell.servecounterstrike.com
+NEXT_PUBLIC_DEFAULT_TENANCY_NAME=developer
 ```
 
 The current production frontend origin is `https://conversa-studio.vercel.app`, so the backend deployment config allows that origin for CORS.

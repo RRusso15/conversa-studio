@@ -39,7 +39,6 @@ export interface ISignInInput {
     userNameOrEmailAddress: string;
     password: string;
     rememberClient: boolean;
-    tenancyName: string;
 }
 
 export interface ISignUpInput {
@@ -48,7 +47,6 @@ export interface ISignUpInput {
     userName: string;
     emailAddress: string;
     password: string;
-    tenancyName: string;
 }
 
 export interface IAuthStateContext {
