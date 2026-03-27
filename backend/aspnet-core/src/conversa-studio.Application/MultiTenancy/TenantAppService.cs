@@ -14,6 +14,7 @@ using ConversaStudio.Authorization.Users;
 using ConversaStudio.Editions;
 using ConversaStudio.MultiTenancy.Dto;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Threading.Tasks;
@@ -126,13 +127,17 @@ public class TenantAppService : AsyncCrudAppService<Tenant, TenantDto, int, Page
 
     private async Task GrantDeveloperBotPermissionAsync(int tenantId, Role developerRole)
     {
-        var hasPermission = await _roleManager.IsGrantedAsync(developerRole, PermissionNames.Pages_Bots);
+        var botPermission = PermissionFinder
+            .GetAllPermissions(new ConversaStudioAuthorizationProvider())
+            .Single(permission => permission.Name == PermissionNames.Pages_Bots);
+
+        var hasPermission = await _roleManager.IsGrantedAsync(developerRole.Name, botPermission);
         if (hasPermission)
         {
             return;
         }
 
-        await _roleManager.GrantPermissionAsync(developerRole, PermissionNames.Pages_Bots);
+        await _roleManager.GrantPermissionAsync(developerRole, botPermission);
         await CurrentUnitOfWork.SaveChangesAsync();
     }
 
