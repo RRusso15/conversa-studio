@@ -10,7 +10,9 @@ using Abp.UI;
 using ConversaStudio.Authorization;
 using ConversaStudio.Domains.Bots;
 using ConversaStudio.Domains.Deployments;
+using ConversaStudio.Domains.Runtime;
 using ConversaStudio.Services.Deployments.Dto;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,15 +24,27 @@ namespace ConversaStudio.Services.Deployments;
 [AbpAuthorize(PermissionNames.Pages_Bots)]
 public class BotDeploymentAppService : ConversaStudioAppServiceBase, IBotDeploymentAppService
 {
+    private static readonly JsonSerializerOptions GraphSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly IRepository<BotDeployment, Guid> _botDeploymentRepository;
     private readonly IRepository<BotDefinition, Guid> _botDefinitionRepository;
+    private readonly PublishedGraphRuntimeValidator _runtimeValidator;
+    private readonly IConfigurationRoot _configuration;
 
     public BotDeploymentAppService(
         IRepository<BotDeployment, Guid> botDeploymentRepository,
-        IRepository<BotDefinition, Guid> botDefinitionRepository)
+        IRepository<BotDefinition, Guid> botDefinitionRepository,
+        PublishedGraphRuntimeValidator runtimeValidator,
+        IConfigurationRoot configuration)
     {
         _botDeploymentRepository = botDeploymentRepository;
         _botDefinitionRepository = botDefinitionRepository;
+        _runtimeValidator = runtimeValidator;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -116,7 +130,7 @@ public class BotDeploymentAppService : ConversaStudioAppServiceBase, IBotDeploym
     {
         var deployment = await GetOwnedDeploymentAsync(input.Id);
         var bot = await GetOwnedBotAsync(deployment.BotDefinitionId);
-        EnsurePublished(bot);
+        EnsureCanActivate(bot, deployment);
 
         deployment.Activate();
         await _botDeploymentRepository.UpdateAsync(deployment);
@@ -148,15 +162,23 @@ public class BotDeploymentAppService : ConversaStudioAppServiceBase, IBotDeploym
     public async Task<DeploymentSnippetDto> GetInstallSnippet(EntityDto<Guid> input)
     {
         var deployment = await GetOwnedDeploymentAsync(input.Id);
+        var clientRootAddress = ResolveClientRootAddress();
+        var serverRootAddress = ResolveServerRootAddress();
 
         return new DeploymentSnippetDto
         {
             DeploymentKey = deployment.DeploymentKey,
             Snippet =
                 "<script>\n" +
-                $"  window.ConversaStudioWidget = window.ConversaStudioWidget || {{ deploymentKey: \"{deployment.DeploymentKey}\" }};\n" +
+                "  window.ConversaStudioWidgetConfig = {\n" +
+                $"    deploymentKey: \"{deployment.DeploymentKey}\",\n" +
+                $"    apiBaseUrl: \"{serverRootAddress.TrimEnd('/')}\",\n" +
+                $"    clientBaseUrl: \"{clientRootAddress.TrimEnd('/')}\",\n" +
+                $"    launcherLabel: {JsonSerializer.Serialize(deployment.LauncherLabel)},\n" +
+                $"    themeColor: {JsonSerializer.Serialize(deployment.ThemeColor)}\n" +
+                "  };\n" +
                 "</script>\n" +
-                "<!-- Widget runtime script will be attached in the next delivery slice. -->"
+                $"<script src=\"{clientRootAddress.TrimEnd('/')}/widget/loader\" defer></script>"
         };
     }
 
@@ -204,6 +226,29 @@ public class BotDeploymentAppService : ConversaStudioAppServiceBase, IBotDeploym
         }
     }
 
+    private void EnsureCanActivate(BotDefinition bot, BotDeployment deployment)
+    {
+        EnsurePublished(bot);
+
+        var allowedDomains = DeserializeDomains(deployment.AllowedDomainsJson);
+        if (allowedDomains.Count == 0)
+        {
+            throw new UserFriendlyException("Add at least one allowed domain before activating this deployment.");
+        }
+
+        var graph = JsonSerializer.Deserialize<BotGraphDefinition>(bot.PublishedGraphJson, GraphSerializerOptions) ?? new BotGraphDefinition();
+        var blockingIssues = _runtimeValidator.ValidateForLiveRuntime(graph)
+            .Where(issue => string.Equals(issue.Severity, BotValidationSeverity.Error, StringComparison.OrdinalIgnoreCase))
+            .Select(issue => issue.Message)
+            .Distinct()
+            .ToList();
+
+        if (blockingIssues.Count > 0)
+        {
+            throw new UserFriendlyException(string.Join(" ", blockingIssues));
+        }
+    }
+
     private static string SerializeDomains(IEnumerable<string> allowedDomains)
     {
         var normalized = allowedDomains
@@ -243,6 +288,28 @@ public class BotDeploymentAppService : ConversaStudioAppServiceBase, IBotDeploym
     private static string ResolveThemeColor(string requestedThemeColor)
     {
         return string.IsNullOrWhiteSpace(requestedThemeColor) ? "#2563EB" : requestedThemeColor.Trim();
+    }
+
+    private string ResolveServerRootAddress()
+    {
+        return _configuration["App:ServerRootAddress"]?.TrimEnd('/') ?? string.Empty;
+    }
+
+    private string ResolveClientRootAddress()
+    {
+        var configuredClientRoot = _configuration["App:ClientRootAddress"]?.Trim();
+        if (!string.IsNullOrWhiteSpace(configuredClientRoot))
+        {
+            return configuredClientRoot;
+        }
+
+        var serverRootAddress = ResolveServerRootAddress().TrimEnd('/');
+        var corsOrigins = (_configuration["App:CorsOrigins"] ?? string.Empty)
+            .Split(",", StringSplitOptions.RemoveEmptyEntries)
+            .Select(origin => origin.Trim())
+            .FirstOrDefault(origin => !string.Equals(origin.TrimEnd('/'), serverRootAddress, StringComparison.OrdinalIgnoreCase));
+
+        return corsOrigins ?? serverRootAddress;
     }
 
     private static BotDeploymentDto MapToDto(BotDeployment deployment, string botName)

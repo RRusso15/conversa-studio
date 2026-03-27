@@ -4,6 +4,8 @@ using ConversaStudio.Authorization.Roles;
 using ConversaStudio.Authorization.Users;
 using ConversaStudio.Domains.Bots;
 using ConversaStudio.Domains.Deployments;
+using ConversaStudio.Domains.Runtime;
+using ConversaStudio.Domains.Transcripts;
 using ConversaStudio.MultiTenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -31,6 +33,16 @@ public class ConversaStudioDbContext : AbpZeroDbContext<Tenant, Role, User, Conv
     /// Gets or sets persisted bot deployments.
     /// </summary>
     public DbSet<BotDeployment> BotDeployments { get; set; }
+
+    /// <summary>
+    /// Gets or sets persisted runtime sessions.
+    /// </summary>
+    public DbSet<RuntimeSession> RuntimeSessions { get; set; }
+
+    /// <summary>
+    /// Gets or sets persisted transcript messages.
+    /// </summary>
+    public DbSet<TranscriptMessage> TranscriptMessages { get; set; }
 
     public ConversaStudioDbContext(DbContextOptions<ConversaStudioDbContext> options)
         : base(options)
@@ -63,6 +75,25 @@ public class ConversaStudioDbContext : AbpZeroDbContext<Tenant, Role, User, Conv
             entity.Property(deployment => deployment.ThemeColor).IsRequired().HasMaxLength(BotDeployment.MaxThemeColorLength);
             entity.HasIndex(deployment => deployment.DeploymentKey).IsUnique();
             entity.HasIndex(deployment => new { deployment.TenantId, deployment.BotDefinitionId, deployment.CreationTime });
+        });
+
+        modelBuilder.Entity<RuntimeSession>(entity =>
+        {
+            entity.ToTable("AppRuntimeSessions");
+            entity.Property(session => session.SessionToken).IsRequired().HasMaxLength(RuntimeSession.MaxSessionTokenLength);
+            entity.Property(session => session.CurrentNodeId).HasMaxLength(RuntimeSession.MaxNodeIdLength);
+            entity.Property(session => session.PendingQuestionVariable).HasMaxLength(RuntimeSession.MaxNodeIdLength);
+            entity.Property(session => session.VariablesJson).IsRequired().HasMaxLength(RuntimeSession.MaxVariablePayloadLength);
+            entity.HasIndex(session => session.SessionToken).IsUnique();
+            entity.HasIndex(session => new { session.TenantId, session.BotDeploymentId, session.CreationTime });
+        });
+
+        modelBuilder.Entity<TranscriptMessage>(entity =>
+        {
+            entity.ToTable("AppTranscriptMessages");
+            entity.Property(message => message.Role).IsRequired().HasMaxLength(TranscriptMessage.MaxRoleLength);
+            entity.Property(message => message.Content).IsRequired().HasMaxLength(TranscriptMessage.MaxContentLength);
+            entity.HasIndex(message => new { message.TenantId, message.RuntimeSessionId, message.CreationTime });
         });
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
