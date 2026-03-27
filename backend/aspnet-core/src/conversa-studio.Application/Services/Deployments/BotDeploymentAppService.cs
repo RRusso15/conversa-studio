@@ -33,13 +33,13 @@ public class BotDeploymentAppService : ConversaStudioAppServiceBase, IBotDeploym
     private readonly IRepository<BotDeployment, Guid> _botDeploymentRepository;
     private readonly IRepository<BotDefinition, Guid> _botDefinitionRepository;
     private readonly PublishedGraphRuntimeValidator _runtimeValidator;
-    private readonly IConfigurationRoot _configuration;
+    private readonly IConfiguration _configuration;
 
     public BotDeploymentAppService(
         IRepository<BotDeployment, Guid> botDeploymentRepository,
         IRepository<BotDefinition, Guid> botDefinitionRepository,
         PublishedGraphRuntimeValidator runtimeValidator,
-        IConfigurationRoot configuration)
+        IConfiguration configuration)
     {
         _botDeploymentRepository = botDeploymentRepository;
         _botDefinitionRepository = botDefinitionRepository;
