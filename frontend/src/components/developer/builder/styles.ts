@@ -30,11 +30,11 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
   builderMain: css`
     flex: 1;
     display: grid;
-    grid-template-columns: 280px minmax(0, 1fr) 340px;
+    grid-template-columns: 280px minmax(0, 1fr) 360px;
     min-height: 0;
 
     @media (max-width: 1320px) {
-      grid-template-columns: 260px minmax(0, 1fr) 320px;
+      grid-template-columns: 260px minmax(0, 1fr) 340px;
     }
 
     @media (max-width: 1100px) {
@@ -59,11 +59,21 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
     border-inline-start: 1px solid ${token.colorBorder};
     background: ${token.colorBgContainer};
     overflow: auto;
+    display: flex;
+    flex-direction: column;
 
     @media (max-width: 1100px) {
       grid-column: 1 / -1;
       border-inline-start: none;
       border-top: 1px solid ${token.colorBorder};
+    }
+  `,
+  builderSideSection: css`
+    flex: 1;
+    min-height: 0;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid ${token.colorBorder};
     }
   `,
   builderCanvasRegion: css`
@@ -97,6 +107,10 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
   `,
   panelCard: css`
     min-height: 100%;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  `,
+  validationPanelCard: css`
     border-radius: 0 !important;
     box-shadow: none !important;
   `,

@@ -134,13 +134,5 @@ export function validateBotGraph(graph: BotGraph): ValidationResult[] {
     });
   }
 
-  if (results.length === 0) {
-    results.push({
-      id: "graph-valid",
-      severity: "warning",
-      message: "Validation passed. No structural issues were found.",
-    });
-  }
-
   return results;
 }
