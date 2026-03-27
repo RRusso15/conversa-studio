@@ -1,5 +1,5 @@
 using ConversaStudio.Models.TokenAuth;
-using ConversaStudio.Web.Controllers;
+using ConversaStudio.Web.Host.Controllers;
 using Shouldly;
 using System.Threading.Tasks;
 using Xunit;

@@ -6,7 +6,7 @@ using Abp.MultiTenancy;
 using Abp.Web.Models;
 using ConversaStudio.EntityFrameworkCore;
 using ConversaStudio.Models.TokenAuth;
-using ConversaStudio.Web.Startup;
+using ConversaStudio.Web.Host.Startup;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
 using Microsoft.AspNetCore.Hosting;
@@ -36,7 +36,7 @@ public abstract class ConversaStudioWebTestBase : AbpAspNetCoreIntegratedTestBas
         return base
             .CreateWebHostBuilder()
             .UseContentRoot(ContentRootFolder.Value)
-            .UseSetting(WebHostDefaults.ApplicationKey, typeof(ConversaStudioWebMvcModule).Assembly.FullName);
+            .UseSetting(WebHostDefaults.ApplicationKey, typeof(ConversaStudioWebHostModule).Assembly.FullName);
     }
 
     #region Get response
