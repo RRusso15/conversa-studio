@@ -59,6 +59,10 @@ interface IIsTenantAvailableOutput {
     tenantId?: number;
 }
 
+const TENANT_STATE_AVAILABLE = 1;
+const TENANT_STATE_INACTIVE = 2;
+const TENANT_STATE_NOT_FOUND = 3;
+
 const DEFAULT_TENANCY_NAME = process.env.NEXT_PUBLIC_DEFAULT_TENANCY_NAME;
 const ACCOUNT_REGISTER_URL = "/api/services/app/Account/Register";
 const ACCOUNT_IS_TENANT_AVAILABLE_URL = "/api/services/app/Account/IsTenantAvailable";
@@ -324,15 +328,15 @@ async function resolveTenantContext(): Promise<ITenantContext> {
         "We could not resolve your workspace."
     );
 
-    if (result.state === 1) {
+    if (result.state === TENANT_STATE_NOT_FOUND) {
         throw new Error("Workspace configuration is invalid. Please contact support.");
     }
 
-    if (result.state === 2) {
+    if (result.state === TENANT_STATE_INACTIVE) {
         throw new Error("Workspace configuration is invalid. Please contact support.");
     }
 
-    if (!result.tenantId) {
+    if (result.state !== TENANT_STATE_AVAILABLE || !result.tenantId) {
         throw new Error("Workspace configuration is invalid. Please contact support.");
     }
 
