@@ -80,6 +80,10 @@ export const BotReducer = handleActions<IBotStateContext, IBotStateContext>(
             ...state,
             ...action.payload
         }),
+        [BotActionEnums.setSaveStatus]: (state, action: IReducerAction) => ({
+            ...state,
+            ...action.payload
+        }),
         [BotActionEnums.clearActiveBot]: (state, action: IReducerAction) => ({
             ...state,
             ...action.payload

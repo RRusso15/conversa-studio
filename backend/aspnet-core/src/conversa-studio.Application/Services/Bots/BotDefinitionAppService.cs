@@ -10,6 +10,7 @@ using Abp.UI;
 using ConversaStudio.Authorization;
 using ConversaStudio.Domains.Bots;
 using ConversaStudio.Services.Bots.Dto;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConversaStudio.Services.Bots;
@@ -40,6 +41,7 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
     /// <summary>
     /// Returns the current user's bots for the active tenant scope.
     /// </summary>
+    [HttpGet]
     public async Task<ListResultDto<BotSummaryDto>> GetBots()
     {
         var currentUser = await GetCurrentUserAsync();
@@ -54,6 +56,7 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
     /// <summary>
     /// Returns a single bot definition for editing.
     /// </summary>
+    [HttpGet]
     public async Task<BotDefinitionDto> GetBot(EntityDto<Guid> input)
     {
         var bot = await GetOwnedBotAsync(input.Id);
@@ -63,6 +66,7 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
     /// <summary>
     /// Creates a new draft bot definition.
     /// </summary>
+    [HttpPost]
     public async Task<BotDefinitionDto> CreateDraft(CreateBotDefinitionRequest input)
     {
         var currentUser = await GetCurrentUserAsync();
@@ -85,6 +89,7 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
     /// <summary>
     /// Updates an existing draft bot definition.
     /// </summary>
+    [HttpPut]
     public async Task<BotDefinitionDto> UpdateDraft(UpdateBotDefinitionRequest input)
     {
         var bot = await GetOwnedBotAsync(input.Id);
@@ -101,6 +106,7 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
     /// <summary>
     /// Validates a bot graph without persisting it.
     /// </summary>
+    [HttpPost]
     public async Task<ListResultDto<BotValidationResultDto>> ValidateDraft(ValidateBotDefinitionRequest input)
     {
         await GetCurrentUserAsync();

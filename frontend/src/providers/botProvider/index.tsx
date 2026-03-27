@@ -15,6 +15,7 @@ import {
     getBotsPending,
     getBotsSuccess,
     initializeNewBotDraft as initializeNewBotDraftAction,
+    setSaveStatus as setSaveStatusAction,
     updateBotDraftError,
     updateBotDraftPending,
     updateBotDraftSuccess,
@@ -27,11 +28,14 @@ import {
     BotStateContext,
     INITIAL_STATE,
     type IBotDefinition,
+    type IBotMutationResult,
+    type IBotRequestError,
     type IBotStateContext,
-    type IBotSummary
+    type IBotSummary,
+    type IBotValidationOutcome
 } from "./context";
 import { BotReducer } from "./reducer";
-import { getAxiosInstance } from "@/utils/axiosInstance";
+import { getAxiosInstance, type IAxiosRedirectControlConfig } from "@/utils/axiosInstance";
 import type { BotGraph, ValidationResult } from "@/components/developer/builder/types";
 import { createStarterGraph } from "@/components/developer/builder/mock-data";
 
@@ -71,6 +75,10 @@ const GET_BOT_URL = "/api/services/app/BotDefinition/GetBot";
 const CREATE_DRAFT_URL = "/api/services/app/BotDefinition/CreateDraft";
 const UPDATE_DRAFT_URL = "/api/services/app/BotDefinition/UpdateDraft";
 const VALIDATE_DRAFT_URL = "/api/services/app/BotDefinition/ValidateDraft";
+const BOT_REQUEST_CONFIG = {
+    skipUnauthorizedRedirect: true,
+    skipForbiddenRedirect: true
+} as IAxiosRedirectControlConfig;
 
 /**
  * Provides bot list, active draft, and persistence workflows for builder pages.
@@ -84,11 +92,11 @@ export const BotProvider = ({ children }: BotProviderProps) => {
 
         try {
             const instance = getAxiosInstance();
-            const response = await instance.get<IAbpAjaxResponse<IListResultDto<IApiBotSummary>>>(GET_BOTS_URL);
+            const response = await instance.get<IAbpAjaxResponse<IListResultDto<IApiBotSummary>>>(GET_BOTS_URL, BOT_REQUEST_CONFIG);
             const payload = unwrapResponse(response.data, "We could not load your bots.");
             dispatch(getBotsSuccess(payload.items.map(mapSummaryFromApi)));
         } catch (error) {
-            dispatch(getBotsError(toErrorMessage(error, "We could not load your bots.")));
+            dispatch(getBotsError(toRequestError(error, "We could not load your bots.")));
         }
     }, []);
 
@@ -97,14 +105,17 @@ export const BotProvider = ({ children }: BotProviderProps) => {
 
         try {
             const instance = getAxiosInstance();
-            const response = await instance.get<IAbpAjaxResponse<IApiBotDefinition>>(`${GET_BOT_URL}?Id=${encodeURIComponent(id)}`);
+            const response = await instance.get<IAbpAjaxResponse<IApiBotDefinition>>(
+                `${GET_BOT_URL}?Id=${encodeURIComponent(id)}`,
+                BOT_REQUEST_CONFIG
+            );
             const payload = mapDefinitionFromApi(
                 unwrapResponse(response.data, "We could not load this bot.")
             );
             dispatch(getBotSuccess(payload));
             return payload;
         } catch (error) {
-            dispatch(getBotError(toErrorMessage(error, "We could not load this bot.")));
+            dispatch(getBotError(toRequestError(error, "We could not load this bot.")));
             return undefined;
         }
     }, []);
@@ -124,7 +135,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
         return activeBot;
     }, []);
 
-    const createBotDraft = useCallback(async (graph: BotGraph): Promise<IBotDefinition | undefined> => {
+    const createBotDraft = useCallback(async (graph: BotGraph): Promise<IBotMutationResult> => {
         dispatch(createBotDraftPending());
 
         try {
@@ -134,63 +145,73 @@ export const BotProvider = ({ children }: BotProviderProps) => {
                 {
                     name: graph.metadata.name,
                     graph
-                }
+                },
+                BOT_REQUEST_CONFIG
             );
             const payload = mapDefinitionFromApi(
                 unwrapResponse(response.data, "We could not create this bot.")
             );
             dispatch(createBotDraftSuccess(payload));
-            return payload;
+            return { bot: payload };
         } catch (error) {
-            dispatch(createBotDraftError(toErrorMessage(error, "We could not create this bot.")));
-            return undefined;
+            const requestError = toRequestError(error, "We could not create this bot.");
+            dispatch(createBotDraftError(requestError));
+            return { error: requestError };
         }
     }, []);
 
-    const updateBotDraft = useCallback(async (id: string, graph: BotGraph): Promise<IBotDefinition | undefined> => {
+    const updateBotDraft = useCallback(async (id: string, graph: BotGraph): Promise<IBotMutationResult> => {
         dispatch(updateBotDraftPending());
 
         try {
             const instance = getAxiosInstance();
-            const response = await instance.post<IAbpAjaxResponse<IApiBotDefinition>>(
+            const response = await instance.put<IAbpAjaxResponse<IApiBotDefinition>>(
                 UPDATE_DRAFT_URL,
                 {
                     id,
                     name: graph.metadata.name,
                     graph
-                }
+                },
+                BOT_REQUEST_CONFIG
             );
             const payload = mapDefinitionFromApi(
                 unwrapResponse(response.data, "We could not save this bot.")
             );
             dispatch(updateBotDraftSuccess(payload));
-            return payload;
+            return { bot: payload };
         } catch (error) {
-            dispatch(updateBotDraftError(toErrorMessage(error, "We could not save this bot.")));
-            return undefined;
+            const requestError = toRequestError(error, "We could not save this bot.");
+            dispatch(updateBotDraftError(requestError));
+            return { error: requestError };
         }
     }, []);
 
-    const validateBotDraft = useCallback(async (graph: BotGraph): Promise<ValidationResult[]> => {
+    const validateBotDraft = useCallback(async (graph: BotGraph): Promise<IBotValidationOutcome> => {
         dispatch(validateBotDraftPending());
 
         try {
             const instance = getAxiosInstance();
             const response = await instance.post<IAbpAjaxResponse<IListResultDto<ValidationResult>>>(
                 VALIDATE_DRAFT_URL,
-                { graph }
+                { graph },
+                BOT_REQUEST_CONFIG
             );
             const payload = unwrapResponse(response.data, "We could not validate this bot.");
             dispatch(validateBotDraftSuccess(payload.items));
-            return payload.items;
+            return { results: payload.items };
         } catch (error) {
-            dispatch(validateBotDraftError(toErrorMessage(error, "We could not validate this bot.")));
-            return [];
+            const requestError = toRequestError(error, "We could not validate this bot.");
+            dispatch(validateBotDraftError(requestError));
+            return { error: requestError };
         }
     }, []);
 
     const clearActiveBot = useCallback((): void => {
         dispatch(clearActiveBotAction());
+    }, []);
+
+    const setSaveStatus = useCallback((status: IBotStateContext["saveStatus"], errorMessage?: string): void => {
+        dispatch(setSaveStatusAction({ status, errorMessage }));
     }, []);
 
     const actionValue = useMemo(() => ({
@@ -200,6 +221,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
         createBotDraft,
         updateBotDraft,
         validateBotDraft,
+        setSaveStatus,
         clearActiveBot
     }), [
         clearActiveBot,
@@ -207,6 +229,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
         getBot,
         getBots,
         initializeNewBotDraft,
+        setSaveStatus,
         updateBotDraft,
         validateBotDraft
     ]);
@@ -296,22 +319,67 @@ function isAbpAjaxResponse<T>(payload: IAbpAjaxResponse<T> | T): payload is IAbp
     return typeof payload === "object" && payload !== null && "__abp" in payload;
 }
 
-function toErrorMessage(error: unknown, fallbackMessage: string): string {
+function toRequestError(error: unknown, fallbackMessage: string): IBotRequestError {
     if (
         typeof error === "object" &&
         error !== null &&
         "response" in error &&
         typeof error.response === "object" &&
         error.response !== null &&
-        "data" in error.response
+        "data" in error.response &&
+        "status" in error.response
     ) {
         const data = error.response.data as IAbpAjaxResponse<unknown>;
-        return data?.error?.message ?? fallbackMessage;
+        const status = error.response.status as number | undefined;
+
+        if (status === 401) {
+            return {
+                code: "unauthorized",
+                status,
+                message: "Your session has expired. Please sign in again."
+            };
+        }
+
+        if (status === 403) {
+            return {
+                code: "forbidden",
+                status,
+                message: "You do not have permission to save or validate this bot."
+            };
+        }
+
+        if (status === 405) {
+            return {
+                code: "method_not_allowed",
+                status,
+                message: "The deployed builder API is out of sync with this frontend. Please redeploy the backend."
+            };
+        }
+
+        if (status !== undefined && status >= 500) {
+            return {
+                code: "server_error",
+                status,
+                message: data?.error?.message ?? fallbackMessage
+            };
+        }
+
+        return {
+            code: "unknown",
+            status,
+            message: data?.error?.message ?? fallbackMessage
+        };
     }
 
     if (error instanceof Error && error.message) {
-        return error.message;
+        return {
+            code: "network_error",
+            message: error.message
+        };
     }
 
-    return fallbackMessage;
+    return {
+        code: "unknown",
+        message: fallbackMessage
+    };
 }
