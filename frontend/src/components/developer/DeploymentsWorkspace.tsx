@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import {
     CopyOutlined,
     LinkOutlined,
@@ -43,6 +42,10 @@ import {
 const { Paragraph, Text, Title } = Typography;
 const DEFAULT_THEME_COLOR = "#2563EB";
 
+interface DeploymentsWorkspaceProps {
+    requestedBotId?: string;
+}
+
 interface IDeploymentFormValues {
     name: string;
     allowedDomainsText: string;
@@ -50,10 +53,9 @@ interface IDeploymentFormValues {
     themeColor: string;
 }
 
-export function DeploymentsWorkspace() {
+export function DeploymentsWorkspace({ requestedBotId }: DeploymentsWorkspaceProps) {
     const { styles } = useStyles();
     const { notification, message } = App.useApp();
-    const searchParams = useSearchParams();
     const [form] = Form.useForm<IDeploymentFormValues>();
     const { bots, isPending: botsPending, isError: botsError, errorMessage: botsErrorMessage } = useBotState();
     const { getBots } = useBotActions();
@@ -65,8 +67,6 @@ export function DeploymentsWorkspace() {
     const [editingDeployment, setEditingDeployment] = useState<IDeploymentDefinition>();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [snippetByDeploymentId, setSnippetByDeploymentId] = useState<Record<string, string>>({});
-
-    const requestedBotId = searchParams.get("botId") ?? undefined;
 
     useEffect(() => {
         void getBots();
