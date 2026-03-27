@@ -69,7 +69,9 @@ export function BuilderSimulatorDrawer() {
                   className={
                     message.role === "user"
                       ? styles.simulatorUserBubble
-                      : styles.simulatorBotBubble
+                      : message.role === "system"
+                        ? styles.simulatorSystemBubble
+                        : styles.simulatorBotBubble
                   }
                 >
                   <span>{message.content}</span>
@@ -91,6 +93,7 @@ export function BuilderSimulatorDrawer() {
             <Tag color={runtime.awaitingInput ? "blue" : "default"}>
               {runtime.awaitingInput ? "Awaiting user input" : "Auto-running"}
             </Tag>
+            {runtime.awaitingInputMode ? <Tag>{runtime.awaitingInputMode}</Tag> : null}
             <Tag>{runtime.currentNodeId ?? "Complete"}</Tag>
           </Space>
         </div>
@@ -100,7 +103,7 @@ export function BuilderSimulatorDrawer() {
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder={
-              runtime.awaitingInput
+              runtime.awaitingInputMode === "question"
                 ? "Type a reply to continue the flow"
                 : "Input is available once the bot asks a question"
             }

@@ -35,23 +35,35 @@ export interface QuestionNodeConfig {
   variableName: string;
 }
 
+export type ConditionOperator =
+  | "equals"
+  | "contains"
+  | "startsWith"
+  | "endsWith"
+  | "isEmpty"
+  | "isNotEmpty";
+
 export interface ConditionRule {
   id: string;
-  source: "intent" | "variable";
-  operator: "equals" | "contains";
+  operator: ConditionOperator;
   value: string;
 }
 
 export interface ConditionNodeConfig {
   kind: "condition";
+  variableName: string;
   rules: ConditionRule[];
   fallbackLabel: string;
 }
 
+export type VariableOperation = "set" | "append" | "clear" | "copy";
+
 export interface VariableNodeConfig {
   kind: "variable";
   variableName: string;
+  operation?: VariableOperation;
   value: string;
+  sourceVariableName?: string;
 }
 
 export interface ApiNodeConfig {
@@ -155,5 +167,6 @@ export interface SimulatorState {
   messages: SimulatorMessage[];
   variables: Record<string, string>;
   awaitingInput: boolean;
+  awaitingInputMode?: "question";
   pendingQuestionVariable?: string;
 }
