@@ -30,6 +30,11 @@ import {
 import { AuthReducer } from "./reducer";
 import { getAxiosInstance } from "@/utils/axiosInstance";
 import { getAuthCookie, removeAuthCookie, setAuthCookie } from "@/utils/cookie";
+import {
+    removeTenantContext,
+    setTenantContext,
+    type ITenantContext
+} from "@/utils/tenant-context";
 
 interface AuthProviderProps {
     children: ReactNode;
@@ -49,7 +54,13 @@ interface IRegisterOutput {
     canLogin: boolean;
 }
 
+interface IIsTenantAvailableOutput {
+    state: number;
+    tenantId?: number;
+}
+
 const ACCOUNT_REGISTER_URL = "/api/services/app/Account/Register";
+const ACCOUNT_IS_TENANT_AVAILABLE_URL = "/api/services/app/Account/IsTenantAvailable";
 const SESSION_LOGIN_INFO_URL = "/api/services/app/Session/GetCurrentLoginInformations";
 const TOKEN_AUTH_URL = "/api/TokenAuth/Authenticate";
 const DEVELOPER_DASHBOARD_ROUTE = "/developer/dashboard";
@@ -75,6 +86,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 "We could not load your session."
             );
 
+            if (currentLoginInformations.tenant) {
+                setTenantContext({
+                    tenantId: currentLoginInformations.tenant.id,
+                    tenancyName: currentLoginInformations.tenant.tenancyName
+                });
+            } else {
+                removeTenantContext();
+            }
+
             dispatch(
                 fetchCurrentUserSuccess({
                     currentLoginInformations,
@@ -93,10 +113,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         dispatch(signInPending());
 
         try {
+            const tenantContext = await resolveTenantContext(input.tenancyName);
+            setTenantContext(tenantContext);
+
             const instance = getAxiosInstance();
             const response = await instance.post<IAbpAjaxResponse<IAuthTokenPayload>>(
                 TOKEN_AUTH_URL,
-                input
+                {
+                    userNameOrEmailAddress: input.userNameOrEmailAddress,
+                    password: input.password,
+                    rememberClient: input.rememberClient
+                },
+                {
+                    headers: {
+                        "Abp-TenantId": tenantContext.tenantId.toString()
+                    }
+                }
             );
 
             const auth = unwrapResponse(
@@ -125,12 +157,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         dispatch(signUpPending());
 
         try {
+            const tenantContext = await resolveTenantContext(input.tenancyName);
+            setTenantContext(tenantContext);
+
             const instance = getAxiosInstance();
             const response = await instance.post<IAbpAjaxResponse<IRegisterOutput>>(
                 ACCOUNT_REGISTER_URL,
                 {
-                    ...input,
+                    name: input.name,
+                    surname: input.surname,
+                    userName: input.userName,
+                    emailAddress: input.emailAddress,
+                    password: input.password,
                     captchaResponse: undefined
+                },
+                {
+                    headers: {
+                        "Abp-TenantId": tenantContext.tenantId.toString()
+                    }
                 }
             );
 
@@ -144,7 +188,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 await signIn({
                     userNameOrEmailAddress: input.emailAddress,
                     password: input.password,
-                    rememberClient: true
+                    rememberClient: true,
+                    tenancyName: input.tenancyName
                 });
             }
         } catch (error) {
@@ -157,6 +202,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const token = getAuthCookie();
 
         if (!token) {
+            removeTenantContext();
             dispatch(bootstrapAuthSuccess());
             return;
         }
@@ -168,12 +214,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             dispatch(bootstrapAuthSuccess());
         } catch (error) {
             removeAuthCookie();
+            removeTenantContext();
             dispatch(bootstrapAuthError());
         }
     };
 
     const signOut = (): void => {
         removeAuthCookie();
+        removeTenantContext();
         dispatch(signOutSuccess());
         router.push("/login");
     };
@@ -248,6 +296,44 @@ function toError(error: unknown, fallbackMessage: string): Error {
     }
 
     return new Error(fallbackMessage);
+}
+
+async function resolveTenantContext(tenancyName: string): Promise<ITenantContext> {
+    const normalizedTenancyName = tenancyName.trim();
+
+    if (!normalizedTenancyName) {
+        throw new Error("Please enter your workspace name.");
+    }
+
+    const instance = getAxiosInstance();
+    const response = await instance.post<IAbpAjaxResponse<IIsTenantAvailableOutput>>(
+        ACCOUNT_IS_TENANT_AVAILABLE_URL,
+        {
+            tenancyName: normalizedTenancyName
+        }
+    );
+
+    const result = unwrapResponse(
+        response.data,
+        "We could not resolve your workspace."
+    );
+
+    if (result.state === 1) {
+        throw new Error("We could not find that workspace. Check the workspace name and try again.");
+    }
+
+    if (result.state === 2) {
+        throw new Error("That workspace is inactive. Please contact your administrator.");
+    }
+
+    if (!result.tenantId) {
+        throw new Error("We could not resolve your workspace.");
+    }
+
+    return {
+        tenantId: result.tenantId,
+        tenancyName: normalizedTenancyName
+    };
 }
 
 function unwrapResponse<T>(payload: IAbpAjaxResponse<T> | T, fallbackMessage: string): T {

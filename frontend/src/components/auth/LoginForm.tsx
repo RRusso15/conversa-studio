@@ -7,6 +7,7 @@ import { useAuthActions } from "@/providers/authProvider";
 import { useStyles } from "./styles";
 
 export interface LoginFormValues {
+  tenancyName: string;
   email: string;
   password: string;
   rememberMe?: boolean;
@@ -28,6 +29,7 @@ export function LoginForm() {
         userNameOrEmailAddress: values.email,
         password: values.password,
         rememberClient: values.rememberMe ?? false,
+        tenancyName: values.tenancyName,
       });
       message.success("Signed in successfully.");
     } catch (error) {
@@ -57,6 +59,14 @@ export function LoginForm() {
         onFinish={handleSubmit}
         size="large"
       >
+        <Form.Item<LoginFormValues>
+          label="Workspace"
+          name="tenancyName"
+          rules={[{ required: true, message: "Please enter your workspace name." }]}
+        >
+          <Input placeholder="acme" autoComplete="organization" />
+        </Form.Item>
+
         <Form.Item<LoginFormValues>
           label="Email"
           name="email"
