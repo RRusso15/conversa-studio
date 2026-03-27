@@ -1,9 +1,14 @@
 "use strict";
 
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { getAuthCookie, removeAuthCookie } from "./cookie";
 
 let axiosInstance: ReturnType<typeof axios.create> | null = null;
+
+export interface IAxiosRedirectControlConfig extends InternalAxiosRequestConfig {
+    skipUnauthorizedRedirect?: boolean;
+    skipForbiddenRedirect?: boolean;
+}
 
 /**
  * Returns the shared Axios instance used for authenticated API calls.
@@ -41,8 +46,9 @@ export const getAxiosInstance = () => {
         (response) => response,
         (error: AxiosError) => {
             const status = error.response?.status;
+            const requestConfig = error.config as IAxiosRedirectControlConfig | undefined;
 
-            if (status === 401) {
+            if (status === 401 && !requestConfig?.skipUnauthorizedRedirect) {
                 removeAuthCookie();
 
                 if (typeof window !== "undefined") {
@@ -54,7 +60,7 @@ export const getAxiosInstance = () => {
                 }
             }
 
-            if (status === 403 && typeof window !== "undefined") {
+            if (status === 403 && !requestConfig?.skipForbiddenRedirect && typeof window !== "undefined") {
                 const currentPath = window.location.pathname;
 
                 if (!currentPath.startsWith("/unauthorized")) {

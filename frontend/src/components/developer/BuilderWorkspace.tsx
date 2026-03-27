@@ -8,6 +8,7 @@ import { BuilderCanvas } from "./builder/BuilderCanvas";
 import { BuilderPropertiesPanel } from "./builder/BuilderPropertiesPanel";
 import { BuilderSimulatorDrawer } from "./builder/BuilderSimulatorDrawer";
 import { BuilderToolbar } from "./builder/BuilderToolbar";
+import { BuilderValidationPanel } from "./builder/BuilderValidationPanel";
 import { NodePalette } from "./builder/NodePalette";
 import { useBuilderStyles } from "./builder/styles";
 import { useBotActions, useBotState } from "@/providers/botProvider";
@@ -33,10 +34,12 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     setSimulatorOpen,
     updateBotName,
     setValidationResults,
+    setSelectedEdge,
+    setSelectedNode,
     markSaved
   } = useBuilder();
   const { activeBot, saveStatus, errorMessage } = useBotState();
-  const { createBotDraft, updateBotDraft, validateBotDraft } = useBotActions();
+  const { createBotDraft, updateBotDraft, validateBotDraft, setSaveStatus } = useBotActions();
   const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const saveInFlightRef = useRef(false);
   const queuedSaveOriginRef = useRef<"autosave" | "manual" | undefined>(undefined);
@@ -66,10 +69,24 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     setValidationResults(localResults);
 
     if (localErrors.length > 0) {
+      setSaveStatus(
+        "validation_blocked",
+        localErrors.map((result) => result.message).join(" ")
+      );
+
+      const firstIssue = localErrors[0];
+      if (firstIssue?.relatedNodeId) {
+        setSelectedEdge(undefined);
+        setSelectedNode(firstIssue.relatedNodeId);
+      } else if (firstIssue?.relatedEdgeId) {
+        setSelectedNode(undefined);
+        setSelectedEdge(firstIssue.relatedEdgeId);
+      }
+
       if (origin === "manual") {
         notification.warning({
-          message: "Validation found issues",
-          description: `${localErrors.length} blocking issue${localErrors.length === 1 ? "" : "s"} found in the current graph.`
+          message: "Save blocked by validation",
+          description: localErrors.map((result) => result.message).join(" ")
         });
       }
       return;
@@ -80,21 +97,22 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     try {
       const botIdToPersist = persistedBotIdRef.current;
       const shouldCreate = !botIdToPersist;
-      const savedBot = shouldCreate
+      const mutationResult = shouldCreate
         ? await createBotDraft(graphSnapshot)
         : await updateBotDraft(botIdToPersist, graphSnapshot);
 
-      if (!savedBot) {
+      if (!mutationResult.bot) {
         queuedSaveOriginRef.current = undefined;
         if (origin === "manual") {
           notification.error({
             message: "Save failed",
-            description: errorMessage ?? "The bot could not be saved."
+            description: mutationResult.error?.message ?? errorMessage ?? "The bot could not be saved."
           });
         }
         return;
       }
 
+      const savedBot = mutationResult.bot;
       persistedBotIdRef.current = savedBot.id;
 
       const savedSnapshotKey = JSON.stringify(graphSnapshot);
@@ -153,10 +171,31 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
 
   const handleValidate = async () => {
     const localResults = runValidation();
-    const remoteResults = await validateBotDraft(state.graph);
+    const validationOutcome = await validateBotDraft(state.graph);
+    if (!validationOutcome.results) {
+      notification.error({
+        message: "Validation could not be completed",
+        description:
+          validationOutcome.error?.message ??
+          errorMessage ??
+          "The builder could not validate this bot with the backend."
+      });
+      return;
+    }
+
+    const remoteResults = validationOutcome.results;
     const mergedResults = mergeValidationResults(localResults, remoteResults);
     setValidationResults(mergedResults);
     const errors = mergedResults.filter((result) => result.severity === "error").length;
+    const firstIssue = mergedResults[0];
+
+    if (firstIssue?.relatedNodeId) {
+      setSelectedEdge(undefined);
+      setSelectedNode(firstIssue.relatedNodeId);
+    } else if (firstIssue?.relatedEdgeId) {
+      setSelectedNode(undefined);
+      setSelectedEdge(firstIssue.relatedEdgeId);
+    }
 
     notification[errors > 0 ? "warning" : "success"]({
       message: errors > 0 ? "Validation found issues" : "Validation passed",
@@ -190,7 +229,12 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
         </main>
 
         <aside className={styles.builderRightPanel}>
-          <BuilderPropertiesPanel compact={!screens.xl} />
+          <div className={styles.builderSideSection}>
+            <BuilderPropertiesPanel compact={!screens.xl} />
+          </div>
+          <div className={styles.builderSideSection}>
+            <BuilderValidationPanel />
+          </div>
         </aside>
       </div>
 

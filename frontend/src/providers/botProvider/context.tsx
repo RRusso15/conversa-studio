@@ -16,6 +16,30 @@ export interface IBotDefinition extends IBotSummary {
     graph: BotGraph;
 }
 
+export type BotRequestErrorCode =
+    | "unauthorized"
+    | "forbidden"
+    | "method_not_allowed"
+    | "server_error"
+    | "network_error"
+    | "unknown";
+
+export interface IBotRequestError {
+    code: BotRequestErrorCode;
+    message: string;
+    status?: number;
+}
+
+export interface IBotMutationResult {
+    bot?: IBotDefinition;
+    error?: IBotRequestError;
+}
+
+export interface IBotValidationOutcome {
+    results?: ValidationResult[];
+    error?: IBotRequestError;
+}
+
 export interface IBotStateContext {
     isPending: boolean;
     isSuccess: boolean;
@@ -23,8 +47,9 @@ export interface IBotStateContext {
     bots?: IBotSummary[];
     activeBot?: IBotDefinition;
     draftIdentity: "temporary" | "persisted";
-    saveStatus: "idle" | "saving" | "saved" | "error";
+    saveStatus: "idle" | "saving" | "saved" | "error" | "validation_blocked" | "permission_denied" | "api_mismatch";
     validationResults?: ValidationResult[];
+    errorCode?: BotRequestErrorCode;
     errorMessage?: string;
 }
 
@@ -32,9 +57,10 @@ export interface IBotActionContext {
     getBots: () => Promise<void>;
     getBot: (id: string) => Promise<IBotDefinition | undefined>;
     initializeNewBotDraft: () => Promise<IBotDefinition>;
-    createBotDraft: (graph: BotGraph) => Promise<IBotDefinition | undefined>;
-    updateBotDraft: (id: string, graph: BotGraph) => Promise<IBotDefinition | undefined>;
-    validateBotDraft: (graph: BotGraph) => Promise<ValidationResult[]>;
+    createBotDraft: (graph: BotGraph) => Promise<IBotMutationResult>;
+    updateBotDraft: (id: string, graph: BotGraph) => Promise<IBotMutationResult>;
+    validateBotDraft: (graph: BotGraph) => Promise<IBotValidationOutcome>;
+    setSaveStatus: (status: IBotStateContext["saveStatus"], errorMessage?: string) => void;
     clearActiveBot: () => void;
 }
 
@@ -66,9 +92,10 @@ export const INITIAL_ACTION_STATE: IBotActionContext = {
             edges: []
         }
     }),
-    createBotDraft: async () => undefined,
-    updateBotDraft: async () => undefined,
-    validateBotDraft: async () => [],
+    createBotDraft: async () => ({}),
+    updateBotDraft: async () => ({}),
+    validateBotDraft: async () => ({}),
+    setSaveStatus: () => undefined,
     clearActiveBot: () => undefined
 };
 

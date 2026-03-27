@@ -18,7 +18,7 @@ interface BuilderToolbarProps {
   botName: string;
   isDirty: boolean;
   validationCount: number;
-  saveStatus: "idle" | "saving" | "saved" | "error";
+  saveStatus: "idle" | "saving" | "saved" | "error" | "validation_blocked" | "permission_denied" | "api_mismatch";
   onBotNameChange: (name: string) => void;
   onSave: () => void;
   onValidate: () => void;
@@ -43,6 +43,18 @@ export function BuilderToolbar({
 
     if (saveStatus === "error") {
       return <Tag color="error">Save failed</Tag>;
+    }
+
+    if (saveStatus === "validation_blocked") {
+      return <Tag color="warning">Validation blocked</Tag>;
+    }
+
+    if (saveStatus === "permission_denied") {
+      return <Tag color="error">Permission denied</Tag>;
+    }
+
+    if (saveStatus === "api_mismatch") {
+      return <Tag color="magenta">API mismatch</Tag>;
     }
 
     if (isDirty) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { createAction } from "redux-actions";
-import type { IBotDefinition, IBotStateContext, IBotSummary } from "./context";
+import type { IBotDefinition, IBotRequestError, IBotStateContext, IBotSummary } from "./context";
 import type { ValidationResult } from "@/components/developer/builder/types";
 
 type IBotStatePatch = Partial<IBotStateContext>;
@@ -29,6 +29,8 @@ export enum BotActionEnums {
     validateBotDraftSuccess = "VALIDATE_BOT_DRAFT_SUCCESS",
     validateBotDraftError = "VALIDATE_BOT_DRAFT_ERROR",
 
+    setSaveStatus = "SET_SAVE_STATUS",
+
     clearActiveBot = "CLEAR_ACTIVE_BOT"
 }
 
@@ -39,6 +41,7 @@ export const getBotsPending = createAction<IBotStatePatch>(
         isSuccess: false,
         isError: false,
         saveStatus: "idle",
+        errorCode: undefined,
         errorMessage: undefined
     })
 );
@@ -50,17 +53,19 @@ export const getBotsSuccess = createAction<IBotStatePatch, IBotSummary[]>(
         isSuccess: true,
         isError: false,
         bots,
+        errorCode: undefined,
         errorMessage: undefined
     })
 );
 
-export const getBotsError = createAction<IBotStatePatch, string | undefined>(
+export const getBotsError = createAction<IBotStatePatch, IBotRequestError | undefined>(
     BotActionEnums.getBotsError,
-    (errorMessage) => ({
+    (error) => ({
         isPending: false,
         isSuccess: false,
         isError: true,
-        errorMessage
+        errorCode: error?.code,
+        errorMessage: error?.message
     })
 );
 
@@ -70,6 +75,7 @@ export const getBotPending = createAction<IBotStatePatch>(
         isPending: true,
         isSuccess: false,
         isError: false,
+        errorCode: undefined,
         errorMessage: undefined
     })
 );
@@ -83,17 +89,19 @@ export const getBotSuccess = createAction<IBotStatePatch, IBotDefinition>(
         activeBot,
         draftIdentity: "persisted",
         saveStatus: "idle",
+        errorCode: undefined,
         errorMessage: undefined
     })
 );
 
-export const getBotError = createAction<IBotStatePatch, string | undefined>(
+export const getBotError = createAction<IBotStatePatch, IBotRequestError | undefined>(
     BotActionEnums.getBotError,
-    (errorMessage) => ({
+    (error) => ({
         isPending: false,
         isSuccess: false,
         isError: true,
-        errorMessage
+        errorCode: error?.code,
+        errorMessage: error?.message
     })
 );
 
@@ -106,6 +114,7 @@ export const initializeNewBotDraft = createAction<IBotStatePatch, IBotDefinition
         activeBot,
         draftIdentity: "temporary",
         saveStatus: "idle",
+        errorCode: undefined,
         errorMessage: undefined
     })
 );
@@ -115,6 +124,7 @@ export const createBotDraftPending = createAction<IBotStatePatch>(
     () => ({
         saveStatus: "saving",
         isError: false,
+        errorCode: undefined,
         errorMessage: undefined
     })
 );
@@ -128,18 +138,25 @@ export const createBotDraftSuccess = createAction<IBotStatePatch, IBotDefinition
         activeBot,
         draftIdentity: "persisted",
         saveStatus: "saved",
+        errorCode: undefined,
         errorMessage: undefined
     })
 );
 
-export const createBotDraftError = createAction<IBotStatePatch, string | undefined>(
+export const createBotDraftError = createAction<IBotStatePatch, IBotRequestError | undefined>(
     BotActionEnums.createBotDraftError,
-    (errorMessage) => ({
+    (error) => ({
         isPending: false,
         isSuccess: false,
         isError: true,
-        saveStatus: "error",
-        errorMessage
+        saveStatus:
+            error?.code === "forbidden"
+                ? "permission_denied"
+                : error?.code === "method_not_allowed"
+                    ? "api_mismatch"
+                    : "error",
+        errorCode: error?.code,
+        errorMessage: error?.message
     })
 );
 
@@ -148,6 +165,7 @@ export const updateBotDraftPending = createAction<IBotStatePatch>(
     () => ({
         saveStatus: "saving",
         isError: false,
+        errorCode: undefined,
         errorMessage: undefined
     })
 );
@@ -161,18 +179,25 @@ export const updateBotDraftSuccess = createAction<IBotStatePatch, IBotDefinition
         activeBot,
         draftIdentity: "persisted",
         saveStatus: "saved",
+        errorCode: undefined,
         errorMessage: undefined
     })
 );
 
-export const updateBotDraftError = createAction<IBotStatePatch, string | undefined>(
+export const updateBotDraftError = createAction<IBotStatePatch, IBotRequestError | undefined>(
     BotActionEnums.updateBotDraftError,
-    (errorMessage) => ({
+    (error) => ({
         isPending: false,
         isSuccess: false,
         isError: true,
-        saveStatus: "error",
-        errorMessage
+        saveStatus:
+            error?.code === "forbidden"
+                ? "permission_denied"
+                : error?.code === "method_not_allowed"
+                    ? "api_mismatch"
+                    : "error",
+        errorCode: error?.code,
+        errorMessage: error?.message
     })
 );
 
@@ -182,6 +207,7 @@ export const validateBotDraftPending = createAction<IBotStatePatch>(
         isPending: true,
         isSuccess: false,
         isError: false,
+        errorCode: undefined,
         errorMessage: undefined
     })
 );
@@ -193,17 +219,29 @@ export const validateBotDraftSuccess = createAction<IBotStatePatch, ValidationRe
         isSuccess: true,
         isError: false,
         validationResults,
+        errorCode: undefined,
         errorMessage: undefined
     })
 );
 
-export const validateBotDraftError = createAction<IBotStatePatch, string | undefined>(
+export const validateBotDraftError = createAction<IBotStatePatch, IBotRequestError | undefined>(
     BotActionEnums.validateBotDraftError,
-    (errorMessage) => ({
+    (error) => ({
         isPending: false,
         isSuccess: false,
         isError: true,
-        errorMessage
+        errorCode: error?.code,
+        errorMessage: error?.message
+    })
+);
+
+export const setSaveStatus = createAction<IBotStatePatch, { status: IBotStateContext["saveStatus"]; errorMessage?: string }>(
+    BotActionEnums.setSaveStatus,
+    ({ status, errorMessage }) => ({
+        saveStatus: status,
+        isError: status === "error" || status === "validation_blocked" || status === "permission_denied" || status === "api_mismatch",
+        errorMessage,
+        errorCode: undefined
     })
 );
 
@@ -214,6 +252,7 @@ export const clearActiveBot = createAction<IBotStatePatch>(
         draftIdentity: "temporary",
         saveStatus: "idle",
         validationResults: undefined,
+        errorCode: undefined,
         errorMessage: undefined
     })
 );
