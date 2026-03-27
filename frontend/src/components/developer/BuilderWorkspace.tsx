@@ -51,7 +51,7 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
   }, [state.graph]);
 
   useEffect(() => {
-    persistedBotIdRef.current = activeBot?.id;
+    persistedBotIdRef.current = toPersistedBotId(activeBot?.id);
   }, [activeBot?.id]);
 
   const persistGraph = async (
@@ -95,7 +95,7 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     saveInFlightRef.current = true;
 
     try {
-      const botIdToPersist = persistedBotIdRef.current;
+      const botIdToPersist = toPersistedBotId(persistedBotIdRef.current);
       const shouldCreate = !botIdToPersist;
       const mutationResult = shouldCreate
         ? await createBotDraft(graphSnapshot)
@@ -290,6 +290,18 @@ export function BuilderWorkspace({ botId }: BuilderWorkspaceProps) {
       <BuilderWorkspaceContent botId={botId} />
     </BuilderProvider>
   );
+}
+
+function toPersistedBotId(id?: string): string | undefined {
+  if (!id) {
+    return undefined;
+  }
+
+  return isGuid(id) ? id : undefined;
+}
+
+function isGuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function mergeValidationResults(
