@@ -79,14 +79,20 @@ public abstract class ConversaStudioWebTestBase : AbpAspNetCoreIntegratedTestBas
     /// <returns></returns>
     protected async Task AuthenticateAsync(string tenancyName, AuthenticateModel input)
     {
-        if (tenancyName.IsNullOrWhiteSpace())
+        Client.DefaultRequestHeaders.Remove("Abp-TenantId");
+
+        if (!tenancyName.IsNullOrWhiteSpace())
         {
             var tenant = UsingDbContext(context => context.Tenants.FirstOrDefault(t => t.TenancyName == tenancyName));
             if (tenant != null)
             {
                 AbpSession.TenantId = tenant.Id;
-                Client.DefaultRequestHeaders.Add("Abp-TenantId", tenant.Id.ToString());  //Set TenantId
+                Client.DefaultRequestHeaders.Add("Abp-TenantId", tenant.Id.ToString());
             }
+        }
+        else
+        {
+            AbpSession.TenantId = null;
         }
 
         var response = await Client.PostAsync("/api/TokenAuth/Authenticate",
