@@ -4,10 +4,12 @@ import { createStyles } from "antd-style";
 
 export const useBuilderStyles = createStyles(({ css, token }) => ({
   builderShell: css`
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+    height: 100dvh;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
     background: ${token.colorBgContainer};
+    overflow: hidden;
+    min-width: 0;
   `,
   builderHeader: css`
     position: sticky;
@@ -28,10 +30,11 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
     }
   `,
   builderMain: css`
-    flex: 1;
     display: grid;
     grid-template-columns: 280px minmax(0, 1fr) 360px;
     min-height: 0;
+    min-width: 0;
+    overflow: hidden;
 
     @media (max-width: 1320px) {
       grid-template-columns: 260px minmax(0, 1fr) 340px;
@@ -49,6 +52,7 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
     border-inline-end: 1px solid ${token.colorBorder};
     background: ${token.colorBgContainer};
     overflow: auto;
+    min-width: 0;
 
     @media (max-width: 900px) {
       border-inline-end: none;
@@ -58,9 +62,11 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
   builderRightPanel: css`
     border-inline-start: 1px solid ${token.colorBorder};
     background: ${token.colorBgContainer};
-    overflow: auto;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
 
     @media (max-width: 1100px) {
       grid-column: 1 / -1;
@@ -69,23 +75,44 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
     }
   `,
   builderSideSection: css`
-    flex: 1;
+    flex: 1 1 0;
     min-height: 0;
+    overflow: auto;
 
     &:not(:last-child) {
       border-bottom: 1px solid ${token.colorBorder};
     }
   `,
+  builderPropertiesSection: css`
+    flex: 1 1 50%;
+    min-height: 0;
+    overflow: auto;
+  `,
+  builderValidationSection: css`
+    flex: 1 1 50%;
+    min-height: 0;
+    overflow: auto;
+  `,
   builderCanvasRegion: css`
     position: relative;
-    min-height: 760px;
+    min-height: 0;
+    height: 100%;
     background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+    min-width: 0;
+    overflow: hidden;
   `,
   builderCanvas: css`
     position: relative;
     width: 100%;
     height: 100%;
-    min-height: 760px;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+
+    .react-flow {
+      width: 100%;
+      height: 100%;
+    }
 
     .react-flow__renderer,
     .react-flow__pane {
@@ -106,11 +133,13 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
     pointer-events: none;
   `,
   panelCard: css`
-    min-height: 100%;
+    min-height: auto;
+    height: 100%;
     border-radius: 0 !important;
     box-shadow: none !important;
   `,
   validationPanelCard: css`
+    height: 100%;
     border-radius: 0 !important;
     box-shadow: none !important;
   `,
@@ -190,6 +219,10 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #64748b;
+  `,
+  flowNodeMenuIcon: css`
+    color: #94a3b8;
+    font-size: 12px;
   `,
   flowNodeBody: css`
     padding: 12px 16px 16px;
@@ -287,5 +320,14 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
     border-radius: 18px 18px 6px 18px;
     background: #111111;
     color: #ffffff;
+  `,
+  simulatorSystemBubble: css`
+    max-width: 92%;
+    margin-inline: auto;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: #f8fafc;
+    color: #475569;
+    border: 1px dashed ${token.colorBorder};
   `,
 }));

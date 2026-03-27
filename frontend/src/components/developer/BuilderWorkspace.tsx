@@ -34,8 +34,6 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     setSimulatorOpen,
     updateBotName,
     setValidationResults,
-    setSelectedEdge,
-    setSelectedNode,
     markSaved
   } = useBuilder();
   const { activeBot, saveStatus, errorMessage } = useBotState();
@@ -73,15 +71,6 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
         "validation_blocked",
         localErrors.map((result) => result.message).join(" ")
       );
-
-      const firstIssue = localErrors[0];
-      if (firstIssue?.relatedNodeId) {
-        setSelectedEdge(undefined);
-        setSelectedNode(firstIssue.relatedNodeId);
-      } else if (firstIssue?.relatedEdgeId) {
-        setSelectedNode(undefined);
-        setSelectedEdge(firstIssue.relatedEdgeId);
-      }
 
       if (origin === "manual") {
         notification.warning({
@@ -187,15 +176,6 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     const mergedResults = mergeValidationResults(localResults, remoteResults);
     setValidationResults(mergedResults);
     const errors = mergedResults.filter((result) => result.severity === "error").length;
-    const firstIssue = mergedResults[0];
-
-    if (firstIssue?.relatedNodeId) {
-      setSelectedEdge(undefined);
-      setSelectedNode(firstIssue.relatedNodeId);
-    } else if (firstIssue?.relatedEdgeId) {
-      setSelectedNode(undefined);
-      setSelectedEdge(firstIssue.relatedEdgeId);
-    }
 
     notification[errors > 0 ? "warning" : "success"]({
       message: errors > 0 ? "Validation found issues" : "Validation passed",
@@ -229,10 +209,10 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
         </main>
 
         <aside className={styles.builderRightPanel}>
-          <div className={styles.builderSideSection}>
+          <div className={`${styles.builderSideSection} ${styles.builderPropertiesSection}`}>
             <BuilderPropertiesPanel compact={!screens.xl} />
           </div>
-          <div className={styles.builderSideSection}>
+          <div className={`${styles.builderSideSection} ${styles.builderValidationSection}`}>
             <BuilderValidationPanel />
           </div>
         </aside>
