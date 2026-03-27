@@ -3,6 +3,7 @@
 import { DeleteOutlined, MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   Alert,
+  AutoComplete,
   Button,
   Card,
   Empty,
@@ -17,6 +18,11 @@ import { useBuilder } from "./builder-context";
 import type { ConditionRule } from "./types";
 import { nodeRegistry } from "./node-registry";
 import { useBuilderStyles } from "./styles";
+import {
+  collectGraphVariables,
+  conditionOperatorRequiresValue,
+  getVariableOperation,
+} from "./variable-utils";
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -48,7 +54,7 @@ export function BuilderPropertiesPanel({
         <Space direction="vertical" size="middle" style={{ width: "100%" }}>
           <Text strong>{selectedEdge.label ?? "Flow connection"}</Text>
           <Text type="secondary">
-            {selectedEdge.source} → {selectedEdge.target}
+            {selectedEdge.source} to {selectedEdge.target}
           </Text>
           <Button danger icon={<DeleteOutlined />} onClick={deleteSelectedEdge}>
             Remove connection
@@ -73,6 +79,10 @@ export function BuilderPropertiesPanel({
   const validationIssues = state.validationResults.filter(
     (result) => result.relatedNodeId === selectedNode.id,
   );
+  const availableVariables = collectGraphVariables(state.graph);
+  const variableOptions = availableVariables.map((variableName) => ({
+    value: variableName,
+  }));
   const messageConfig = selectedNode.config.kind === "message" ? selectedNode.config : undefined;
   const questionConfig =
     selectedNode.config.kind === "question" ? selectedNode.config : undefined;
@@ -124,7 +134,6 @@ export function BuilderPropertiesPanel({
         ...conditionConfig.rules,
         {
           id: `rule-${conditionConfig.rules.length + 1}`,
-          source: "intent",
           operator: "equals",
           value: "",
         },
@@ -173,18 +182,21 @@ export function BuilderPropertiesPanel({
           </Form.Item>
 
           {messageConfig ? (
-            <Form.Item label="Message Text">
-              <Input.TextArea
-                rows={4}
-                value={messageConfig.message}
-                onChange={(event) =>
-                  updateNodeConfig(selectedNode.id, {
-                    ...messageConfig,
-                    message: event.target.value,
-                  })
-                }
-              />
-            </Form.Item>
+            <>
+              <Form.Item label="Message Text">
+                <Input.TextArea
+                  rows={4}
+                  value={messageConfig.message}
+                  onChange={(event) =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...messageConfig,
+                      message: event.target.value,
+                    })
+                  }
+                />
+              </Form.Item>
+              <VariableHints availableVariables={availableVariables} />
+            </>
           ) : null}
 
           {questionConfig ? (
@@ -202,23 +214,50 @@ export function BuilderPropertiesPanel({
                 />
               </Form.Item>
               <Form.Item label="Capture Variable">
-                <Input
+                <AutoComplete
                   value={questionConfig.variableName}
-                  onChange={(event) =>
+                  options={variableOptions}
+                  placeholder="customerName"
+                  onChange={(value) =>
                     updateNodeConfig(selectedNode.id, {
                       ...questionConfig,
-                      variableName: event.target.value,
+                      variableName: value,
                     })
                   }
                 />
               </Form.Item>
+              <VariableHints availableVariables={availableVariables} />
             </>
           ) : null}
 
           {conditionConfig ? (
             <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+              <Form.Item label="Source Variable" required>
+                <AutoComplete
+                  value={conditionConfig.variableName}
+                  options={variableOptions}
+                  placeholder="userIntent"
+                  onChange={(value) =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...conditionConfig,
+                      variableName: value,
+                    })
+                  }
+                />
+              </Form.Item>
+
+              {availableVariables.length === 0 ? (
+                <Alert
+                  type="info"
+                  showIcon
+                  message="Variables required"
+                  description="Create or capture a variable first using Question or Variable nodes."
+                />
+              ) : null}
+
               <Form.Item label="Condition Paths">
                 <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <Text type="secondary">Rules are evaluated top to bottom.</Text>
                   {conditionConfig.rules.map((rule, index) => (
                     <Card
                       key={rule.id}
@@ -235,26 +274,31 @@ export function BuilderPropertiesPanel({
                     >
                       <Space direction="vertical" size="small" style={{ width: "100%" }}>
                         <Select
-                          value={rule.source}
-                          options={[
-                            { label: "Intent", value: "intent" },
-                            { label: "Variable", value: "variable" },
-                          ]}
-                          onChange={(value) => updateRule(index, { source: value })}
-                        />
-                        <Select
                           value={rule.operator}
                           options={[
                             { label: "Equals", value: "equals" },
                             { label: "Contains", value: "contains" },
+                            { label: "Starts with", value: "startsWith" },
+                            { label: "Ends with", value: "endsWith" },
+                            { label: "Is empty", value: "isEmpty" },
+                            { label: "Is not empty", value: "isNotEmpty" },
                           ]}
                           onChange={(value) => updateRule(index, { operator: value })}
                         />
-                        <Input
-                          value={rule.value}
-                          placeholder="Value to compare against"
-                          onChange={(event) => updateRule(index, { value: event.target.value })}
-                        />
+                        {conditionOperatorRequiresValue(rule.operator) ? (
+                          <Input
+                            value={rule.value}
+                            placeholder="Value to compare against"
+                            onChange={(event) => updateRule(index, { value: event.target.value })}
+                          />
+                        ) : (
+                          <Text type="secondary">
+                            This operator ignores the comparison value.
+                          </Text>
+                        )}
+                        <Text type="secondary">
+                          {`${conditionConfig.variableName || "selectedVariable"} ${rule.operator} ${conditionOperatorRequiresValue(rule.operator) ? rule.value || "value" : ""}`.trim()}
+                        </Text>
                       </Space>
                     </Card>
                   ))}
@@ -281,27 +325,64 @@ export function BuilderPropertiesPanel({
           {variableConfig ? (
             <>
               <Form.Item label="Variable Name">
-                <Input
+                <AutoComplete
                   value={variableConfig.variableName}
-                  onChange={(event) =>
+                  options={variableOptions}
+                  placeholder="customerName"
+                  onChange={(value) =>
                     updateNodeConfig(selectedNode.id, {
                       ...variableConfig,
-                      variableName: event.target.value,
+                      variableName: value,
                     })
                   }
                 />
               </Form.Item>
-              <Form.Item label="Assigned Value">
-                <Input
-                  value={variableConfig.value}
-                  onChange={(event) =>
+              <Form.Item label="Operation">
+                <Select
+                  value={getVariableOperation(variableConfig)}
+                  options={[
+                    { label: "Set", value: "set" },
+                    { label: "Append", value: "append" },
+                    { label: "Clear", value: "clear" },
+                    { label: "Copy from variable", value: "copy" },
+                  ]}
+                  onChange={(value) =>
                     updateNodeConfig(selectedNode.id, {
                       ...variableConfig,
-                      value: event.target.value,
+                      operation: value,
                     })
                   }
                 />
               </Form.Item>
+              {getVariableOperation(variableConfig) === "copy" ? (
+                <Form.Item label="Source Variable">
+                  <AutoComplete
+                    value={variableConfig.sourceVariableName}
+                    options={variableOptions.filter((option) => option.value !== variableConfig.variableName)}
+                    placeholder="customerName"
+                    onChange={(value) =>
+                      updateNodeConfig(selectedNode.id, {
+                        ...variableConfig,
+                        sourceVariableName: value,
+                      })
+                    }
+                  />
+                </Form.Item>
+              ) : null}
+              {getVariableOperation(variableConfig) !== "clear" && getVariableOperation(variableConfig) !== "copy" ? (
+                <Form.Item label="Assigned Value">
+                  <Input
+                    value={variableConfig.value}
+                    onChange={(event) =>
+                      updateNodeConfig(selectedNode.id, {
+                        ...variableConfig,
+                        value: event.target.value,
+                      })
+                    }
+                  />
+                </Form.Item>
+              ) : null}
+              <VariableHints availableVariables={availableVariables} />
             </>
           ) : null}
 
@@ -362,6 +443,7 @@ export function BuilderPropertiesPanel({
                   }
                 />
               </Form.Item>
+              <VariableHints availableVariables={availableVariables} />
             </>
           ) : null}
 
@@ -395,18 +477,21 @@ export function BuilderPropertiesPanel({
           ) : null}
 
           {endConfig ? (
-            <Form.Item label="Closing Text">
-              <Input.TextArea
-                rows={3}
-                value={endConfig.closingText}
-                onChange={(event) =>
-                  updateNodeConfig(selectedNode.id, {
-                    ...endConfig,
-                    closingText: event.target.value,
-                  })
-                }
-              />
-            </Form.Item>
+            <>
+              <Form.Item label="Closing Text">
+                <Input.TextArea
+                  rows={3}
+                  value={endConfig.closingText}
+                  onChange={(event) =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...endConfig,
+                      closingText: event.target.value,
+                    })
+                  }
+                />
+              </Form.Item>
+              <VariableHints availableVariables={availableVariables} />
+            </>
           ) : null}
         </Form>
 
@@ -420,5 +505,35 @@ export function BuilderPropertiesPanel({
         </Button>
       </Space>
     </Card>
+  );
+}
+
+interface VariableHintsProps {
+  availableVariables: string[];
+}
+
+function VariableHints({ availableVariables }: VariableHintsProps) {
+  if (availableVariables.length === 0) {
+    return (
+      <Alert
+        type="info"
+        showIcon
+        message="Variables"
+        description="Use {variableName} syntax in text fields after you create variables with question or variable nodes."
+      />
+    );
+  }
+
+  return (
+    <Space direction="vertical" size={8} style={{ width: "100%" }}>
+      <Text type="secondary">
+        Use {"{variableName}"} syntax in text fields to render saved responses.
+      </Text>
+      <Space wrap>
+        {availableVariables.map((variableName) => (
+          <Tag key={variableName}>{`{${variableName}}`}</Tag>
+        ))}
+      </Space>
+    </Space>
   );
 }

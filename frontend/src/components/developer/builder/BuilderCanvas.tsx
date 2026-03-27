@@ -26,6 +26,7 @@ function BuilderCanvasInner() {
   const {
     reactFlowNodes,
     reactFlowEdges,
+    state,
     onNodesChange,
     onConnect,
     onEdgesChange,
@@ -33,6 +34,11 @@ function BuilderCanvasInner() {
     setSelectedEdge,
     addNode,
   } = useBuilder();
+  const invalidNodeIds = new Set(
+    state.validationResults
+      .filter((result) => result.severity === "error" && result.relatedNodeId)
+      .map((result) => result.relatedNodeId as string),
+  );
 
   const handleDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
@@ -98,6 +104,17 @@ function BuilderCanvasInner() {
         <MiniMap
           zoomable
           pannable
+          nodeColor={(node) =>
+            invalidNodeIds.has(node.id)
+              ? "#FCA5A5"
+              : "#E5E7EB"
+          }
+          nodeStrokeColor={(node) =>
+            invalidNodeIds.has(node.id)
+              ? "#DC2626"
+              : "#94A3B8"
+          }
+          nodeBorderRadius={10}
           style={{
             background: "#FFFFFF",
             border: "1px solid #E5E7EB",

@@ -37,9 +37,15 @@ import type {
     NodeType,
     SimulatorMessage,
     SimulatorState,
+    VariableNodeConfig,
     ValidationResult
 } from "../types";
 import { validateBotGraph } from "../validation";
+import {
+    getVariableOperation,
+    interpolateVariableText,
+    normalizeConditionConfig
+} from "../variable-utils";
 
 interface BuilderProviderProps {
     graph: BotGraph;
@@ -50,7 +56,7 @@ interface BuilderProviderProps {
  * Provides in-editor builder state separate from persisted bot CRUD workflows.
  */
 export function BuilderProvider({ graph, children }: BuilderProviderProps) {
-    const [state, dispatch] = useReducer(BuilderReducer, graph, createInitialState);
+    const [state, dispatch] = useReducer(BuilderReducer, normalizeGraph(graph), createInitialState);
 
     const reactFlowNodes = useMemo(
         () =>
@@ -105,11 +111,59 @@ export function BuilderProvider({ graph, children }: BuilderProviderProps) {
         updateBotName: (name: string) => {
             dispatch(updateMetadataAction({ name }));
         },
+        duplicateNode: (nodeId: string) => {
+            const nodeToDuplicate = state.graph.nodes.find((node) => node.id === nodeId);
+
+            if (!nodeToDuplicate) {
+                return;
+            }
+
+            const duplicateNodeId = createNodeId(nodeToDuplicate.type, state.graph.nodes);
+            const duplicateNode: BotNode = {
+                ...nodeToDuplicate,
+                id: duplicateNodeId,
+                label: `${nodeToDuplicate.label} Copy`,
+                position: {
+                    x: nodeToDuplicate.position.x + 48,
+                    y: nodeToDuplicate.position.y + 48
+                },
+                config: cloneNodeConfig(nodeToDuplicate.config)
+            };
+
+            dispatch(addNodeAction(duplicateNode));
+        },
+        duplicateSelectedNode: () => {
+            if (!selectedNode) {
+                return;
+            }
+
+            const duplicateNodeId = createNodeId(selectedNode.type, state.graph.nodes);
+            const duplicateNode: BotNode = {
+                ...selectedNode,
+                id: duplicateNodeId,
+                label: `${selectedNode.label} Copy`,
+                position: {
+                    x: selectedNode.position.x + 48,
+                    y: selectedNode.position.y + 48
+                },
+                config: cloneNodeConfig(selectedNode.config)
+            };
+
+            dispatch(addNodeAction(duplicateNode));
+        },
+        deleteNode: (nodeId: string) => {
+            const nodeToDelete = state.graph.nodes.find((node) => node.id === nodeId);
+
+            if (!nodeToDelete || nodeToDelete.type === "start") {
+                return;
+            }
+
+            dispatch(deleteNodeAction({ id: nodeToDelete.id }));
+        },
         deleteSelectedNode: () => {
             if (!selectedNode || selectedNode.type === "start") {
                 return;
             }
-
             dispatch(deleteNodeAction({ id: selectedNode.id }));
         },
         deleteSelectedEdge: () => {
@@ -173,13 +227,13 @@ export function BuilderProvider({ graph, children }: BuilderProviderProps) {
             dispatch(setValidationResultsAction(results));
         },
         markSaved: (nextGraph: BotGraph) => {
-            dispatch(markSavedAction(nextGraph));
+            dispatch(markSavedAction(normalizeGraph(nextGraph)));
         },
         setSimulatorOpen: (open: boolean) => {
             dispatch(setSimulatorOpenAction(open));
         },
         resetGraph: (nextGraph: BotGraph) => {
-            dispatch(resetGraphAction(nextGraph));
+            dispatch(resetGraphAction(normalizeGraph(nextGraph)));
         }
     }), [reactFlowEdges, selectedNode, state.graph, state.graph.nodes]);
 
@@ -242,6 +296,7 @@ function toReactFlowNode(node: BotNode, isSelected: boolean): Node {
         type: "botNode",
         position: node.position,
         data: {
+            nodeId: node.id,
             label: node.label,
             nodeType: node.type,
             definition: nodeRegistry[node.type],
@@ -304,7 +359,13 @@ function findEdgeLabel(sourceNode?: BotNode, sourceHandle?: string) {
     }
 
     const ruleIndex = Number(sourceHandle?.replace("rule-", ""));
-    return sourceNode.config.rules[ruleIndex]?.value || "Rule";
+    const rule = sourceNode.config.rules[ruleIndex];
+
+    if (!rule) {
+        return "Rule";
+    }
+
+    return rule.value.trim() || rule.operator;
 }
 
 function getNodeSummary(node: BotNode) {
@@ -319,10 +380,10 @@ function getNodeSummary(node: BotNode) {
             const ruleCount = node.config.rules.length;
             const ruleSummary = ruleCount === 1 ? "1 branch rule" : `${ruleCount} branch rules`;
             const fallbackLabel = node.config.fallbackLabel.trim() || "Fallback";
-            return `${ruleSummary} with ${fallbackLabel.toLowerCase()} as the default route.`;
+            return `Checks ${node.config.variableName || "a variable"}. ${ruleSummary} with ${fallbackLabel.toLowerCase()} as the default route.`;
         }
         case "variable":
-            return `Set ${node.config.variableName || "a variable"} to ${node.config.value || "a value"}.`;
+            return getVariableSummary(node.config);
         case "api":
             return `${node.config.method} ${node.config.endpoint}`;
         case "ai":
@@ -354,6 +415,14 @@ function createUserMessage(content: string): SimulatorMessage {
     return {
         id: `message-${Math.random().toString(36).slice(2, 10)}`,
         role: "user",
+        content
+    };
+}
+
+function createSystemMessage(content: string): SimulatorMessage {
+    return {
+        id: `message-${Math.random().toString(36).slice(2, 10)}`,
+        role: "system",
         content
     };
 }
@@ -396,17 +465,17 @@ export function advanceSimulator(
     if (userInput && simulator.awaitingInput) {
         nextState.messages.push(createUserMessage(userInput));
 
-        if (simulator.pendingQuestionVariable) {
+        if (simulator.awaitingInputMode === "question" && simulator.pendingQuestionVariable) {
             nextState.variables[simulator.pendingQuestionVariable] = userInput;
+            const outgoing = getOutgoingEdges(graph, simulator.currentNodeId || "");
+            nextState = {
+                ...nextState,
+                awaitingInput: false,
+                awaitingInputMode: undefined,
+                pendingQuestionVariable: undefined,
+                currentNodeId: outgoing[0]?.target
+            };
         }
-
-        const outgoing = getOutgoingEdges(graph, simulator.currentNodeId || "");
-        nextState = {
-            ...nextState,
-            awaitingInput: false,
-            pendingQuestionVariable: undefined,
-            currentNodeId: outgoing[0]?.target
-        };
     }
 
     let safetyCounter = 0;
@@ -427,53 +496,76 @@ export function advanceSimulator(
         }
 
         if (currentNode.type === "message" && currentNode.config.kind === "message") {
-            nextState.messages.push(createBotMessage(currentNode.config.message));
+            nextState.messages.push(createBotMessage(
+                interpolateVariableText(currentNode.config.message, nextState.variables)
+            ));
             nextState.currentNodeId = outgoing[0]?.target;
             continue;
         }
 
         if (currentNode.type === "question" && currentNode.config.kind === "question") {
-            nextState.messages.push(createBotMessage(currentNode.config.question));
+            nextState.messages.push(createBotMessage(
+                interpolateVariableText(currentNode.config.question, nextState.variables)
+            ));
             nextState.awaitingInput = true;
+            nextState.awaitingInputMode = "question";
             nextState.pendingQuestionVariable = currentNode.config.variableName;
             break;
         }
 
         if (currentNode.type === "condition" && currentNode.config.kind === "condition") {
-            const value = nextState.variables.intent || nextState.variables.userIntent || "";
-            const matchedIndex = currentNode.config.rules.findIndex((rule) => {
-                if (rule.operator === "contains") {
-                    return value.toLowerCase().includes(rule.value.toLowerCase());
-                }
-
-                return value.toLowerCase() === rule.value.toLowerCase();
-            });
-
-            const chosenHandle = matchedIndex >= 0 ? `rule-${matchedIndex}` : "fallback";
-            const chosenEdge =
-                outgoing.find((edge) => edge.sourceHandle === chosenHandle) || outgoing[0];
-
-            if (matchedIndex < 0) {
-                nextState.messages.push(
-                    createBotMessage(
-                        `No direct match was found. Taking the ${currentNode.config.fallbackLabel.toLowerCase()} route.`
-                    )
-                );
-            }
-
-            nextState.currentNodeId = chosenEdge?.target;
+            nextState = resolveConditionVariableMode(
+                graph,
+                nextState,
+                currentNode as BotNode & { config: Extract<NodeConfig, { kind: "condition" }> }
+            );
             continue;
         }
 
-        if (currentNode.type === "ai" && currentNode.config.kind === "ai") {
-            nextState.messages.push(createBotMessage(currentNode.config.fallbackText));
+        if (currentNode.type === "variable" && currentNode.config.kind === "variable") {
+            nextState.variables = applyVariableNode(currentNode.config, nextState.variables);
+            nextState.messages.push(createSystemMessage(getVariableSummary(currentNode.config)));
             nextState.currentNodeId = outgoing[0]?.target;
             continue;
         }
 
+        if (currentNode.type === "ai" && currentNode.config.kind === "ai") {
+            nextState.messages.push(createBotMessage(
+                interpolateVariableText(currentNode.config.fallbackText, nextState.variables)
+            ));
+            nextState.currentNodeId = outgoing[0]?.target;
+            continue;
+        }
+
+        if (currentNode.type === "api" && currentNode.config.kind === "api") {
+            nextState.messages.push(createSystemMessage(
+                `Preview API call: ${currentNode.config.method} ${currentNode.config.endpoint}`
+            ));
+            nextState.currentNodeId = outgoing[0]?.target;
+            continue;
+        }
+
+        if (currentNode.type === "code" && currentNode.config.kind === "code") {
+            nextState.messages.push(createSystemMessage(
+                "Preview logic node executed. Custom code runtime is not simulated yet."
+            ));
+            nextState.currentNodeId = outgoing[0]?.target;
+            continue;
+        }
+
+        if (currentNode.type === "handoff" && currentNode.config.kind === "handoff") {
+            nextState.messages.push(createBotMessage(
+                `Connecting you to ${currentNode.config.queueName || "a human agent"}.`
+            ));
+            nextState.currentNodeId = undefined;
+            break;
+        }
+
         if (currentNode.type === "end" && currentNode.config.kind === "end") {
             if (currentNode.config.closingText) {
-                nextState.messages.push(createBotMessage(currentNode.config.closingText));
+                nextState.messages.push(createBotMessage(
+                    interpolateVariableText(currentNode.config.closingText, nextState.variables)
+                ));
             }
             nextState.currentNodeId = undefined;
             break;
@@ -486,4 +578,119 @@ export function advanceSimulator(
     }
 
     return nextState;
+}
+
+function cloneNodeConfig<TConfig extends NodeConfig>(config: TConfig): TConfig {
+    return JSON.parse(JSON.stringify(config)) as TConfig;
+}
+
+function getVariableSummary(config: VariableNodeConfig): string {
+    const variableName = config.variableName || "a variable";
+
+    switch (getVariableOperation(config)) {
+        case "append":
+            return `Append ${config.value || "a value"} to ${variableName}.`;
+        case "clear":
+            return `Clear ${variableName}.`;
+        case "copy":
+            return `Copy ${config.sourceVariableName || "another variable"} into ${variableName}.`;
+        case "set":
+        default:
+            return `Set ${variableName} to ${config.value || "a value"}.`;
+    }
+}
+
+function applyVariableNode(
+    config: VariableNodeConfig,
+    variables: Record<string, string>
+): Record<string, string> {
+    const nextVariables = { ...variables };
+    const variableName = config.variableName.trim();
+
+    if (!variableName) {
+        return nextVariables;
+    }
+
+    switch (getVariableOperation(config)) {
+        case "append":
+            nextVariables[variableName] = `${nextVariables[variableName] ?? ""}${interpolateVariableText(config.value, variables)}`;
+            return nextVariables;
+        case "clear":
+            nextVariables[variableName] = "";
+            return nextVariables;
+        case "copy":
+            nextVariables[variableName] = variables[config.sourceVariableName?.trim() ?? ""] ?? "";
+            return nextVariables;
+        case "set":
+        default:
+            nextVariables[variableName] = interpolateVariableText(config.value, variables);
+            return nextVariables;
+    }
+}
+
+function resolveConditionVariableMode(
+    graph: BotGraph,
+    simulator: SimulatorState,
+    node: BotNode & { config: Extract<NodeConfig, { kind: "condition" }> }
+): SimulatorState {
+    const variableValue = simulator.variables[node.config.variableName?.trim() ?? ""] ?? "";
+    const outgoing = getOutgoingEdges(graph, node.id);
+    const matchedIndex = node.config.rules.findIndex((rule) => matchesConditionRule(variableValue, rule.value, rule.operator));
+    const chosenHandle = matchedIndex >= 0 ? `rule-${matchedIndex}` : "fallback";
+    const chosenEdge = outgoing.find((edge) => edge.sourceHandle === chosenHandle) || outgoing[0];
+
+    return {
+        ...simulator,
+        messages: matchedIndex >= 0
+            ? simulator.messages
+            : [
+                ...simulator.messages,
+                createSystemMessage(`No rule matched ${node.config.variableName || "the selected variable"}. Using the fallback route.`)
+            ],
+        awaitingInput: false,
+        awaitingInputMode: undefined,
+        pendingQuestionVariable: undefined,
+        currentNodeId: chosenEdge?.target
+    };
+}
+
+function matchesConditionRule(
+    inputValue: string,
+    ruleValue: string,
+    operator: "equals" | "contains" | "startsWith" | "endsWith" | "isEmpty" | "isNotEmpty"
+): boolean {
+    const normalizedInput = inputValue.toLowerCase();
+    const normalizedRuleValue = ruleValue.toLowerCase();
+
+    switch (operator) {
+        case "contains":
+            return normalizedInput.includes(normalizedRuleValue);
+        case "startsWith":
+            return normalizedInput.startsWith(normalizedRuleValue);
+        case "endsWith":
+            return normalizedInput.endsWith(normalizedRuleValue);
+        case "isEmpty":
+            return normalizedInput.trim().length === 0;
+        case "isNotEmpty":
+            return normalizedInput.trim().length > 0;
+        case "equals":
+        default:
+            return normalizedInput === normalizedRuleValue;
+    }
+}
+
+function normalizeGraph(graph: BotGraph): BotGraph {
+    return {
+        ...graph,
+        nodes: graph.nodes.map((node) => {
+            if (node.config.kind !== "condition") {
+                return node;
+            }
+
+            return {
+                ...node,
+                config: normalizeConditionConfig(node.config)
+            };
+        })
+    };
 }

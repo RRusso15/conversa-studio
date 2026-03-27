@@ -2,7 +2,8 @@
 
 import type { CSSProperties } from "react";
 import { Handle, Position } from "reactflow";
-import { Space, Tag, Typography } from "antd";
+import { CopyOutlined, DeleteOutlined, MoreOutlined } from "@ant-design/icons";
+import { Dropdown, Space, Tag, Typography } from "antd";
 import { useBuilderStyles } from "./styles";
 import type {
   ConditionNodeConfig,
@@ -10,11 +11,14 @@ import type {
   NodeDefinition,
   NodeType,
 } from "./types";
+import { useBuilder } from "./builder-context";
+import { conditionOperatorRequiresValue } from "./variable-utils";
 
 const { Text } = Typography;
 
 interface BuilderNodeCardProps {
   data: {
+    nodeId: string;
     label: string;
     nodeType: NodeType;
     definition: NodeDefinition;
@@ -26,6 +30,7 @@ interface BuilderNodeCardProps {
 
 export function BuilderNodeCard({ data }: BuilderNodeCardProps) {
   const { styles } = useBuilderStyles();
+  const { duplicateNode, deleteNode, setSelectedNode } = useBuilder();
   const isCondition = data.nodeType === "condition";
   const conditionConfig =
     data.config.kind === "condition" ? data.config : undefined;
@@ -33,16 +38,47 @@ export function BuilderNodeCard({ data }: BuilderNodeCardProps) {
   const conditionPaths = getConditionPaths(conditionConfig);
 
   return (
-    <div
-      className={styles.flowNode}
-      data-selected={data.isSelected}
-      data-node-type={data.nodeType}
-      style={
-        {
-          "--builder-node-accent": data.definition.accentColor,
-        } as CSSProperties
-      }
+    <Dropdown
+      trigger={["contextMenu"]}
+      menu={{
+        items: [
+          {
+            key: "duplicate",
+            icon: <CopyOutlined />,
+            label: "Duplicate node",
+          },
+          {
+            key: "delete",
+            icon: <DeleteOutlined />,
+            label: "Delete node",
+            danger: true,
+            disabled: data.nodeType === "start",
+          },
+        ],
+        onClick: ({ key }) => {
+          setSelectedNode(data.nodeId);
+
+          if (key === "duplicate") {
+            duplicateNode(data.nodeId);
+          }
+
+          if (key === "delete") {
+            deleteNode(data.nodeId);
+          }
+        },
+      }}
     >
+      <div
+        className={styles.flowNode}
+        data-selected={data.isSelected}
+        data-node-type={data.nodeType}
+        onContextMenu={() => setSelectedNode(data.nodeId)}
+        style={
+          {
+            "--builder-node-accent": data.definition.accentColor,
+          } as CSSProperties
+        }
+      >
       {data.nodeType !== "start" ? (
         <Handle type="target" position={Position.Top} className={styles.flowHandle} />
       ) : null}
@@ -56,6 +92,7 @@ export function BuilderNodeCard({ data }: BuilderNodeCardProps) {
             <Text className={styles.flowNodeMeta}>
               {getNodeMetaLabel(data.nodeType)}
             </Text>
+            <MoreOutlined className={styles.flowNodeMenuIcon} />
           </Space>
         </div>
       </div>
@@ -84,7 +121,8 @@ export function BuilderNodeCard({ data }: BuilderNodeCardProps) {
       ) : (
         <Handle type="source" position={Position.Bottom} className={styles.flowHandle} />
       )}
-    </div>
+      </div>
+    </Dropdown>
   );
 }
 
@@ -131,7 +169,9 @@ function getConditionPaths(
   const rulePaths = conditionConfig.rules.map((rule, index) => ({
     id: `rule-${index}`,
     label: rule.value.trim() || `Rule ${index + 1}`,
-    rule: `${rule.source} ${rule.operator} ${rule.value.trim() || "value"}`,
+    rule: conditionOperatorRequiresValue(rule.operator)
+      ? `${conditionConfig.variableName || "variable"} ${rule.operator} ${rule.value.trim() || "value"}`.trim()
+      : `${conditionConfig.variableName || "variable"} ${rule.operator}`.trim(),
   }));
 
   return [
@@ -139,7 +179,7 @@ function getConditionPaths(
     {
       id: "fallback",
       label: conditionConfig.fallbackLabel.trim() || "Fallback",
-      rule: "Default path when no rule matches",
+      rule: "Default path when no rule matches the selected variable",
     },
   ];
 }

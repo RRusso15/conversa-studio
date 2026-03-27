@@ -1,4 +1,11 @@
 import type { BotGraph, ValidationResult } from "./types";
+import {
+  conditionOperatorRequiresValue,
+  collectGraphVariables,
+  extractVariableReferences,
+  getNodeTextTemplates,
+  getVariableOperation,
+} from "./variable-utils";
 
 function traverseReachableNodes(graph: BotGraph, startNodeId: string) {
   const visited = new Set<string>();
@@ -36,6 +43,7 @@ export function validateBotGraph(graph: BotGraph): ValidationResult[] {
   const nodeIds = new Set(graph.nodes.map((node) => node.id));
   const startNodes = graph.nodes.filter((node) => node.type === "start");
   const endNodes = graph.nodes.filter((node) => node.type === "end");
+  const definedVariables = new Set(collectGraphVariables(graph));
 
   if (startNodes.length !== 1) {
     results.push({
@@ -106,11 +114,138 @@ export function validateBotGraph(graph: BotGraph): ValidationResult[] {
     }
 
     if (node.type === "condition" && node.config.kind === "condition") {
-      if (node.config.rules.length === 0 && !node.config.fallbackLabel.trim()) {
+      const outgoingEdges = graph.edges.filter((edge) => edge.source === node.id);
+
+      if (node.config.rules.length === 0) {
         results.push({
           id: `condition-rules-${node.id}`,
           severity: "error",
-          message: "Condition nodes require at least one rule or fallback path.",
+          message: "Condition nodes require at least one rule.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      if (!node.config.variableName.trim()) {
+        results.push({
+          id: `condition-variable-${node.id}`,
+          severity: "error",
+          message: "Condition nodes require a source variable.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      if (
+        node.config.variableName.trim() &&
+        !definedVariables.has(node.config.variableName.trim())
+      ) {
+        results.push({
+          id: `condition-variable-unknown-${node.id}`,
+          severity: "error",
+          message: `Condition source variable "${node.config.variableName}" does not exist in this graph yet.`,
+          relatedNodeId: node.id,
+        });
+      }
+
+      const duplicateHandles = outgoingEdges.reduce<Map<string, number>>((map, edge) => {
+        const sourceHandle = edge.sourceHandle || "";
+        map.set(sourceHandle, (map.get(sourceHandle) ?? 0) + 1);
+        return map;
+      }, new Map<string, number>());
+
+      duplicateHandles.forEach((count, sourceHandle) => {
+        if (count <= 1) {
+          return;
+        }
+
+        results.push({
+          id: `condition-duplicate-handle-${node.id}-${sourceHandle || "default"}`,
+          severity: "warning",
+          message: sourceHandle === "fallback"
+            ? "Fallback route has multiple outgoing edges. Only one edge should leave the fallback handle."
+            : `Condition rule handle "${sourceHandle}" has multiple outgoing edges. Only one edge should leave each rule handle.`,
+          relatedNodeId: node.id,
+        });
+      });
+
+      const seenRules = new Set<string>();
+
+      node.config.rules.forEach((rule, index) => {
+        const requiresValue = conditionOperatorRequiresValue(rule.operator);
+        const normalizedRuleSignature = `${rule.operator}:${rule.value.trim().toLowerCase()}`;
+        const hasOutgoingRuleEdge = outgoingEdges.some(
+          (edge) => edge.sourceHandle === `rule-${index}`,
+        );
+
+        if (requiresValue && !rule.value.trim()) {
+          results.push({
+            id: `condition-rule-value-${node.id}-${index}`,
+            severity: "error",
+            message: `Rule ${index + 1} requires a value.`,
+            relatedNodeId: node.id,
+          });
+        }
+
+        if (seenRules.has(normalizedRuleSignature)) {
+          results.push({
+            id: `condition-rule-duplicate-${node.id}-${index}`,
+            severity: "warning",
+            message: `Rule ${index + 1} duplicates an earlier rule and may never be reached.`,
+            relatedNodeId: node.id,
+          });
+        } else {
+          seenRules.add(normalizedRuleSignature);
+        }
+
+        if (!hasOutgoingRuleEdge) {
+          results.push({
+            id: `condition-rule-edge-${node.id}-${index}`,
+            severity: "warning",
+            message: `Rule ${index + 1} does not have an outgoing edge.`,
+            relatedNodeId: node.id,
+          });
+        }
+      });
+
+      const hasFallbackEdge = outgoingEdges.some((edge) => edge.sourceHandle === "fallback");
+
+      if (!hasFallbackEdge) {
+        results.push({
+          id: `condition-fallback-edge-${node.id}`,
+          severity: "warning",
+          message: "Fallback route does not have an outgoing edge.",
+          relatedNodeId: node.id,
+        });
+      }
+    }
+
+    if (node.type === "variable" && node.config.kind === "variable") {
+      if (!node.config.variableName.trim()) {
+        results.push({
+          id: `variable-name-${node.id}`,
+          severity: "error",
+          message: "Variable nodes require a target variable name.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      if (getVariableOperation(node.config) === "copy" && !node.config.sourceVariableName?.trim()) {
+        results.push({
+          id: `variable-copy-source-${node.id}`,
+          severity: "error",
+          message: "Copy operations require a source variable.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      if (
+        getVariableOperation(node.config) === "copy" &&
+        node.config.sourceVariableName?.trim() &&
+        !definedVariables.has(node.config.sourceVariableName.trim())
+      ) {
+        results.push({
+          id: `variable-copy-unknown-${node.id}`,
+          severity: "error",
+          message: `Source variable "${node.config.sourceVariableName}" does not exist in this graph yet.`,
           relatedNodeId: node.id,
         });
       }
@@ -124,6 +259,19 @@ export function validateBotGraph(graph: BotGraph): ValidationResult[] {
         relatedNodeId: node.id,
       });
     }
+
+    getNodeTextTemplates(node.config).forEach((template, index) => {
+      extractVariableReferences(template).forEach((variableName) => {
+        if (!definedVariables.has(variableName)) {
+          results.push({
+            id: `unknown-variable-${node.id}-${index}-${variableName}`,
+            severity: "error",
+            message: `Variable "${variableName}" is referenced before it is defined.`,
+            relatedNodeId: node.id,
+          });
+        }
+      });
+    });
   });
 
   if (endNodes.length === 0) {

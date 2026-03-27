@@ -49,15 +49,15 @@ export const nodeRegistry: Record<NodeType, NodeDefinition> = {
   condition: {
     type: "condition",
     label: "Condition",
-    description: "Branch based on variables or detected intent.",
+    description: "Branch based on a captured or computed variable.",
     icon: <BranchesOutlined />,
     accentColor: "#D97706",
     defaultConfig: () => ({
       kind: "condition",
+      variableName: "",
       rules: [
         {
           id: "condition-rule-1",
-          source: "intent",
           operator: "equals",
           value: "faq",
         },
@@ -74,7 +74,9 @@ export const nodeRegistry: Record<NodeType, NodeDefinition> = {
     defaultConfig: () => ({
       kind: "variable",
       variableName: "customerName",
+      operation: "set",
       value: "",
+      sourceVariableName: "",
     }),
   },
   api: {
