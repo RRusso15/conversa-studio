@@ -3,9 +3,15 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Abp.Application.Services.Dto;
+using Abp.Authorization;
 using Abp.UI;
+using ConversaStudio.Authorization.Accounts;
+using ConversaStudio.Authorization.Accounts.Dto;
 using ConversaStudio.Services.Bots;
 using ConversaStudio.Services.Bots.Dto;
+using ConversaStudio.Authorization;
+using ConversaStudio.Authorization.Roles;
+using ConversaStudio.Authorization.Users;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using Xunit;
@@ -97,6 +103,53 @@ public class BotDefinitionAppService_Tests : ConversaStudioTestBase
             });
 
         output.Items.ShouldContain(result => result.Severity == "error");
+    }
+
+    [Fact]
+    public async Task Registered_Tenant_Developer_Should_Inherit_Bot_Permission_Without_Admin_Role()
+    {
+        LoginAsHostAdmin();
+        var tenantId = UsingDbContext(context => context.Tenants.Single(tenant => tenant.TenancyName == Abp.MultiTenancy.AbpTenantBase.DefaultTenantName).Id);
+
+        User createdUser = null;
+
+        using (UsingTenantId(tenantId))
+        {
+            var accountAppService = Resolve<IAccountAppService>();
+            await accountAppService.Register(new RegisterInput
+            {
+                Name = "Tenant",
+                Surname = "Developer",
+                EmailAddress = "developer.permission@conversa.test",
+                UserName = "developer.permission@conversa.test",
+                Password = "Password1"
+            });
+        }
+
+        createdUser = await UsingDbContextAsync(async context =>
+            await context.Users.SingleAsync(user => user.EmailAddress == "developer.permission@conversa.test"));
+
+        createdUser.ShouldNotBeNull();
+
+        await UsingDbContextAsync(async context =>
+        {
+            var roleIds = await context.UserRoles
+                .Where(userRole => userRole.UserId == createdUser.Id)
+                .Select(userRole => userRole.RoleId)
+                .ToListAsync();
+
+            var roles = await context.Roles
+                .Where(role => roleIds.Contains(role.Id))
+                .Select(role => role.Name)
+                .ToListAsync();
+
+            roles.ShouldContain(StaticRoleNames.Tenants.Developer);
+            roles.ShouldNotContain(StaticRoleNames.Tenants.Admin);
+        });
+
+        LoginAsTenant(Abp.MultiTenancy.AbpTenantBase.DefaultTenantName, createdUser.UserName);
+        var permissionChecker = Resolve<IPermissionChecker>();
+        (await permissionChecker.IsGrantedAsync(PermissionNames.Pages_Bots)).ShouldBeTrue();
     }
 
     private static BotGraphDto CreateGraph(string id, string name)
