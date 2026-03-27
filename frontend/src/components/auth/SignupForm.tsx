@@ -7,6 +7,7 @@ import { useAuthActions } from "@/providers/authProvider";
 import { useStyles } from "./styles";
 
 export interface SignupFormValues {
+  tenancyName: string;
   fullName: string;
   email: string;
   password: string;
@@ -32,6 +33,7 @@ export function SignupForm() {
         userName: values.email,
         emailAddress: values.email,
         password: values.password,
+        tenancyName: values.tenancyName,
       });
 
       message.success(
@@ -64,6 +66,14 @@ export function SignupForm() {
         onFinish={handleSubmit}
         size="large"
       >
+        <Form.Item<SignupFormValues>
+          label="Workspace"
+          name="tenancyName"
+          rules={[{ required: true, message: "Please enter your workspace name." }]}
+        >
+          <Input placeholder="acme" autoComplete="organization" />
+        </Form.Item>
+
         <Form.Item<SignupFormValues>
           label="Full name"
           name="fullName"

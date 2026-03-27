@@ -2,6 +2,7 @@
 
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { getAuthCookie, removeAuthCookie } from "./cookie";
+import { getTenantContext, removeTenantContext } from "./tenant-context";
 
 let axiosInstance: ReturnType<typeof axios.create> | null = null;
 
@@ -33,10 +34,16 @@ export const getAxiosInstance = () => {
 
     axiosInstance.interceptors.request.use((config) => {
         const token = getAuthCookie();
+        const tenantContext = getTenantContext();
 
         if (token) {
             config.headers = config.headers ?? {};
             config.headers.Authorization = `Bearer ${token}`;
+        }
+
+        if (tenantContext) {
+            config.headers = config.headers ?? {};
+            config.headers["Abp-TenantId"] = tenantContext.tenantId.toString();
         }
 
         return config;
@@ -50,6 +57,7 @@ export const getAxiosInstance = () => {
 
             if (status === 401 && !requestConfig?.skipUnauthorizedRedirect) {
                 removeAuthCookie();
+                removeTenantContext();
 
                 if (typeof window !== "undefined") {
                     const currentPath = window.location.pathname;
