@@ -24,9 +24,17 @@ public static class SeedHelper
         // Host seed
         new InitialHostDbBuilder(context).Create();
 
-        // Default tenant seed (in host database).
+        // Tenant seed (in host database).
         new DefaultTenantBuilder(context).Create();
-        new TenantRoleAndUserBuilder(context, 1).Create();
+
+        var tenantIds = context.Tenants
+            .Select(tenant => tenant.Id)
+            .ToList();
+
+        foreach (var tenantId in tenantIds)
+        {
+            new TenantRoleAndUserBuilder(context, tenantId).Create();
+        }
     }
 
     private static void WithDbContext<TDbContext>(IIocResolver iocResolver, Action<TDbContext> contextAction)

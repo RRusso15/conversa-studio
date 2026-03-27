@@ -7,6 +7,7 @@ using Abp.IdentityFramework;
 using Abp.Linq.Extensions;
 using Abp.MultiTenancy;
 using Abp.Runtime.Security;
+using Abp.Authorization.Roles;
 using ConversaStudio.Authorization;
 using ConversaStudio.Authorization.Roles;
 using ConversaStudio.Authorization.Users;
@@ -74,6 +75,9 @@ public class TenantAppService : AsyncCrudAppService<Tenant, TenantDto, int, Page
 
             await CurrentUnitOfWork.SaveChangesAsync(); // To get static role ids
 
+            var developerRole = await EnsureDeveloperRoleAsync(tenant.Id);
+            await GrantDeveloperBotPermissionAsync(tenant.Id, developerRole);
+
             // Grant all permissions to admin role
             var adminRole = _roleManager.Roles.Single(r => r.Name == StaticRoleNames.Tenants.Admin);
             await _roleManager.GrantAllPermissionsAsync(adminRole);
@@ -90,6 +94,46 @@ public class TenantAppService : AsyncCrudAppService<Tenant, TenantDto, int, Page
         }
 
         return MapToEntityDto(tenant);
+    }
+
+    private async Task<Role> EnsureDeveloperRoleAsync(int tenantId)
+    {
+        var developerRole = await _roleManager.Roles
+            .FirstOrDefaultAsync(role => role.TenantId == tenantId && role.Name == StaticRoleNames.Tenants.Developer);
+
+        if (developerRole == null)
+        {
+            developerRole = new Role(tenantId, StaticRoleNames.Tenants.Developer, StaticRoleNames.Tenants.Developer)
+            {
+                IsStatic = true,
+                IsDefault = true
+            };
+
+            CheckErrors(await _roleManager.CreateAsync(developerRole));
+            await CurrentUnitOfWork.SaveChangesAsync();
+            return developerRole;
+        }
+
+        if (!developerRole.IsDefault)
+        {
+            developerRole.IsDefault = true;
+            CheckErrors(await _roleManager.UpdateAsync(developerRole));
+            await CurrentUnitOfWork.SaveChangesAsync();
+        }
+
+        return developerRole;
+    }
+
+    private async Task GrantDeveloperBotPermissionAsync(int tenantId, Role developerRole)
+    {
+        var hasPermission = await _roleManager.IsGrantedAsync(developerRole, PermissionNames.Pages_Bots);
+        if (hasPermission)
+        {
+            return;
+        }
+
+        await _roleManager.GrantPermissionAsync(developerRole, PermissionNames.Pages_Bots);
+        await CurrentUnitOfWork.SaveChangesAsync();
     }
 
     protected override IQueryable<Tenant> CreateFilteredQuery(PagedTenantResultRequestDto input)
@@ -125,4 +169,3 @@ public class TenantAppService : AsyncCrudAppService<Tenant, TenantDto, int, Page
         identityResult.CheckErrors(LocalizationManager);
     }
 }
-
