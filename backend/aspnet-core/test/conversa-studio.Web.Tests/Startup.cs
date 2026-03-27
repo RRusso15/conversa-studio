@@ -5,8 +5,7 @@ using ConversaStudio.Authentication.JwtBearer;
 using ConversaStudio.Configuration;
 using ConversaStudio.EntityFrameworkCore;
 using ConversaStudio.Identity;
-using ConversaStudio.Web.Resources;
-using ConversaStudio.Web.Startup;
+using ConversaStudio.Web.Host.Startup;
 using Castle.MicroKernel.Registration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -32,11 +31,10 @@ public class Startup
         services.AddEntityFrameworkInMemoryDatabase();
 
         services.AddMvc();
+        services.AddAntiforgery();
 
         IdentityRegistrar.Register(services);
         AuthConfigurer.Configure(services, _appConfiguration);
-
-        services.AddScoped<IWebResourceManager, WebResourceManager>();
 
         //Configure Abp and Dependency Injection
         return services.AddAbp<ConversaStudioWebTestModule>(options =>

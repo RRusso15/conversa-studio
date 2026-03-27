@@ -3,13 +3,13 @@ using Abp.AspNetCore.TestBase;
 using Abp.Modules;
 using Abp.Reflection.Extensions;
 using ConversaStudio.EntityFrameworkCore;
-using ConversaStudio.Web.Startup;
+using ConversaStudio.Web.Host.Startup;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 
 namespace ConversaStudio.Web.Tests;
 
 [DependsOn(
-    typeof(ConversaStudioWebMvcModule),
+    typeof(ConversaStudioWebHostModule),
     typeof(AbpAspNetCoreTestBaseModule)
 )]
 public class ConversaStudioWebTestModule : AbpModule
@@ -32,6 +32,6 @@ public class ConversaStudioWebTestModule : AbpModule
     public override void PostInitialize()
     {
         IocManager.Resolve<ApplicationPartManager>()
-            .AddApplicationPartsIfNotAddedBefore(typeof(ConversaStudioWebMvcModule).Assembly);
+            .AddApplicationPartsIfNotAddedBefore(typeof(ConversaStudioWebHostModule).Assembly);
     }
 }

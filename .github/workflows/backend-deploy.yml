@@ -2,8 +2,6 @@ name: Backend Deploy
 
 on:
   push:
-    branches:
-      - main
     paths:
       - "backend/aspnet-core/**"
       - ".github/workflows/backend-deploy.yml"
@@ -42,6 +40,7 @@ jobs:
           if-no-files-found: error
 
       - name: Copy release archive to server
+        if: github.ref == 'refs/heads/main'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -52,6 +51,7 @@ jobs:
           target: "/tmp/"
 
       - name: Bootstrap and deploy on server
+        if: github.ref == 'refs/heads/main'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}

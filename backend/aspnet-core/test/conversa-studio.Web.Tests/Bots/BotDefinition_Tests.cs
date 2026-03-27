@@ -1,8 +1,9 @@
 using System.Net;
-using System.Net.Http.Headers;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Abp.MultiTenancy;
 using Abp.Web.Models;
 using ConversaStudio.Models.TokenAuth;
 using ConversaStudio.Services.Bots.Dto;
@@ -19,33 +20,14 @@ public class BotDefinition_Tests : ConversaStudioWebTestBase
     [Fact]
     public async Task Create_And_Get_Bot_Should_Work_For_Authenticated_Tenant_User()
     {
-        Client.DefaultRequestHeaders.Remove("Abp-TenantId");
-        Client.DefaultRequestHeaders.Add("Abp-TenantId", "1");
-
-        var authenticationResponse = await Client.PostAsync(
-            "/api/TokenAuth/Authenticate",
-            new StringContent(
-                JsonSerializer.Serialize(
-                    new AuthenticateModel
-                    {
-                        UserNameOrEmailAddress = "admin",
-                        Password = "123qwe",
-                        RememberClient = true
-                    }),
-                Encoding.UTF8,
-                "application/json"));
-
-        authenticationResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-
-        var authenticationPayload = JsonSerializer.Deserialize<AjaxResponse<AuthenticateResultModel>>(
-            await authenticationResponse.Content.ReadAsStringAsync(),
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-        authenticationPayload.ShouldNotBeNull();
-        authenticationPayload.Result.ShouldNotBeNull();
-
-        Client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", authenticationPayload.Result.AccessToken);
+        await AuthenticateAsync(
+            AbpTenantBase.DefaultTenantName,
+            new AuthenticateModel
+            {
+                UserNameOrEmailAddress = "admin",
+                Password = "123qwe",
+                RememberClient = true
+            });
 
         var createResponse = await Client.PostAsync(
             "/api/services/app/BotDefinition/CreateDraft",

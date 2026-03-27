@@ -6,7 +6,7 @@ using Abp.MultiTenancy;
 using Abp.Web.Models;
 using ConversaStudio.EntityFrameworkCore;
 using ConversaStudio.Models.TokenAuth;
-using ConversaStudio.Web.Startup;
+using ConversaStudio.Web.Host.Startup;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
 using Microsoft.AspNetCore.Hosting;
@@ -36,7 +36,7 @@ public abstract class ConversaStudioWebTestBase : AbpAspNetCoreIntegratedTestBas
         return base
             .CreateWebHostBuilder()
             .UseContentRoot(ContentRootFolder.Value)
-            .UseSetting(WebHostDefaults.ApplicationKey, typeof(ConversaStudioWebMvcModule).Assembly.FullName);
+            .UseSetting(WebHostDefaults.ApplicationKey, typeof(ConversaStudioWebHostModule).Assembly.FullName);
     }
 
     #region Get response
@@ -79,14 +79,20 @@ public abstract class ConversaStudioWebTestBase : AbpAspNetCoreIntegratedTestBas
     /// <returns></returns>
     protected async Task AuthenticateAsync(string tenancyName, AuthenticateModel input)
     {
-        if (tenancyName.IsNullOrWhiteSpace())
+        Client.DefaultRequestHeaders.Remove("Abp-TenantId");
+
+        if (!tenancyName.IsNullOrWhiteSpace())
         {
             var tenant = UsingDbContext(context => context.Tenants.FirstOrDefault(t => t.TenancyName == tenancyName));
             if (tenant != null)
             {
                 AbpSession.TenantId = tenant.Id;
-                Client.DefaultRequestHeaders.Add("Abp-TenantId", tenant.Id.ToString());  //Set TenantId
+                Client.DefaultRequestHeaders.Add("Abp-TenantId", tenant.Id.ToString());
             }
+        }
+        else
+        {
+            AbpSession.TenantId = null;
         }
 
         var response = await Client.PostAsync("/api/TokenAuth/Authenticate",
