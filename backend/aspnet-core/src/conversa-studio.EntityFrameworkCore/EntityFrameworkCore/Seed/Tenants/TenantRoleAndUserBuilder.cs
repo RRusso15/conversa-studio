@@ -39,6 +39,23 @@ public class TenantRoleAndUserBuilder
             _context.SaveChanges();
         }
 
+        var developerRole = _context.Roles.IgnoreQueryFilters().FirstOrDefault(r => r.TenantId == _tenantId && r.Name == StaticRoleNames.Tenants.Developer);
+        if (developerRole == null)
+        {
+            developerRole = _context.Roles.Add(
+                new Role(_tenantId, StaticRoleNames.Tenants.Developer, StaticRoleNames.Tenants.Developer)
+                {
+                    IsStatic = true,
+                    IsDefault = true
+                }).Entity;
+            _context.SaveChanges();
+        }
+        else if (!developerRole.IsDefault)
+        {
+            developerRole.IsDefault = true;
+            _context.SaveChanges();
+        }
+
         // Grant all permissions to admin role
 
         var grantedPermissions = _context.Permissions.IgnoreQueryFilters()
@@ -67,6 +84,8 @@ public class TenantRoleAndUserBuilder
             _context.SaveChanges();
         }
 
+        GrantPermissionIfMissing(developerRole, PermissionNames.Pages_Bots);
+
         // Admin user
 
         var adminUser = _context.Users.IgnoreQueryFilters().FirstOrDefault(u => u.TenantId == _tenantId && u.UserName == AbpUserBase.AdminUserName);
@@ -84,5 +103,26 @@ public class TenantRoleAndUserBuilder
             _context.UserRoles.Add(new UserRole(_tenantId, adminUser.Id, adminRole.Id));
             _context.SaveChanges();
         }
+    }
+
+    private void GrantPermissionIfMissing(Role role, string permissionName)
+    {
+        var permissionExists = _context.Permissions.IgnoreQueryFilters()
+            .OfType<RolePermissionSetting>()
+            .Any(permission => permission.TenantId == _tenantId && permission.RoleId == role.Id && permission.Name == permissionName);
+
+        if (permissionExists)
+        {
+            return;
+        }
+
+        _context.Permissions.Add(new RolePermissionSetting
+        {
+            TenantId = _tenantId,
+            Name = permissionName,
+            IsGranted = true,
+            RoleId = role.Id
+        });
+        _context.SaveChanges();
     }
 }
