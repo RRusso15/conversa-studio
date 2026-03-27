@@ -82,4 +82,24 @@ public class BotDefinition : FullAuditedEntity<Guid>
         Status = BotStatus.Draft;
         DraftVersion += 1;
     }
+
+    /// <summary>
+    /// Publishes the current draft snapshot for runtime/deployment use.
+    /// </summary>
+    public void PublishDraft()
+    {
+        PublishedGraphJson = DraftGraphJson;
+        PublishedVersion = DraftVersion;
+        Status = BotStatus.Published;
+    }
+
+    /// <summary>
+    /// Removes the currently published snapshot while preserving the draft.
+    /// </summary>
+    public void Unpublish()
+    {
+        PublishedGraphJson = string.Empty;
+        PublishedVersion = null;
+        Status = BotStatus.Draft;
+    }
 }

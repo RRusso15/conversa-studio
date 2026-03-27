@@ -88,6 +88,9 @@ export function ProjectsWorkspace() {
                       <Tag color={bot.status === "published" ? "green" : "default"}>
                         {bot.status === "published" ? "Published" : "Draft"}
                       </Tag>
+                      {bot.status === "published" && bot.hasUnpublishedChanges ? (
+                        <Tag color="gold">Unpublished changes</Tag>
+                      ) : null}
                       <Text type="secondary">
                         Edited {new Date(bot.updatedAt).toLocaleString()}
                       </Text>

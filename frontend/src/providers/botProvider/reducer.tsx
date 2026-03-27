@@ -100,6 +100,9 @@ function upsertBotSummary(
         id: activeBot.id,
         name: activeBot.name,
         status: activeBot.status,
+        draftVersion: activeBot.draftVersion,
+        publishedVersion: activeBot.publishedVersion,
+        hasUnpublishedChanges: activeBot.hasUnpublishedChanges,
         updatedAt: activeBot.updatedAt
     };
     const existingIndex = bots.findIndex((bot) => bot.id === activeBot.id);

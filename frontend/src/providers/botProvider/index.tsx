@@ -65,6 +65,9 @@ interface IApiBotSummary {
     id: string;
     name: string;
     status: string;
+    draftVersion: number;
+    publishedVersion?: number;
+    hasUnpublishedChanges: boolean;
     updatedAt: string;
 }
 
@@ -78,6 +81,7 @@ const GET_BOTS_URL = "/api/services/app/BotDefinition/GetBots";
 const GET_BOT_URL = "/api/services/app/BotDefinition/GetBot";
 const CREATE_DRAFT_URL = "/api/services/app/BotDefinition/CreateDraft";
 const UPDATE_DRAFT_URL = "/api/services/app/BotDefinition/UpdateDraft";
+const PUBLISH_DRAFT_URL = "/api/services/app/BotDefinition/PublishDraft";
 const VALIDATE_DRAFT_URL = "/api/services/app/BotDefinition/ValidateDraft";
 const BOT_REQUEST_CONFIG = {
     skipUnauthorizedRedirect: true,
@@ -132,6 +136,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
             status: "draft",
             updatedAt: new Date().toISOString(),
             draftVersion: 1,
+            hasUnpublishedChanges: true,
             graph
         };
 
@@ -210,6 +215,28 @@ export const BotProvider = ({ children }: BotProviderProps) => {
         }
     }, []);
 
+    const publishBotDraft = useCallback(async (id: string): Promise<IBotMutationResult> => {
+        dispatch(updateBotDraftPending());
+
+        try {
+            const instance = getAxiosInstance();
+            const response = await instance.post<IAbpAjaxResponse<IApiBotDefinition>>(
+                PUBLISH_DRAFT_URL,
+                { id },
+                BOT_REQUEST_CONFIG
+            );
+            const payload = mapDefinitionFromApi(
+                unwrapResponse(response.data, "We could not publish this bot.")
+            );
+            dispatch(updateBotDraftSuccess(payload));
+            return { bot: payload };
+        } catch (error) {
+            const requestError = toRequestError(error, "We could not publish this bot.");
+            dispatch(updateBotDraftError(requestError));
+            return { error: requestError };
+        }
+    }, []);
+
     const clearActiveBot = useCallback((): void => {
         dispatch(clearActiveBotAction());
     }, []);
@@ -224,6 +251,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
         initializeNewBotDraft,
         createBotDraft,
         updateBotDraft,
+        publishBotDraft,
         validateBotDraft,
         setSaveStatus,
         clearActiveBot
@@ -233,6 +261,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
         getBot,
         getBots,
         initializeNewBotDraft,
+        publishBotDraft,
         setSaveStatus,
         updateBotDraft,
         validateBotDraft
@@ -278,6 +307,9 @@ function mapSummaryFromApi(bot: IApiBotSummary): IBotSummary {
         id: bot.id,
         name: bot.name,
         status: normalizeStatus(bot.status),
+        draftVersion: bot.draftVersion,
+        publishedVersion: bot.publishedVersion,
+        hasUnpublishedChanges: bot.hasUnpublishedChanges,
         updatedAt: bot.updatedAt
     };
 }
@@ -290,6 +322,7 @@ function mapDefinitionFromApi(bot: IApiBotDefinition): IBotDefinition {
         updatedAt: bot.updatedAt,
         draftVersion: bot.draftVersion,
         publishedVersion: bot.publishedVersion,
+        hasUnpublishedChanges: bot.hasUnpublishedChanges,
         graph: {
             ...bot.graph,
             metadata: {

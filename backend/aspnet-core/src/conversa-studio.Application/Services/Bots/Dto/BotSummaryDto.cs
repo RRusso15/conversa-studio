@@ -23,6 +23,21 @@ public class BotSummaryDto
     public string Status { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the editable draft version.
+    /// </summary>
+    public int DraftVersion { get; set; }
+
+    /// <summary>
+    /// Gets or sets the published version when available.
+    /// </summary>
+    public int? PublishedVersion { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the current draft differs from the published snapshot.
+    /// </summary>
+    public bool HasUnpublishedChanges { get; set; }
+
+    /// <summary>
     /// Gets or sets the last updated timestamp.
     /// </summary>
     public DateTime UpdatedAt { get; set; }

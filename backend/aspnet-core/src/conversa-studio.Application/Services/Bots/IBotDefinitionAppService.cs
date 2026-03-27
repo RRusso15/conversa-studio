@@ -32,6 +32,16 @@ public interface IBotDefinitionAppService : IApplicationService
     Task<BotDefinitionDto> UpdateDraft(UpdateBotDefinitionRequest input);
 
     /// <summary>
+    /// Publishes the current draft snapshot.
+    /// </summary>
+    Task<BotDefinitionDto> PublishDraft(EntityDto<Guid> input);
+
+    /// <summary>
+    /// Removes the currently published snapshot.
+    /// </summary>
+    Task<BotDefinitionDto> Unpublish(EntityDto<Guid> input);
+
+    /// <summary>
     /// Validates a bot graph without persisting it.
     /// </summary>
     Task<ListResultDto<BotValidationResultDto>> ValidateDraft(ValidateBotDefinitionRequest input);
