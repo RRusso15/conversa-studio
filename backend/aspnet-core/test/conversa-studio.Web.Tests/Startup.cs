@@ -1,7 +1,6 @@
 using Abp.AspNetCore;
 using Abp.AspNetCore.TestBase;
 using Abp.Dependency;
-using Abp.Web.Resources;
 using ConversaStudio.Authentication.JwtBearer;
 using ConversaStudio.Configuration;
 using ConversaStudio.EntityFrameworkCore;
@@ -36,8 +35,6 @@ public class Startup
 
         IdentityRegistrar.Register(services);
         AuthConfigurer.Configure(services, _appConfiguration);
-
-        services.AddScoped<IWebResourceManager, WebResourceManager>();
 
         //Configure Abp and Dependency Injection
         return services.AddAbp<ConversaStudioWebTestModule>(options =>

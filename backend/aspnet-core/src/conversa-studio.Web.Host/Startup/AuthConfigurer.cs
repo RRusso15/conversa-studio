@@ -18,9 +18,9 @@ namespace ConversaStudio.Web.Host.Startup
             {
                 services.AddAuthentication(options =>
                 {
-                    options.DefaultAuthenticateScheme = "JwtBearer";
-                    options.DefaultChallengeScheme = "JwtBearer";
-                }).AddJwtBearer("JwtBearer", options =>
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                }).AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
                 {
                     options.Audience = configuration["Authentication:JwtBearer:Audience"];
 

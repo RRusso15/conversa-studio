@@ -1,6 +1,7 @@
 using ConversaStudio.Models.TokenAuth;
 using ConversaStudio.Web.Host.Controllers;
 using Shouldly;
+using System.Net;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -18,11 +19,13 @@ public class HomeController_Tests : ConversaStudioWebTestBase
         });
 
         //Act
-        var response = await GetResponseAsStringAsync(
-            GetUrl<HomeController>(nameof(HomeController.Index))
+        var response = await GetResponseAsync(
+            GetUrl<HomeController>(nameof(HomeController.Index)),
+            HttpStatusCode.Found
         );
 
         //Assert
-        response.ShouldNotBeNullOrEmpty();
+        response.Headers.Location.ShouldNotBeNull();
+        response.Headers.Location.ToString().ShouldBe("/swagger");
     }
 }
