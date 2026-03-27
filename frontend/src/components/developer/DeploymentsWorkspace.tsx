@@ -185,6 +185,14 @@ export function DeploymentsWorkspace({ requestedBotId }: DeploymentsWorkspacePro
     };
 
     const handleCopySnippet = async (deployment: IDeploymentDefinition) => {
+        if (deployment.status.toLowerCase() !== "active") {
+            notification.warning({
+                message: "Activate deployment first",
+                description: "Only active deployments should be embedded on live sites."
+            });
+            return;
+        }
+
         try {
             const existingSnippet = snippetByDeploymentId[deployment.id];
             const snippet = existingSnippet ?? (await getDeploymentSnippet(deployment.id)).snippet;
@@ -324,7 +332,11 @@ export function DeploymentsWorkspace({ requestedBotId }: DeploymentsWorkspacePro
                                         <Button onClick={() => handleToggleStatus(deployment)}>
                                             {deployment.status.toLowerCase() === "active" ? "Deactivate" : "Activate"}
                                         </Button>
-                                        <Button icon={<CopyOutlined />} onClick={() => handleCopySnippet(deployment)}>
+                                        <Button
+                                            icon={<CopyOutlined />}
+                                            onClick={() => handleCopySnippet(deployment)}
+                                            disabled={deployment.status.toLowerCase() !== "active"}
+                                        >
                                             Copy Snippet
                                         </Button>
                                     </Space>
