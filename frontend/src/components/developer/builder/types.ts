@@ -16,7 +16,7 @@ export type NodeType =
 export interface BotMetadata {
   id: string;
   name: string;
-  status: "draft" | "saved";
+  status: "draft" | "published";
   version: string;
 }
 
