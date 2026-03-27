@@ -3,6 +3,7 @@ using Abp.Zero.EntityFrameworkCore;
 using ConversaStudio.Authorization.Roles;
 using ConversaStudio.Authorization.Users;
 using ConversaStudio.Domains.Bots;
+using ConversaStudio.Domains.Deployments;
 using ConversaStudio.MultiTenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -26,6 +27,11 @@ public class ConversaStudioDbContext : AbpZeroDbContext<Tenant, Role, User, Conv
     /// </summary>
     public DbSet<BotDefinition> BotDefinitions { get; set; }
 
+    /// <summary>
+    /// Gets or sets persisted bot deployments.
+    /// </summary>
+    public DbSet<BotDeployment> BotDeployments { get; set; }
+
     public ConversaStudioDbContext(DbContextOptions<ConversaStudioDbContext> options)
         : base(options)
     {
@@ -43,6 +49,20 @@ public class ConversaStudioDbContext : AbpZeroDbContext<Tenant, Role, User, Conv
             entity.Property(bot => bot.DraftGraphJson).IsRequired();
             entity.Property(bot => bot.PublishedGraphJson);
             entity.HasIndex(bot => new { bot.TenantId, bot.OwnerUserId, bot.CreationTime });
+        });
+
+        modelBuilder.Entity<BotDeployment>(entity =>
+        {
+            entity.ToTable("AppBotDeployments");
+            entity.Property(deployment => deployment.Name).IsRequired().HasMaxLength(BotDeployment.MaxNameLength);
+            entity.Property(deployment => deployment.ChannelType).IsRequired().HasMaxLength(BotDeployment.MaxChannelTypeLength);
+            entity.Property(deployment => deployment.Status).IsRequired().HasMaxLength(BotDeployment.MaxStatusLength);
+            entity.Property(deployment => deployment.DeploymentKey).IsRequired().HasMaxLength(BotDeployment.MaxDeploymentKeyLength);
+            entity.Property(deployment => deployment.AllowedDomainsJson).IsRequired();
+            entity.Property(deployment => deployment.LauncherLabel).IsRequired().HasMaxLength(BotDeployment.MaxLauncherLabelLength);
+            entity.Property(deployment => deployment.ThemeColor).IsRequired().HasMaxLength(BotDeployment.MaxThemeColorLength);
+            entity.HasIndex(deployment => deployment.DeploymentKey).IsUnique();
+            entity.HasIndex(deployment => new { deployment.TenantId, deployment.BotDefinitionId, deployment.CreationTime });
         });
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())

@@ -19,10 +19,12 @@ interface BuilderToolbarProps {
   isDirty: boolean;
   validationCount: number;
   saveStatus: "idle" | "saving" | "saved" | "error" | "validation_blocked" | "permission_denied" | "api_mismatch";
+  deployLabel?: string;
   onBotNameChange: (name: string) => void;
   onSave: () => void;
   onValidate: () => void;
   onTest: () => void;
+  onDeploy: () => void;
 }
 
 export function BuilderToolbar({
@@ -30,10 +32,12 @@ export function BuilderToolbar({
   isDirty,
   validationCount,
   saveStatus,
+  deployLabel,
   onBotNameChange,
   onSave,
   onValidate,
   onTest,
+  onDeploy,
 }: BuilderToolbarProps) {
   const { styles } = useBuilderStyles();
   const statusTag = (() => {
@@ -105,8 +109,8 @@ export function BuilderToolbar({
         <Button icon={<PlayCircleOutlined />} onClick={onTest}>
           Test
         </Button>
-        <Button type="primary" icon={<RocketOutlined />} disabled>
-          Deploy
+        <Button type="primary" icon={<RocketOutlined />} onClick={onDeploy}>
+          {deployLabel ?? "Deploy"}
         </Button>
       </Space>
     </header>
