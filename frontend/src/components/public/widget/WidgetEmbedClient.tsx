@@ -34,6 +34,19 @@ interface IWidgetSessionResponse {
     isCompleted: boolean;
 }
 
+interface IWidgetErrorResponse {
+    error?: string;
+}
+
+interface IAbpWidgetResponse<T> {
+    result?: T;
+    success?: boolean;
+    error?: {
+        message?: string;
+        details?: string;
+    };
+}
+
 const SESSION_STORAGE_PREFIX = "conversa-widget-session";
 
 export function WidgetEmbedClient({
@@ -72,10 +85,10 @@ export function WidgetEmbedClient({
             });
 
             if (!bootstrapResponse.ok) {
-                throw new Error("The widget could not be loaded for this deployment.");
+                throw new Error(await readWidgetError(bootstrapResponse, "The widget could not be loaded for this deployment."));
             }
 
-            const bootstrapPayload = await bootstrapResponse.json() as IWidgetBootstrap;
+            const bootstrapPayload = unwrapWidgetResponse<IWidgetBootstrap>(await bootstrapResponse.json());
             setBootstrap(bootstrapPayload);
 
             const storedSessionId = typeof window !== "undefined"
@@ -92,12 +105,12 @@ export function WidgetEmbedClient({
             });
 
             if (!sessionResponse.ok) {
-                throw new Error("The widget session could not be started.");
+                throw new Error(await readWidgetError(sessionResponse, "The widget session could not be started."));
             }
 
-            const sessionPayload = await sessionResponse.json() as IWidgetSessionResponse;
+            const sessionPayload = unwrapWidgetResponse<IWidgetSessionResponse>(await sessionResponse.json());
             setSessionId(sessionPayload.sessionId);
-            setMessages(sessionPayload.messages);
+            setMessages(sessionPayload.messages ?? []);
             setAwaitingInput(sessionPayload.awaitingInput);
             setIsCompleted(sessionPayload.isCompleted);
 
@@ -132,11 +145,11 @@ export function WidgetEmbedClient({
             );
 
             if (!response.ok) {
-                throw new Error("The message could not be sent.");
+                throw new Error(await readWidgetError(response, "The message could not be sent."));
             }
 
-            const payload = await response.json() as IWidgetSessionResponse;
-            setMessages((current) => [...current, ...payload.messages]);
+            const payload = unwrapWidgetResponse<IWidgetSessionResponse>(await response.json());
+            setMessages((current) => [...current, ...(payload.messages ?? [])]);
             setAwaitingInput(payload.awaitingInput);
             setIsCompleted(payload.isCompleted);
             setDraft("");
@@ -239,4 +252,39 @@ export function WidgetEmbedClient({
             </div>
         </div>
     );
+}
+
+function unwrapWidgetResponse<T>(payload: unknown): T {
+    if (payload && typeof payload === "object" && "result" in payload) {
+        const wrappedPayload = payload as IAbpWidgetResponse<T>;
+
+        if (wrappedPayload.result !== undefined) {
+            return wrappedPayload.result;
+        }
+
+        throw new Error(wrappedPayload.error?.details ?? wrappedPayload.error?.message ?? "The widget response was empty.");
+    }
+
+    return payload as T;
+}
+
+async function readWidgetError(response: Response, fallbackMessage: string): Promise<string> {
+    try {
+        const payload = await response.json() as IWidgetErrorResponse | IAbpWidgetResponse<unknown>;
+
+        if (payload && typeof payload === "object") {
+            if ("error" in payload && typeof payload.error === "string" && payload.error) {
+                return payload.error;
+            }
+
+            if ("error" in payload && payload.error && typeof payload.error === "object") {
+                const wrappedError = payload.error as { message?: string; details?: string; };
+                return wrappedError.details ?? wrappedError.message ?? fallbackMessage;
+            }
+        }
+    } catch {
+        // ignore response parsing and fall back to the generic message
+    }
+
+    return fallbackMessage;
 }
