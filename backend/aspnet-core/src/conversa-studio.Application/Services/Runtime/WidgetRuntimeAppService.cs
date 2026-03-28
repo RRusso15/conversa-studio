@@ -520,18 +520,22 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
     private static void ValidateAllowedDomain(BotDeployment deployment, string embedOrigin)
     {
         var allowedDomains = JsonSerializer.Deserialize<List<string>>(deployment.AllowedDomainsJson, JsonOptions) ?? [];
+        var normalizedEmbedOrigin = DeploymentOriginNormalizer.Normalize(embedOrigin);
 
         if (allowedDomains.Count == 0)
         {
             throw new UserFriendlyException("This deployment has no allowed domains configured.");
         }
 
-        if (string.IsNullOrWhiteSpace(embedOrigin))
+        if (string.IsNullOrWhiteSpace(normalizedEmbedOrigin))
         {
             throw new UserFriendlyException("This deployment request is missing an embed origin.");
         }
 
-        if (!allowedDomains.Any(domain => string.Equals(domain.Trim(), embedOrigin.Trim(), StringComparison.OrdinalIgnoreCase)))
+        if (!allowedDomains
+            .Select(DeploymentOriginNormalizer.Normalize)
+            .Where(domain => !string.IsNullOrWhiteSpace(domain))
+            .Any(domain => string.Equals(domain, normalizedEmbedOrigin, StringComparison.OrdinalIgnoreCase)))
         {
             throw new UserFriendlyException("This origin is not allowed for the requested deployment.");
         }

@@ -252,7 +252,7 @@ public class BotDeploymentAppService : ConversaStudioAppServiceBase, IBotDeploym
     private static string SerializeDomains(IEnumerable<string> allowedDomains)
     {
         var normalized = allowedDomains
-            .Select(domain => domain?.Trim())
+            .Select(DeploymentOriginNormalizer.Normalize)
             .Where(domain => !string.IsNullOrWhiteSpace(domain))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
