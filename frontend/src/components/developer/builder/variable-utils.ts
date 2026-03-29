@@ -5,14 +5,20 @@ import type {
     BotGraph,
     BotNode,
     CodeNodeConfig,
+    CodeOperation,
     ConditionNodeConfig,
     ConditionOperator,
     NodeConfig,
+    QuestionChoiceOption,
     QuestionNodeConfig,
     VariableNodeConfig
 } from "./types";
 
 const VARIABLE_REFERENCE_PATTERN = /\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
+const CODE_VARIABLE_ASSIGNMENT_PATTERNS = [
+    /vars\.([a-zA-Z_][a-zA-Z0-9_]*)\s*=/g,
+    /vars\[['"]([a-zA-Z_][a-zA-Z0-9_]*)['"]\]\s*=/g
+];
 
 /**
  * Returns the set of variable names currently defined in the graph.
@@ -25,6 +31,12 @@ export function collectGraphVariables(graph: BotGraph): string[] {
 
         if (variableName) {
             variables.add(variableName);
+        }
+
+        if (node.config.kind === "code") {
+            extractCodeAssignedVariables(node.config.script).forEach((assignedVariable) => {
+                variables.add(assignedVariable);
+            });
         }
     });
 
@@ -89,9 +101,10 @@ export function normalizeConditionConfig(config: ConditionNodeConfig & { mode?: 
  */
 export function normalizeQuestionConfig(config: QuestionNodeConfig): QuestionNodeConfig {
     const inputMode = config.inputMode === "choice" ? "choice" : "text";
-    const options = (config.options ?? [])
-        .map((option) => option?.trim() ?? "")
-        .filter((option, index, collection) => option.length > 0 && collection.indexOf(option) === index);
+    const legacyOptions = (config.options ?? []) as Array<QuestionChoiceOption | string>;
+    const options = legacyOptions
+        .map((option, index) => normalizeQuestionOption(option, index))
+        .filter((option): option is QuestionChoiceOption => Boolean(option));
 
     return {
         kind: "question",
@@ -107,12 +120,17 @@ export function normalizeQuestionConfig(config: QuestionNodeConfig): QuestionNod
  * Normalizes a code node config loaded from older graph versions.
  */
 export function normalizeCodeConfig(config: CodeNodeConfig & { snippet?: string }): CodeNodeConfig {
+    const legacyConfig = config as CodeNodeConfig & {
+        targetVariable?: string;
+        operation?: "template" | "lowercase" | "uppercase" | "trim" | "concat";
+        input?: string;
+        secondInput?: string;
+    };
+
     return {
         kind: "code",
-        targetVariable: normalizeVariableName(config.targetVariable) ?? "codeResult",
-        operation: normalizeCodeOperation(config.operation),
-        input: config.input ?? config.snippet ?? "",
-        secondInput: config.secondInput ?? ""
+        script: config.script?.trim() || buildLegacyCodeScript(legacyConfig),
+        timeoutMs: typeof config.timeoutMs === "number" && config.timeoutMs > 0 ? config.timeoutMs : 1000
     };
 }
 
@@ -153,6 +171,24 @@ function getDefinedVariableName(node: BotNode): string | undefined {
     return undefined;
 }
 
+export function extractCodeAssignedVariables(script: string): string[] {
+    const assignedVariables = new Set<string>();
+
+    CODE_VARIABLE_ASSIGNMENT_PATTERNS.forEach((pattern) => {
+        const matches = script.matchAll(pattern);
+
+        for (const match of matches) {
+            const variableName = match[1]?.trim();
+
+            if (variableName) {
+                assignedVariables.add(variableName);
+            }
+        }
+    });
+
+    return Array.from(assignedVariables);
+}
+
 export function normalizeVariableName(value?: string): string | undefined {
     const normalizedValue = value?.trim();
 
@@ -181,7 +217,7 @@ export function conditionOperatorRequiresValue(operator: ConditionOperator): boo
     return operator !== "isEmpty" && operator !== "isNotEmpty";
 }
 
-export function normalizeCodeOperation(value?: string): CodeNodeConfig["operation"] {
+export function normalizeCodeOperation(value?: string): CodeOperation {
     switch (value) {
         case "lowercase":
         case "uppercase":
@@ -199,7 +235,10 @@ export function getNodeTextTemplates(config: NodeConfig): string[] {
         case "message":
             return [config.message];
         case "question":
-            return [config.question];
+            return [
+                config.question,
+                ...(config.options ?? []).flatMap((option) => [option.label, option.value ?? ""])
+            ];
         case "variable":
             return getVariableOperation(config) === "clear" ? [] : [config.value];
         case "api":
@@ -211,12 +250,82 @@ export function getNodeTextTemplates(config: NodeConfig): string[] {
         case "ai":
             return [config.instructions, config.fallbackText];
         case "code":
-            return config.operation === "concat"
-                ? [config.input, config.secondInput ?? ""]
-                : [config.input];
+            return [];
         case "end":
             return [config.closingText];
         default:
             return [];
+    }
+}
+
+export function getQuestionChoiceValue(option: QuestionChoiceOption): string {
+    return option.value?.trim() || option.label.trim();
+}
+
+export function getQuestionChoiceHandleId(optionId: string): string {
+    return `option-${optionId}`;
+}
+
+export function createQuestionChoiceOption(seed?: number): QuestionChoiceOption {
+    const suffix = typeof seed === "number" ? `${seed}-${Date.now()}` : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    return {
+        id: `choice-${suffix}`,
+        label: "",
+        value: ""
+    };
+}
+
+function normalizeQuestionOption(option: QuestionChoiceOption | string, index: number): QuestionChoiceOption | undefined {
+    if (typeof option === "string") {
+        const normalizedLabel = option.trim();
+
+        if (!normalizedLabel) {
+            return undefined;
+        }
+
+        return {
+            id: `option-${index + 1}`,
+            label: normalizedLabel,
+            value: normalizedLabel
+        };
+    }
+
+    const normalizedLabel = option.label?.trim() ?? "";
+
+    if (!normalizedLabel) {
+        return undefined;
+    }
+
+    return {
+        id: option.id?.trim() || `option-${index + 1}`,
+        label: normalizedLabel,
+        value: option.value?.trim() || normalizedLabel
+    };
+}
+
+function buildLegacyCodeScript(config: {
+    targetVariable?: string;
+    operation?: "template" | "lowercase" | "uppercase" | "trim" | "concat";
+    input?: string;
+    secondInput?: string;
+    snippet?: string;
+}): string {
+    const targetVariable = normalizeVariableName(config.targetVariable) ?? "codeResult";
+    const primaryInput = JSON.stringify(config.input ?? config.snippet ?? "");
+    const secondaryInput = JSON.stringify(config.secondInput ?? "");
+
+    switch (normalizeCodeOperation(config.operation)) {
+        case "lowercase":
+            return `vars[${JSON.stringify(targetVariable)}] = String(interpolate(${primaryInput})).toLowerCase();`;
+        case "uppercase":
+            return `vars[${JSON.stringify(targetVariable)}] = String(interpolate(${primaryInput})).toUpperCase();`;
+        case "trim":
+            return `vars[${JSON.stringify(targetVariable)}] = String(interpolate(${primaryInput})).trim();`;
+        case "concat":
+            return `vars[${JSON.stringify(targetVariable)}] = String(interpolate(${primaryInput})) + String(interpolate(${secondaryInput}));`;
+        case "template":
+        default:
+            return `vars[${JSON.stringify(targetVariable)}] = interpolate(${primaryInput});`;
     }
 }

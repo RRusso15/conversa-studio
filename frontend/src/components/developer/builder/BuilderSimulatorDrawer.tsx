@@ -125,10 +125,10 @@ export function BuilderSimulatorDrawer() {
           <Space wrap>
             {runtime.pendingQuestionOptions?.map((option) => (
               <Button
-                key={option}
-                onClick={() => setRuntime((current) => advanceSimulator(state.graph, current, option))}
+                key={option.id}
+                onClick={() => setRuntime((current) => advanceSimulator(state.graph, current, option.label))}
               >
-                {option}
+                {option.label}
               </Button>
             ))}
           </Space>

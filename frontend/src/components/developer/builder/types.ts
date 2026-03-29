@@ -34,8 +34,14 @@ export interface QuestionNodeConfig {
   question: string;
   variableName: string;
   inputMode?: "text" | "choice";
-  options?: string[];
+  options?: QuestionChoiceOption[];
   invalidInputMessage?: string;
+}
+
+export interface QuestionChoiceOption {
+  id: string;
+  label: string;
+  value?: string;
 }
 
 export type ConditionOperator =
@@ -104,10 +110,8 @@ export type CodeOperation =
 
 export interface CodeNodeConfig {
   kind: "code";
-  targetVariable: string;
-  operation?: CodeOperation;
-  input: string;
-  secondInput?: string;
+  script: string;
+  timeoutMs?: number;
 }
 
 export interface HandoffNodeConfig {
@@ -196,5 +200,5 @@ export interface SimulatorState {
   awaitingInput: boolean;
   awaitingInputMode?: "question" | "choice";
   pendingQuestionVariable?: string;
-  pendingQuestionOptions?: string[];
+  pendingQuestionOptions?: QuestionChoiceOption[];
 }
