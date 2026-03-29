@@ -7,13 +7,15 @@ import { Dropdown, Space, Tag, Typography } from "antd";
 import { useBuilderStyles } from "./styles";
 import type {
   ApiNodeConfig,
+  CodeNodeConfig,
   ConditionNodeConfig,
   NodeConfig,
   NodeDefinition,
   NodeType,
+  QuestionNodeConfig,
 } from "./types";
 import { useBuilder } from "./builder-context";
-import { conditionOperatorRequiresValue } from "./variable-utils";
+import { conditionOperatorRequiresValue, getQuestionChoiceHandleId } from "./variable-utils";
 
 const { Text } = Typography;
 
@@ -32,12 +34,18 @@ interface BuilderNodeCardProps {
 export function BuilderNodeCard({ data }: BuilderNodeCardProps) {
   const { styles } = useBuilderStyles();
   const { duplicateNode, deleteNode, setSelectedNode } = useBuilder();
-  const isMultiPath = data.nodeType === "condition" || data.nodeType === "api";
+  const isMultiPath =
+    data.nodeType === "condition" ||
+    data.nodeType === "api" ||
+    (data.nodeType === "question" && data.config.kind === "question" && (data.config.inputMode ?? "text") === "choice") ||
+    data.nodeType === "code";
   const conditionConfig =
     data.config.kind === "condition" ? data.config : undefined;
   const apiConfig = data.config.kind === "api" ? data.config : undefined;
+  const questionConfig = data.config.kind === "question" ? data.config : undefined;
+  const codeConfig = data.config.kind === "code" ? data.config : undefined;
 
-  const branchPaths = getBranchPaths(conditionConfig, apiConfig);
+  const branchPaths = getBranchPaths(conditionConfig, apiConfig, questionConfig, codeConfig);
 
   return (
     <Dropdown
@@ -205,12 +213,60 @@ function getApiPaths(apiConfig?: ApiNodeConfig): ConditionPathPreview[] {
   ];
 }
 
+function getQuestionPaths(questionConfig?: QuestionNodeConfig): ConditionPathPreview[] {
+  if (!questionConfig || (questionConfig.inputMode ?? "text") !== "choice") {
+    return [];
+  }
+
+  return [
+    ...(questionConfig.options ?? []).map((option) => ({
+      id: getQuestionChoiceHandleId(option.id),
+      label: option.label.trim() || "Option",
+      rule: `Store ${option.value?.trim() || option.label.trim() || "value"} and continue through this choice path`,
+    })),
+    {
+      id: "invalid",
+      label: "Invalid",
+      rule: "Reserved for future invalid-input routing; typed mismatches currently retry this question",
+    },
+  ];
+}
+
+function getCodePaths(codeConfig?: CodeNodeConfig): ConditionPathPreview[] {
+  if (!codeConfig) {
+    return [];
+  }
+
+  return [
+    {
+      id: "success",
+      label: "Success",
+      rule: "Continue here when the JavaScript code runs successfully",
+    },
+    {
+      id: "error",
+      label: "Error",
+      rule: "Continue here when the JavaScript code throws or times out",
+    },
+  ];
+}
+
 function getBranchPaths(
   conditionConfig?: ConditionNodeConfig,
   apiConfig?: ApiNodeConfig,
+  questionConfig?: QuestionNodeConfig,
+  codeConfig?: CodeNodeConfig,
 ): ConditionPathPreview[] {
   if (conditionConfig) {
     return getConditionPaths(conditionConfig);
+  }
+
+  if (questionConfig) {
+    return getQuestionPaths(questionConfig);
+  }
+
+  if (codeConfig) {
+    return getCodePaths(codeConfig);
   }
 
   return getApiPaths(apiConfig);

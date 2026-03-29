@@ -21,6 +21,8 @@ import { useBuilderStyles } from "./styles";
 import {
   collectGraphVariables,
   conditionOperatorRequiresValue,
+  createQuestionChoiceOption,
+  getQuestionChoiceHandleId,
   getVariableOperation,
 } from "./variable-utils";
 
@@ -41,6 +43,7 @@ export function BuilderPropertiesPanel({
     updateNodeLabel,
     deleteSelectedNode,
     deleteSelectedEdge,
+    replaceEdges,
     state,
   } = useBuilder();
 
@@ -234,13 +237,27 @@ export function BuilderPropertiesPanel({
                     { label: "Button choices", value: "choice" },
                   ]}
                   onChange={(value: "text" | "choice") =>
-                    updateNodeConfig(selectedNode.id, {
-                      ...questionConfig,
-                      inputMode: value,
-                      options: value === "choice"
-                        ? ((questionConfig.options ?? []).length > 0 ? (questionConfig.options ?? []) : [""])
-                        : [],
-                    })
+                    (() => {
+                      if (value === "text") {
+                        replaceEdges(
+                          state.graph.edges.filter(
+                            (edge) =>
+                              edge.source !== selectedNode.id ||
+                              (!edge.sourceHandle?.startsWith("option-") && edge.sourceHandle !== "invalid"),
+                          ),
+                        );
+                      }
+
+                      updateNodeConfig(selectedNode.id, {
+                        ...questionConfig,
+                        inputMode: value,
+                        options: value === "choice"
+                          ? ((questionConfig.options ?? []).length > 0
+                              ? (questionConfig.options ?? [])
+                              : [createQuestionChoiceOption(1)])
+                          : [],
+                      });
+                    })()
                   }
                 />
               </Form.Item>
@@ -249,13 +266,46 @@ export function BuilderPropertiesPanel({
                   <Form.Item label="Button Options">
                     <Space direction="vertical" size="small" style={{ width: "100%" }}>
                       {(questionConfig.options ?? []).map((option, index) => (
-                        <Space key={`question-option-${index}`} style={{ width: "100%" }}>
+                        <Space key={option.id} direction="vertical" style={{ width: "100%" }}>
+                          <Space style={{ width: "100%" }}>
+                            <Input
+                              value={option.label}
+                              placeholder={`Option ${index + 1} label`}
+                              onChange={(event) => {
+                                const nextOptions = [...(questionConfig.options ?? [])];
+                                nextOptions[index] = { ...option, label: event.target.value };
+
+                                updateNodeConfig(selectedNode.id, {
+                                  ...questionConfig,
+                                  options: nextOptions,
+                                });
+                              }}
+                            />
+                            <Button
+                              danger
+                              icon={<MinusCircleOutlined />}
+                              onClick={() => {
+                                replaceEdges(
+                                  state.graph.edges.filter(
+                                    (edge) =>
+                                      edge.source !== selectedNode.id ||
+                                      edge.sourceHandle !== getQuestionChoiceHandleId(option.id),
+                                  ),
+                                );
+
+                                updateNodeConfig(selectedNode.id, {
+                                  ...questionConfig,
+                                  options: (questionConfig.options ?? []).filter((_, optionIndex) => optionIndex !== index),
+                                });
+                              }}
+                            />
+                          </Space>
                           <Input
-                            value={option}
-                            placeholder={`Option ${index + 1}`}
+                            value={option.value ?? ""}
+                            placeholder="Stored value (defaults to label)"
                             onChange={(event) => {
                               const nextOptions = [...(questionConfig.options ?? [])];
-                              nextOptions[index] = event.target.value;
+                              nextOptions[index] = { ...option, value: event.target.value };
 
                               updateNodeConfig(selectedNode.id, {
                                 ...questionConfig,
@@ -263,16 +313,9 @@ export function BuilderPropertiesPanel({
                               });
                             }}
                           />
-                          <Button
-                            danger
-                            icon={<MinusCircleOutlined />}
-                            onClick={() =>
-                              updateNodeConfig(selectedNode.id, {
-                                ...questionConfig,
-                                options: (questionConfig.options ?? []).filter((_, optionIndex) => optionIndex !== index),
-                              })
-                            }
-                          />
+                          <Text type="secondary">
+                            Handle: {option.label.trim() || `Option ${index + 1}`}
+                          </Text>
                         </Space>
                       ))}
                       <Button
@@ -280,7 +323,10 @@ export function BuilderPropertiesPanel({
                         onClick={() =>
                           updateNodeConfig(selectedNode.id, {
                             ...questionConfig,
-                            options: [...(questionConfig.options ?? []), ""],
+                            options: [
+                              ...(questionConfig.options ?? []),
+                              createQuestionChoiceOption((questionConfig.options ?? []).length + 1),
+                            ],
                           })
                         }
                       >
@@ -698,63 +744,35 @@ export function BuilderPropertiesPanel({
 
           {codeConfig ? (
             <>
-              <Form.Item label="Target Variable">
-                <AutoComplete
-                  value={codeConfig.targetVariable}
-                  options={variableOptions}
-                  placeholder="computedValue"
-                  onChange={(value) =>
-                    updateNodeConfig(selectedNode.id, {
-                      ...codeConfig,
-                      targetVariable: value,
-                    })
-                  }
-                />
-              </Form.Item>
-              <Form.Item label="Operation">
-                <Select
-                  value={codeConfig.operation ?? "template"}
-                  options={[
-                    { label: "Template", value: "template" },
-                    { label: "Lowercase", value: "lowercase" },
-                    { label: "Uppercase", value: "uppercase" },
-                    { label: "Trim", value: "trim" },
-                    { label: "Concat", value: "concat" },
-                  ]}
-                  onChange={(value) =>
-                    updateNodeConfig(selectedNode.id, {
-                      ...codeConfig,
-                      operation: value,
-                    })
-                  }
-                />
-              </Form.Item>
-              <Form.Item label="Primary Input">
+              <Form.Item label="JavaScript">
                 <Input.TextArea
-                  rows={4}
-                  value={codeConfig.input}
+                  rows={10}
+                  value={codeConfig.script}
                   onChange={(event) =>
                     updateNodeConfig(selectedNode.id, {
                       ...codeConfig,
-                      input: event.target.value,
+                      script: event.target.value,
                     })
                   }
                 />
               </Form.Item>
-              {(codeConfig.operation ?? "template") === "concat" ? (
-                <Form.Item label="Second Input">
-                  <Input.TextArea
-                    rows={3}
-                    value={codeConfig.secondInput}
-                    onChange={(event) =>
-                      updateNodeConfig(selectedNode.id, {
-                        ...codeConfig,
-                        secondInput: event.target.value,
-                      })
-                    }
-                  />
-                </Form.Item>
-              ) : null}
+              <Form.Item label="Timeout (ms)">
+                <Input
+                  value={String(codeConfig.timeoutMs ?? 1000)}
+                  onChange={(event) =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...codeConfig,
+                      timeoutMs: Number(event.target.value) || 1000,
+                    })
+                  }
+                />
+              </Form.Item>
+              <Alert
+                type="info"
+                showIcon
+                message="Code node runtime"
+                description="Use vars.<name> to read or write variables. The script runs on the backend with success and error branches."
+              />
               <VariableHints availableVariables={availableVariables} />
             </>
           ) : null}

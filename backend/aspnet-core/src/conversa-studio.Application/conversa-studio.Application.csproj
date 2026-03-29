@@ -12,6 +12,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Jint" Version="4.1.0" />
     <ProjectReference Include="..\conversa-studio.Core\conversa-studio.Core.csproj" />
   </ItemGroup>
 </Project>

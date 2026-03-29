@@ -34,9 +34,9 @@ import type {
     BotEdge,
     BotGraph,
     BotNode,
-    CodeNodeConfig,
     NodeConfig,
     NodeType,
+    QuestionChoiceOption,
     SimulatorMessage,
     SimulatorState,
     VariableNodeConfig,
@@ -44,6 +44,8 @@ import type {
 } from "../types";
 import { validateBotGraph } from "../validation";
 import {
+    getQuestionChoiceHandleId,
+    getQuestionChoiceValue,
     getVariableOperation,
     interpolateVariableText,
     normalizeApiConfig,
@@ -173,6 +175,9 @@ export function BuilderProvider({ graph, children }: BuilderProviderProps) {
         },
         deleteSelectedEdge: () => {
             dispatch(deleteSelectedEdgeAction());
+        },
+        replaceEdges: (edges: BotEdge[]) => {
+            dispatch(setEdgesAction(edges));
         },
         setSelectedNode: (nodeId?: string) => {
             dispatch(selectNodeAction(nodeId));
@@ -359,12 +364,32 @@ function findEdgeLabel(sourceNode?: BotNode, sourceHandle?: string) {
         return sourceHandle || "Next";
     }
 
+    if (sourceNode.type === "question" && sourceNode.config.kind === "question") {
+        if (sourceHandle === "invalid") {
+            return "Invalid";
+        }
+
+        const matchingOption = (sourceNode.config.options ?? []).find(
+            (option) => getQuestionChoiceHandleId(option.id) === sourceHandle,
+        );
+
+        if (matchingOption) {
+            return matchingOption.label.trim() || "Option";
+        }
+
+        return sourceHandle || "Next";
+    }
+
     if (sourceNode.type === "api" && sourceNode.config.kind === "api") {
         if (sourceHandle === "error") {
             return sourceNode.config.errorLabel?.trim() || "Error";
         }
 
         return sourceNode.config.successLabel?.trim() || "Success";
+    }
+
+    if (sourceNode.type === "code" && sourceNode.config.kind === "code") {
+        return sourceHandle === "error" ? "Error" : "Success";
     }
 
     if (sourceNode.type !== "condition" || sourceNode.config.kind !== "condition") {
@@ -393,7 +418,7 @@ function getNodeSummary(node: BotNode) {
             return node.config.message.trim() || "Send a fixed message to the user.";
         case "question":
             return (node.config.inputMode ?? "text") === "choice"
-                ? `${node.config.question.trim() || "Ask the user to choose an option."} Saves the selection into ${node.config.variableName || "a variable"} from ${(node.config.options ?? []).filter((option) => option.trim().length > 0).length} choice(s).`
+                ? `${node.config.question.trim() || "Ask the user to choose an option."} Saves the selection into ${node.config.variableName || "a variable"} from ${(node.config.options ?? []).filter((option) => option.label.trim().length > 0).length} choice route(s).`
                 : `${node.config.question.trim() || "Ask for input."} Captures into ${node.config.variableName || "a variable"}.`;
         case "condition": {
             const ruleCount = node.config.rules.length;
@@ -408,7 +433,7 @@ function getNodeSummary(node: BotNode) {
         case "ai":
             return node.config.instructions.trim() || "Generate a grounded AI response.";
         case "code":
-            return `Compute ${node.config.targetVariable || "a variable"} using ${(node.config.operation ?? "template")} logic.`;
+            return `Run custom JavaScript with success and error routes.`;
         case "handoff":
             return `Route the conversation to ${node.config.queueName || "a live team"}.`;
         case "end":
@@ -499,13 +524,14 @@ export function advanceSimulator(
                 ...nextState,
                 variables: {
                     ...nextState.variables,
-                    [simulator.pendingQuestionVariable]: matchedChoice
+                    [simulator.pendingQuestionVariable]: getQuestionChoiceValue(matchedChoice)
                 },
                 awaitingInput: false,
                 awaitingInputMode: undefined,
                 pendingQuestionVariable: undefined,
                 pendingQuestionOptions: undefined,
-                currentNodeId: outgoing[0]?.target
+                currentNodeId: outgoing.find((edge) => edge.sourceHandle === getQuestionChoiceHandleId(matchedChoice.id))?.target
+                    ?? outgoing[0]?.target
             };
         }
 
@@ -556,7 +582,7 @@ export function advanceSimulator(
             nextState.awaitingInputMode = currentNode.config.inputMode === "choice" ? "choice" : "question";
             nextState.pendingQuestionVariable = currentNode.config.variableName;
             nextState.pendingQuestionOptions = currentNode.config.inputMode === "choice"
-                ? (currentNode.config.options ?? []).filter((option) => option.trim().length > 0)
+                ? (currentNode.config.options ?? []).filter((option) => option.label.trim().length > 0)
                 : undefined;
             break;
         }
@@ -595,11 +621,10 @@ export function advanceSimulator(
         }
 
         if (currentNode.type === "code" && currentNode.config.kind === "code") {
-            nextState.variables = applyCodeNode(currentNode.config, nextState.variables);
             nextState.messages.push(createSystemMessage(
-                getCodeSummary(currentNode.config, nextState.variables)
+                "JavaScript code nodes run in live runtime only. The local simulator does not execute custom scripts."
             ));
-            nextState.currentNodeId = outgoing[0]?.target;
+            nextState.currentNodeId = outgoing.find((edge) => edge.sourceHandle === "success")?.target ?? outgoing[0]?.target;
             continue;
         }
 
@@ -767,10 +792,10 @@ function normalizeGraph(graph: BotGraph): BotGraph {
     };
 }
 
-function findMatchingQuestionOption(options: string[], userInput: string): string | undefined {
+function findMatchingQuestionOption(options: QuestionChoiceOption[], userInput: string): QuestionChoiceOption | undefined {
     const normalizedInput = userInput.trim().toLowerCase();
 
-    return options.find((option) => option.trim().toLowerCase() === normalizedInput);
+    return options.find((option) => option.label.trim().toLowerCase() === normalizedInput);
 }
 
 function getCurrentQuestionInvalidInputMessage(graph: BotGraph, nodeId?: string): string {
@@ -781,50 +806,6 @@ function getCurrentQuestionInvalidInputMessage(graph: BotGraph, nodeId?: string)
     }
 
     return currentNode.config.invalidInputMessage?.trim() || "Please choose one of the available options.";
-}
-
-function applyCodeNode(
-    config: CodeNodeConfig,
-    variables: Record<string, string>
-): Record<string, string> {
-    const nextVariables = { ...variables };
-    const targetVariable = config.targetVariable.trim();
-
-    if (!targetVariable) {
-        return nextVariables;
-    }
-
-    nextVariables[targetVariable] = executeCodeOperation(config, variables);
-    return nextVariables;
-}
-
-function executeCodeOperation(
-    config: CodeNodeConfig,
-    variables: Record<string, string>
-): string {
-    const primaryInput = interpolateVariableText(config.input, variables);
-    const secondInput = interpolateVariableText(config.secondInput ?? "", variables);
-
-    switch (config.operation ?? "template") {
-        case "lowercase":
-            return primaryInput.toLowerCase();
-        case "uppercase":
-            return primaryInput.toUpperCase();
-        case "trim":
-            return primaryInput.trim();
-        case "concat":
-            return `${primaryInput}${secondInput}`;
-        case "template":
-        default:
-            return primaryInput;
-    }
-}
-
-function getCodeSummary(
-    config: CodeNodeConfig,
-    variables: Record<string, string>
-): string {
-    return `Computed ${config.targetVariable || "a variable"} = ${executeCodeOperation(config, variables) || "(empty value)"}.`;
 }
 
 function getApiBranchLabel(label: string | undefined, fallback: string): string {

@@ -31,6 +31,7 @@ export interface IBuilderActionContext {
     deleteNode: (nodeId: string) => void;
     deleteSelectedNode: () => void;
     deleteSelectedEdge: () => void;
+    replaceEdges: (edges: BotEdge[]) => void;
     setSelectedNode: (nodeId?: string) => void;
     setSelectedEdge: (edgeId?: string) => void;
     onNodesChange: (nodes: Node[]) => void;
@@ -53,6 +54,7 @@ export const INITIAL_ACTION_STATE: IBuilderActionContext = {
     deleteNode: () => undefined,
     deleteSelectedNode: () => undefined,
     deleteSelectedEdge: () => undefined,
+    replaceEdges: () => undefined,
     setSelectedNode: () => undefined,
     setSelectedEdge: () => undefined,
     onNodesChange: () => undefined,

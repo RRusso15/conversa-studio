@@ -161,18 +161,7 @@ public class BotGraphValidator : ITransientDependency
             case "question":
                 RequireStringProperty(node, "question", "Question nodes require a question prompt.", issues);
                 RequireStringProperty(node, "variableName", "Question nodes require a variable name.", issues);
-                if (TryGetTrimmedString(node.Config, "inputMode", out var inputMode) &&
-                    string.Equals(inputMode, "choice", StringComparison.OrdinalIgnoreCase) &&
-                    (!TryGetArrayLength(node.Config, "options", out var optionCount) || optionCount <= 0))
-                {
-                    issues.Add(new BotValidationIssue
-                    {
-                        Id = $"question-options-{node.Id}",
-                        Severity = BotValidationSeverity.Error,
-                        Message = "Choice questions require at least one option.",
-                        RelatedNodeId = node.Id
-                    });
-                }
+                ValidateQuestionOptions(node, issues);
                 break;
             case "condition":
                 var hasRules = TryGetArrayLength(node.Config, "rules", out var ruleCount) && ruleCount > 0;
@@ -232,17 +221,32 @@ public class BotGraphValidator : ITransientDependency
                 RequireStringProperty(node, "instructions", "AI nodes require instructions.", issues);
                 break;
             case "code":
-                RequireStringProperty(node, "targetVariable", "Code nodes require a target variable.", issues);
-                RequireStringProperty(node, "input", "Code nodes require an input value or template.", issues);
-                if (TryGetTrimmedString(node.Config, "operation", out var operation) &&
-                    string.Equals(operation, "concat", StringComparison.OrdinalIgnoreCase) &&
-                    !TryGetTrimmedString(node.Config, "secondInput", out var secondInput))
+                if (!TryGetTrimmedString(node.Config, "script", out var script) || string.IsNullOrWhiteSpace(script))
+                {
+                    var hasLegacyShape = TryGetTrimmedString(node.Config, "input", out _) || TryGetTrimmedString(node.Config, "snippet", out _);
+
+                    if (!hasLegacyShape)
+                    {
+                        issues.Add(new BotValidationIssue
+                        {
+                            Id = $"code-script-{node.Id}",
+                            Severity = BotValidationSeverity.Error,
+                            Message = "Code nodes require JavaScript.",
+                            RelatedNodeId = node.Id
+                        });
+                    }
+                }
+
+                if (node.Config.TryGetProperty("timeoutMs", out var codeTimeoutProperty) &&
+                    codeTimeoutProperty.ValueKind == JsonValueKind.Number &&
+                    codeTimeoutProperty.TryGetInt32(out var codeTimeoutMs) &&
+                    codeTimeoutMs <= 0)
                 {
                     issues.Add(new BotValidationIssue
                     {
-                        Id = $"code-second-input-{node.Id}",
+                        Id = $"code-timeout-{node.Id}",
                         Severity = BotValidationSeverity.Error,
-                        Message = "Concat code nodes require a second input.",
+                        Message = "Code nodes require a timeout greater than zero.",
                         RelatedNodeId = node.Id
                     });
                 }
@@ -289,5 +293,105 @@ public class BotGraphValidator : ITransientDependency
 
         length = property.GetArrayLength();
         return true;
+    }
+
+    private static void ValidateQuestionOptions(BotNodeDefinition node, List<BotValidationIssue> issues)
+    {
+        if (!TryGetTrimmedString(node.Config, "inputMode", out var inputMode) ||
+            !string.Equals(inputMode, "choice", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (!node.Config.TryGetProperty("options", out var options) || options.ValueKind != JsonValueKind.Array || options.GetArrayLength() == 0)
+        {
+            issues.Add(new BotValidationIssue
+            {
+                Id = $"question-options-{node.Id}",
+                Severity = BotValidationSeverity.Error,
+                Message = "Choice questions require at least one option.",
+                RelatedNodeId = node.Id
+            });
+            return;
+        }
+
+        var seenOptionIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenOptionLabels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var optionIndex = 0;
+
+        foreach (var option in options.EnumerateArray())
+        {
+            if (option.ValueKind == JsonValueKind.String)
+            {
+                var legacyLabel = option.GetString()?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(legacyLabel))
+                {
+                    issues.Add(new BotValidationIssue
+                    {
+                        Id = $"question-option-label-{node.Id}-{optionIndex}",
+                        Severity = BotValidationSeverity.Error,
+                        Message = $"Choice option {optionIndex + 1} requires a label.",
+                        RelatedNodeId = node.Id
+                    });
+                }
+                else if (!seenOptionLabels.Add(legacyLabel))
+                {
+                    issues.Add(new BotValidationIssue
+                    {
+                        Id = $"question-option-label-duplicate-{node.Id}-{optionIndex}",
+                        Severity = BotValidationSeverity.Error,
+                        Message = $"Choice option {optionIndex + 1} duplicates another option label.",
+                        RelatedNodeId = node.Id
+                    });
+                }
+
+                optionIndex += 1;
+                continue;
+            }
+
+            if (!TryGetTrimmedString(option, "id", out var optionId) || string.IsNullOrWhiteSpace(optionId))
+            {
+                issues.Add(new BotValidationIssue
+                {
+                    Id = $"question-option-id-{node.Id}-{optionIndex}",
+                    Severity = BotValidationSeverity.Error,
+                    Message = $"Choice option {optionIndex + 1} requires a stable ID.",
+                    RelatedNodeId = node.Id
+                });
+            }
+            else if (!seenOptionIds.Add(optionId))
+            {
+                issues.Add(new BotValidationIssue
+                {
+                    Id = $"question-option-id-duplicate-{node.Id}-{optionIndex}",
+                    Severity = BotValidationSeverity.Error,
+                    Message = $"Choice option {optionIndex + 1} duplicates another option ID.",
+                    RelatedNodeId = node.Id
+                });
+            }
+
+            if (!TryGetTrimmedString(option, "label", out var optionLabel) || string.IsNullOrWhiteSpace(optionLabel))
+            {
+                issues.Add(new BotValidationIssue
+                {
+                    Id = $"question-option-label-{node.Id}-{optionIndex}",
+                    Severity = BotValidationSeverity.Error,
+                    Message = $"Choice option {optionIndex + 1} requires a label.",
+                    RelatedNodeId = node.Id
+                });
+            }
+            else if (!seenOptionLabels.Add(optionLabel))
+            {
+                issues.Add(new BotValidationIssue
+                {
+                    Id = $"question-option-label-duplicate-{node.Id}-{optionIndex}",
+                    Severity = BotValidationSeverity.Error,
+                    Message = $"Choice option {optionIndex + 1} duplicates another option label.",
+                    RelatedNodeId = node.Id
+                });
+            }
+
+            optionIndex += 1;
+        }
     }
 }
