@@ -226,6 +226,82 @@ export function BuilderPropertiesPanel({
                   }
                 />
               </Form.Item>
+              <Form.Item label="Input Type">
+                <Select
+                  value={questionConfig.inputMode ?? "text"}
+                  options={[
+                    { label: "Open text", value: "text" },
+                    { label: "Button choices", value: "choice" },
+                  ]}
+                  onChange={(value: "text" | "choice") =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...questionConfig,
+                      inputMode: value,
+                      options: value === "choice"
+                        ? ((questionConfig.options ?? []).length > 0 ? (questionConfig.options ?? []) : [""])
+                        : [],
+                    })
+                  }
+                />
+              </Form.Item>
+              {(questionConfig.inputMode ?? "text") === "choice" ? (
+                <>
+                  <Form.Item label="Button Options">
+                    <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                      {(questionConfig.options ?? []).map((option, index) => (
+                        <Space key={`question-option-${index}`} style={{ width: "100%" }}>
+                          <Input
+                            value={option}
+                            placeholder={`Option ${index + 1}`}
+                            onChange={(event) => {
+                              const nextOptions = [...(questionConfig.options ?? [])];
+                              nextOptions[index] = event.target.value;
+
+                              updateNodeConfig(selectedNode.id, {
+                                ...questionConfig,
+                                options: nextOptions,
+                              });
+                            }}
+                          />
+                          <Button
+                            danger
+                            icon={<MinusCircleOutlined />}
+                            onClick={() =>
+                              updateNodeConfig(selectedNode.id, {
+                                ...questionConfig,
+                                options: (questionConfig.options ?? []).filter((_, optionIndex) => optionIndex !== index),
+                              })
+                            }
+                          />
+                        </Space>
+                      ))}
+                      <Button
+                        icon={<PlusOutlined />}
+                        onClick={() =>
+                          updateNodeConfig(selectedNode.id, {
+                            ...questionConfig,
+                            options: [...(questionConfig.options ?? []), ""],
+                          })
+                        }
+                      >
+                        Add Option
+                      </Button>
+                    </Space>
+                  </Form.Item>
+                  <Form.Item label="Invalid Input Message">
+                    <Input.TextArea
+                      rows={3}
+                      value={questionConfig.invalidInputMessage ?? ""}
+                      onChange={(event) =>
+                        updateNodeConfig(selectedNode.id, {
+                          ...questionConfig,
+                          invalidInputMessage: event.target.value,
+                        })
+                      }
+                    />
+                  </Form.Item>
+                </>
+              ) : null}
               <VariableHints availableVariables={availableVariables} />
             </>
           ) : null}
@@ -414,6 +490,179 @@ export function BuilderPropertiesPanel({
                   }
                 />
               </Form.Item>
+              <Form.Item label="Timeout (ms)">
+                <Input
+                  value={String(apiConfig.timeoutMs ?? 10000)}
+                  onChange={(event) =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...apiConfig,
+                      timeoutMs: Number(event.target.value) || 10000,
+                    })
+                  }
+                />
+              </Form.Item>
+              <Form.Item label="Headers">
+                <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                  {(apiConfig.headers ?? []).map((header, index) => (
+                    <Space key={header.id} style={{ width: "100%" }}>
+                      <Input
+                        value={header.key}
+                        placeholder="Header name"
+                        onChange={(event) => {
+                          const nextHeaders = [...(apiConfig.headers ?? [])];
+                          nextHeaders[index] = { ...header, key: event.target.value };
+
+                          updateNodeConfig(selectedNode.id, {
+                            ...apiConfig,
+                            headers: nextHeaders,
+                          });
+                        }}
+                      />
+                      <Input
+                        value={header.value}
+                        placeholder="Header value"
+                        onChange={(event) => {
+                          const nextHeaders = [...(apiConfig.headers ?? [])];
+                          nextHeaders[index] = { ...header, value: event.target.value };
+
+                          updateNodeConfig(selectedNode.id, {
+                            ...apiConfig,
+                            headers: nextHeaders,
+                          });
+                        }}
+                      />
+                      <Button
+                        danger
+                        icon={<MinusCircleOutlined />}
+                        onClick={() =>
+                          updateNodeConfig(selectedNode.id, {
+                            ...apiConfig,
+                            headers: (apiConfig.headers ?? []).filter((_, headerIndex) => headerIndex !== index),
+                          })
+                        }
+                      />
+                    </Space>
+                  ))}
+                  <Button
+                    icon={<PlusOutlined />}
+                    onClick={() =>
+                      updateNodeConfig(selectedNode.id, {
+                        ...apiConfig,
+                        headers: [
+                          ...(apiConfig.headers ?? []),
+                          {
+                            id: `header-${(apiConfig.headers ?? []).length + 1}`,
+                            key: "",
+                            value: "",
+                          },
+                        ],
+                      })
+                    }
+                  >
+                    Add Header
+                  </Button>
+                </Space>
+              </Form.Item>
+              {apiConfig.method === "POST" ? (
+                <Form.Item label="Body Template">
+                  <Input.TextArea
+                    rows={4}
+                    value={apiConfig.body}
+                    onChange={(event) =>
+                      updateNodeConfig(selectedNode.id, {
+                        ...apiConfig,
+                        body: event.target.value,
+                      })
+                    }
+                  />
+                </Form.Item>
+              ) : null}
+              <Form.Item label="Response Mappings">
+                <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                  {(apiConfig.responseMappings ?? []).map((mapping, index) => (
+                    <Space key={mapping.id} style={{ width: "100%" }}>
+                      <AutoComplete
+                        value={mapping.variableName}
+                        options={variableOptions}
+                        placeholder="Variable name"
+                        onChange={(value) => {
+                          const nextMappings = [...(apiConfig.responseMappings ?? [])];
+                          nextMappings[index] = { ...mapping, variableName: value };
+
+                          updateNodeConfig(selectedNode.id, {
+                            ...apiConfig,
+                            responseMappings: nextMappings,
+                          });
+                        }}
+                      />
+                      <Input
+                        value={mapping.path}
+                        placeholder="body or json.path"
+                        onChange={(event) => {
+                          const nextMappings = [...(apiConfig.responseMappings ?? [])];
+                          nextMappings[index] = { ...mapping, path: event.target.value };
+
+                          updateNodeConfig(selectedNode.id, {
+                            ...apiConfig,
+                            responseMappings: nextMappings,
+                          });
+                        }}
+                      />
+                      <Button
+                        danger
+                        icon={<MinusCircleOutlined />}
+                        onClick={() =>
+                          updateNodeConfig(selectedNode.id, {
+                            ...apiConfig,
+                            responseMappings: (apiConfig.responseMappings ?? []).filter((_, mappingIndex) => mappingIndex !== index),
+                          })
+                        }
+                      />
+                    </Space>
+                  ))}
+                  <Button
+                    icon={<PlusOutlined />}
+                    onClick={() =>
+                      updateNodeConfig(selectedNode.id, {
+                        ...apiConfig,
+                        responseMappings: [
+                          ...(apiConfig.responseMappings ?? []),
+                          {
+                            id: `mapping-${(apiConfig.responseMappings ?? []).length + 1}`,
+                            variableName: "",
+                            path: "body",
+                          },
+                        ],
+                      })
+                    }
+                  >
+                    Add Mapping
+                  </Button>
+                </Space>
+              </Form.Item>
+              <Form.Item label="Success Label">
+                <Input
+                  value={apiConfig.successLabel}
+                  onChange={(event) =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...apiConfig,
+                      successLabel: event.target.value,
+                    })
+                  }
+                />
+              </Form.Item>
+              <Form.Item label="Error Label">
+                <Input
+                  value={apiConfig.errorLabel}
+                  onChange={(event) =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...apiConfig,
+                      errorLabel: event.target.value,
+                    })
+                  }
+                />
+              </Form.Item>
+              <VariableHints availableVariables={availableVariables} />
             </>
           ) : null}
 
@@ -448,18 +697,66 @@ export function BuilderPropertiesPanel({
           ) : null}
 
           {codeConfig ? (
-            <Form.Item label="Code Snippet">
-              <Input.TextArea
-                rows={5}
-                value={codeConfig.snippet}
-                onChange={(event) =>
-                  updateNodeConfig(selectedNode.id, {
-                    ...codeConfig,
-                    snippet: event.target.value,
-                  })
-                }
-              />
-            </Form.Item>
+            <>
+              <Form.Item label="Target Variable">
+                <AutoComplete
+                  value={codeConfig.targetVariable}
+                  options={variableOptions}
+                  placeholder="computedValue"
+                  onChange={(value) =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...codeConfig,
+                      targetVariable: value,
+                    })
+                  }
+                />
+              </Form.Item>
+              <Form.Item label="Operation">
+                <Select
+                  value={codeConfig.operation ?? "template"}
+                  options={[
+                    { label: "Template", value: "template" },
+                    { label: "Lowercase", value: "lowercase" },
+                    { label: "Uppercase", value: "uppercase" },
+                    { label: "Trim", value: "trim" },
+                    { label: "Concat", value: "concat" },
+                  ]}
+                  onChange={(value) =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...codeConfig,
+                      operation: value,
+                    })
+                  }
+                />
+              </Form.Item>
+              <Form.Item label="Primary Input">
+                <Input.TextArea
+                  rows={4}
+                  value={codeConfig.input}
+                  onChange={(event) =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...codeConfig,
+                      input: event.target.value,
+                    })
+                  }
+                />
+              </Form.Item>
+              {(codeConfig.operation ?? "template") === "concat" ? (
+                <Form.Item label="Second Input">
+                  <Input.TextArea
+                    rows={3}
+                    value={codeConfig.secondInput}
+                    onChange={(event) =>
+                      updateNodeConfig(selectedNode.id, {
+                        ...codeConfig,
+                        secondInput: event.target.value,
+                      })
+                    }
+                  />
+                </Form.Item>
+              ) : null}
+              <VariableHints availableVariables={availableVariables} />
+            </>
           ) : null}
 
           {handoffConfig ? (

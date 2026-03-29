@@ -161,6 +161,18 @@ public class BotGraphValidator : ITransientDependency
             case "question":
                 RequireStringProperty(node, "question", "Question nodes require a question prompt.", issues);
                 RequireStringProperty(node, "variableName", "Question nodes require a variable name.", issues);
+                if (TryGetTrimmedString(node.Config, "inputMode", out var inputMode) &&
+                    string.Equals(inputMode, "choice", StringComparison.OrdinalIgnoreCase) &&
+                    (!TryGetArrayLength(node.Config, "options", out var optionCount) || optionCount <= 0))
+                {
+                    issues.Add(new BotValidationIssue
+                    {
+                        Id = $"question-options-{node.Id}",
+                        Severity = BotValidationSeverity.Error,
+                        Message = "Choice questions require at least one option.",
+                        RelatedNodeId = node.Id
+                    });
+                }
                 break;
             case "condition":
                 var hasRules = TryGetArrayLength(node.Config, "rules", out var ruleCount) && ruleCount > 0;
@@ -182,9 +194,58 @@ public class BotGraphValidator : ITransientDependency
             case "api":
                 RequireStringProperty(node, "endpoint", "API nodes require an endpoint.", issues);
                 RequireStringProperty(node, "method", "API nodes require a method.", issues);
+                if (node.Config.TryGetProperty("timeoutMs", out var timeoutProperty) &&
+                    timeoutProperty.ValueKind == JsonValueKind.Number &&
+                    timeoutProperty.TryGetInt32(out var timeoutMs) &&
+                    timeoutMs <= 0)
+                {
+                    issues.Add(new BotValidationIssue
+                    {
+                        Id = $"api-timeout-{node.Id}",
+                        Severity = BotValidationSeverity.Error,
+                        Message = "API nodes require a timeout greater than zero.",
+                        RelatedNodeId = node.Id
+                    });
+                }
+
+                if (node.Config.TryGetProperty("responseMappings", out var responseMappings) && responseMappings.ValueKind == JsonValueKind.Array)
+                {
+                    var mappingIndex = 0;
+                    foreach (var mapping in responseMappings.EnumerateArray())
+                    {
+                        if (!TryGetTrimmedString(mapping, "variableName", out var variableName) || string.IsNullOrWhiteSpace(variableName))
+                        {
+                            issues.Add(new BotValidationIssue
+                            {
+                                Id = $"api-response-variable-{node.Id}-{mappingIndex}",
+                                Severity = BotValidationSeverity.Error,
+                                Message = $"API response mapping {mappingIndex + 1} requires a target variable.",
+                                RelatedNodeId = node.Id
+                            });
+                        }
+
+                        mappingIndex += 1;
+                    }
+                }
                 break;
             case "ai":
                 RequireStringProperty(node, "instructions", "AI nodes require instructions.", issues);
+                break;
+            case "code":
+                RequireStringProperty(node, "targetVariable", "Code nodes require a target variable.", issues);
+                RequireStringProperty(node, "input", "Code nodes require an input value or template.", issues);
+                if (TryGetTrimmedString(node.Config, "operation", out var operation) &&
+                    string.Equals(operation, "concat", StringComparison.OrdinalIgnoreCase) &&
+                    !TryGetTrimmedString(node.Config, "secondInput", out var secondInput))
+                {
+                    issues.Add(new BotValidationIssue
+                    {
+                        Id = $"code-second-input-{node.Id}",
+                        Severity = BotValidationSeverity.Error,
+                        Message = "Concat code nodes require a second input.",
+                        RelatedNodeId = node.Id
+                    });
+                }
                 break;
             case "handoff":
                 RequireStringProperty(node, "queueName", "Handoff nodes require a queue name.", issues);

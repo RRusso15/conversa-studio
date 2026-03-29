@@ -6,6 +6,7 @@ import { CopyOutlined, DeleteOutlined, MoreOutlined } from "@ant-design/icons";
 import { Dropdown, Space, Tag, Typography } from "antd";
 import { useBuilderStyles } from "./styles";
 import type {
+  ApiNodeConfig,
   ConditionNodeConfig,
   NodeConfig,
   NodeDefinition,
@@ -31,11 +32,12 @@ interface BuilderNodeCardProps {
 export function BuilderNodeCard({ data }: BuilderNodeCardProps) {
   const { styles } = useBuilderStyles();
   const { duplicateNode, deleteNode, setSelectedNode } = useBuilder();
-  const isCondition = data.nodeType === "condition";
+  const isMultiPath = data.nodeType === "condition" || data.nodeType === "api";
   const conditionConfig =
     data.config.kind === "condition" ? data.config : undefined;
+  const apiConfig = data.config.kind === "api" ? data.config : undefined;
 
-  const conditionPaths = getConditionPaths(conditionConfig);
+  const branchPaths = getBranchPaths(conditionConfig, apiConfig);
 
   return (
     <Dropdown
@@ -101,9 +103,9 @@ export function BuilderNodeCard({ data }: BuilderNodeCardProps) {
         <Text className={styles.flowNodeSummary}>{data.summary}</Text>
       </div>
 
-      {isCondition ? (
+      {isMultiPath ? (
         <div className={styles.conditionPaths}>
-          {conditionPaths.map((path) => (
+          {branchPaths.map((path) => (
             <div key={path.id} className={styles.conditionPathRow}>
               <div>
                 <Text className={styles.conditionPathLabel}>{path.label}</Text>
@@ -182,4 +184,34 @@ function getConditionPaths(
       rule: "Default path when no rule matches the selected variable",
     },
   ];
+}
+
+function getApiPaths(apiConfig?: ApiNodeConfig): ConditionPathPreview[] {
+  if (!apiConfig) {
+    return [];
+  }
+
+  return [
+    {
+      id: "success",
+      label: apiConfig.successLabel?.trim() || "Success",
+      rule: "Continue here when the API call succeeds",
+    },
+    {
+      id: "error",
+      label: apiConfig.errorLabel?.trim() || "Error",
+      rule: "Continue here when the API call fails",
+    },
+  ];
+}
+
+function getBranchPaths(
+  conditionConfig?: ConditionNodeConfig,
+  apiConfig?: ApiNodeConfig,
+): ConditionPathPreview[] {
+  if (conditionConfig) {
+    return getConditionPaths(conditionConfig);
+  }
+
+  return getApiPaths(apiConfig);
 }

@@ -16,6 +16,8 @@ export function BuilderValidationPanel() {
   } = useBuilder();
 
   const issues = state.validationResults;
+  const errorCount = issues.filter((issue) => issue.severity === "error").length;
+  const warningCount = issues.filter((issue) => issue.severity === "warning").length;
 
   return (
     <Card bordered={false} className={styles.validationPanelCard}>
@@ -27,6 +29,12 @@ export function BuilderValidationPanel() {
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
             Structural issues stay visible here so you can fix them without losing context.
           </Paragraph>
+          {issues.length > 0 ? (
+            <Space wrap style={{ marginTop: 8 }}>
+              <Tag color={errorCount > 0 ? "error" : "default"}>{errorCount} error{errorCount === 1 ? "" : "s"}</Tag>
+              <Tag color={warningCount > 0 ? "warning" : "default"}>{warningCount} warning{warningCount === 1 ? "" : "s"}</Tag>
+            </Space>
+          ) : null}
         </div>
 
         {issues.length === 0 ? (
@@ -37,8 +45,13 @@ export function BuilderValidationPanel() {
         ) : (
           <Space direction="vertical" size="small" style={{ width: "100%" }}>
             {issues.map((issue) => {
-              const targetLabel = issue.relatedNodeId
-                ? `Node: ${issue.relatedNodeId}`
+              const relatedNode = issue.relatedNodeId
+                ? state.graph.nodes.find((node) => node.id === issue.relatedNodeId)
+                : undefined;
+              const targetLabel = relatedNode
+                ? `Node: ${relatedNode.label}`
+                : issue.relatedNodeId
+                  ? `Node: ${issue.relatedNodeId}`
                 : issue.relatedEdgeId
                   ? `Edge: ${issue.relatedEdgeId}`
                   : "General";

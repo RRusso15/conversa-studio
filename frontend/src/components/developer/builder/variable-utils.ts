@@ -1,11 +1,14 @@
 "use client";
 
 import type {
+    ApiNodeConfig,
     BotGraph,
     BotNode,
+    CodeNodeConfig,
     ConditionNodeConfig,
     ConditionOperator,
     NodeConfig,
+    QuestionNodeConfig,
     VariableNodeConfig
 } from "./types";
 
@@ -81,6 +84,63 @@ export function normalizeConditionConfig(config: ConditionNodeConfig & { mode?: 
     };
 }
 
+/**
+ * Normalizes a question node config loaded from older graph versions.
+ */
+export function normalizeQuestionConfig(config: QuestionNodeConfig): QuestionNodeConfig {
+    const inputMode = config.inputMode === "choice" ? "choice" : "text";
+    const options = (config.options ?? [])
+        .map((option) => option?.trim() ?? "")
+        .filter((option, index, collection) => option.length > 0 && collection.indexOf(option) === index);
+
+    return {
+        kind: "question",
+        question: config.question ?? "",
+        variableName: normalizeVariableName(config.variableName) ?? "",
+        inputMode,
+        options,
+        invalidInputMessage: config.invalidInputMessage?.trim() || "Please choose one of the available options."
+    };
+}
+
+/**
+ * Normalizes a code node config loaded from older graph versions.
+ */
+export function normalizeCodeConfig(config: CodeNodeConfig & { snippet?: string }): CodeNodeConfig {
+    return {
+        kind: "code",
+        targetVariable: normalizeVariableName(config.targetVariable) ?? "codeResult",
+        operation: normalizeCodeOperation(config.operation),
+        input: config.input ?? config.snippet ?? "",
+        secondInput: config.secondInput ?? ""
+    };
+}
+
+/**
+ * Normalizes an API node config loaded from older graph versions.
+ */
+export function normalizeApiConfig(config: ApiNodeConfig): ApiNodeConfig {
+    return {
+        kind: "api",
+        endpoint: config.endpoint ?? "",
+        method: config.method === "POST" ? "POST" : "GET",
+        headers: (config.headers ?? []).map((header, index) => ({
+            id: header.id || `header-${index + 1}`,
+            key: header.key ?? "",
+            value: header.value ?? ""
+        })),
+        body: config.body ?? "",
+        timeoutMs: typeof config.timeoutMs === "number" && config.timeoutMs > 0 ? config.timeoutMs : 10000,
+        responseMappings: (config.responseMappings ?? []).map((mapping, index) => ({
+            id: mapping.id || `mapping-${index + 1}`,
+            variableName: normalizeVariableName(mapping.variableName) ?? "",
+            path: mapping.path ?? "body"
+        })),
+        successLabel: config.successLabel?.trim() || "Success",
+        errorLabel: config.errorLabel?.trim() || "Error"
+    };
+}
+
 function getDefinedVariableName(node: BotNode): string | undefined {
     if (node.config.kind === "question") {
         return normalizeVariableName(node.config.variableName);
@@ -121,6 +181,19 @@ export function conditionOperatorRequiresValue(operator: ConditionOperator): boo
     return operator !== "isEmpty" && operator !== "isNotEmpty";
 }
 
+export function normalizeCodeOperation(value?: string): CodeNodeConfig["operation"] {
+    switch (value) {
+        case "lowercase":
+        case "uppercase":
+        case "trim":
+        case "concat":
+            return value;
+        case "template":
+        default:
+            return "template";
+    }
+}
+
 export function getNodeTextTemplates(config: NodeConfig): string[] {
     switch (config.kind) {
         case "message":
@@ -129,8 +202,18 @@ export function getNodeTextTemplates(config: NodeConfig): string[] {
             return [config.question];
         case "variable":
             return getVariableOperation(config) === "clear" ? [] : [config.value];
+        case "api":
+            return [
+                config.endpoint,
+                ...(config.headers ?? []).flatMap((header) => [header.key, header.value]),
+                config.body ?? ""
+            ];
         case "ai":
             return [config.instructions, config.fallbackText];
+        case "code":
+            return config.operation === "concat"
+                ? [config.input, config.secondInput ?? ""]
+                : [config.input];
         case "end":
             return [config.closingText];
         default:
