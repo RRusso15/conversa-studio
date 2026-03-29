@@ -35,6 +35,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
     private readonly IRepository<TranscriptMessage, Guid> _transcriptMessageRepository;
     private readonly PublishedGraphRuntimeValidator _runtimeValidator;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly RestrictedJavaScriptExecutor _restrictedJavaScriptExecutor;
 
     public WidgetRuntimeAppService(
         IRepository<BotDeployment, Guid> botDeploymentRepository,
@@ -42,7 +43,8 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         IRepository<RuntimeSession, Guid> runtimeSessionRepository,
         IRepository<TranscriptMessage, Guid> transcriptMessageRepository,
         PublishedGraphRuntimeValidator runtimeValidator,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        RestrictedJavaScriptExecutor restrictedJavaScriptExecutor)
     {
         _botDeploymentRepository = botDeploymentRepository;
         _botDefinitionRepository = botDefinitionRepository;
@@ -50,6 +52,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         _transcriptMessageRepository = transcriptMessageRepository;
         _runtimeValidator = runtimeValidator;
         _httpClientFactory = httpClientFactory;
+        _restrictedJavaScriptExecutor = restrictedJavaScriptExecutor;
     }
 
     /// <summary>
@@ -276,10 +279,10 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
             state.Messages.Add(new RuntimeMessage("user", userInput));
             if (TryResolveQuestionChoice(graph, state.CurrentNodeId, userInput, out var resolvedChoice))
             {
-                state.Variables[state.PendingQuestionVariable] = resolvedChoice;
+                state.Variables[state.PendingQuestionVariable] = resolvedChoice.StoredValue;
                 state.AwaitingInput = false;
                 state.PendingQuestionVariable = string.Empty;
-                state.CurrentNodeId = GetOutgoingTarget(graph, state.CurrentNodeId, null);
+                state.CurrentNodeId = GetOutgoingTarget(graph, state.CurrentNodeId, resolvedChoice.HandleId);
             }
             else if (IsChoiceQuestion(graph, state.CurrentNodeId))
             {
@@ -374,8 +377,14 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
 
             if (IsNodeType(currentNode, "code"))
             {
-                ApplyCodeNode(currentNode.Config, state.Variables);
-                state.CurrentNodeId = GetOutgoingTarget(graph, currentNode.Id, null);
+                var nextHandle = await ExecuteCodeNodeAsync(currentNode.Config, state.Variables);
+                state.CurrentNodeId = GetOutgoingTarget(graph, currentNode.Id, nextHandle);
+
+                if (string.IsNullOrWhiteSpace(state.CurrentNodeId))
+                {
+                    state.IsCompleted = true;
+                }
+
                 continue;
             }
 
@@ -494,31 +503,42 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         }
     }
 
-    private static void ApplyCodeNode(JsonElement config, IDictionary<string, string> variables)
+    private async Task<string> ExecuteCodeNodeAsync(JsonElement config, IDictionary<string, string> variables)
     {
-        if (!TryGetTrimmedString(config, "targetVariable", out var targetVariable) || string.IsNullOrWhiteSpace(targetVariable))
+        var script = ResolveCodeScript(config);
+        if (string.IsNullOrWhiteSpace(script))
         {
-            return;
+            return "error";
         }
 
-        var operation = TryGetTrimmedString(config, "operation", out var configuredOperation)
-            ? NormalizeCodeOperation(configuredOperation)
-            : "template";
-        var primaryInput = TryGetTrimmedString(config, "input", out var configuredInput)
-            ? Interpolate(configuredInput, new Dictionary<string, string>(variables))
-            : string.Empty;
-        var secondInput = TryGetTrimmedString(config, "secondInput", out var configuredSecondInput)
-            ? Interpolate(configuredSecondInput, new Dictionary<string, string>(variables))
-            : string.Empty;
+        var timeoutMs = config.TryGetProperty("timeoutMs", out var timeoutElement) &&
+                        timeoutElement.ValueKind == JsonValueKind.Number &&
+                        timeoutElement.TryGetInt32(out var configuredTimeout)
+            ? configuredTimeout
+            : 1000;
 
-        variables[targetVariable] = operation switch
+        try
         {
-            "lowercase" => primaryInput.ToLowerInvariant(),
-            "uppercase" => primaryInput.ToUpperInvariant(),
-            "trim" => primaryInput.Trim(),
-            "concat" => $"{primaryInput}{secondInput}",
-            _ => primaryInput
-        };
+            var nextVariables = await Task.Run(() =>
+                _restrictedJavaScriptExecutor.Execute(
+                    script,
+                    new Dictionary<string, string>(variables, StringComparer.OrdinalIgnoreCase),
+                    timeoutMs));
+
+            variables.Clear();
+
+            foreach (var pair in nextVariables)
+            {
+                variables[pair.Key] = pair.Value ?? string.Empty;
+            }
+
+            return "success";
+        }
+        catch (Exception exception)
+        {
+            Logger.Warn($"Code node execution failed: {exception.Message}", exception);
+            return "error";
+        }
     }
 
     private async Task<string> ExecuteApiNodeAsync(JsonElement config, IDictionary<string, string> variables)
@@ -776,10 +796,8 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
             return [];
         }
 
-        return options.EnumerateArray()
-            .Where(option => option.ValueKind == JsonValueKind.String)
-            .Select(option => option.GetString()?.Trim() ?? string.Empty)
-            .Where(option => !string.IsNullOrWhiteSpace(option))
+        return EnumerateQuestionOptions(options)
+            .Select(option => option.Label)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
@@ -792,9 +810,9 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
                string.Equals(inputMode, "choice", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool TryResolveQuestionChoice(BotGraphDefinition graph, string currentNodeId, string userInput, out string resolvedChoice)
+    private static bool TryResolveQuestionChoice(BotGraphDefinition graph, string currentNodeId, string userInput, out ResolvedQuestionChoice resolvedChoice)
     {
-        resolvedChoice = string.Empty;
+        resolvedChoice = null;
         var questionNode = graph.Nodes.FirstOrDefault(node => node.Id == currentNodeId && IsNodeType(node, "question"));
         if (questionNode == null || !IsChoiceQuestion(graph, currentNodeId))
         {
@@ -806,22 +824,11 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
             return false;
         }
 
-        foreach (var option in options.EnumerateArray())
+        foreach (var option in EnumerateQuestionOptions(options))
         {
-            if (option.ValueKind != JsonValueKind.String)
+            if (string.Equals(option.Label, userInput.Trim(), StringComparison.OrdinalIgnoreCase))
             {
-                continue;
-            }
-
-            var normalizedOption = option.GetString()?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(normalizedOption))
-            {
-                continue;
-            }
-
-            if (string.Equals(normalizedOption, userInput.Trim(), StringComparison.OrdinalIgnoreCase))
-            {
-                resolvedChoice = normalizedOption;
+                resolvedChoice = new ResolvedQuestionChoice(option.HandleId, option.Value);
                 return true;
             }
         }
@@ -843,15 +850,71 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
             : "Please choose one of the available options.";
     }
 
-    private static string NormalizeCodeOperation(string operation)
+    private static IEnumerable<QuestionOption> EnumerateQuestionOptions(JsonElement options)
     {
+        var index = 0;
+
+        foreach (var option in options.EnumerateArray())
+        {
+            if (option.ValueKind == JsonValueKind.String)
+            {
+                var legacyLabel = option.GetString()?.Trim() ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(legacyLabel))
+                {
+                    yield return new QuestionOption($"option-option-{index + 1}", legacyLabel, legacyLabel);
+                }
+
+                index += 1;
+                continue;
+            }
+
+            var optionId = TryGetTrimmedString(option, "id", out var configuredOptionId)
+                ? configuredOptionId
+                : $"option-{index + 1}";
+            var optionLabel = TryGetTrimmedString(option, "label", out var configuredOptionLabel)
+                ? configuredOptionLabel
+                : string.Empty;
+            var optionValue = TryGetTrimmedString(option, "value", out var configuredOptionValue) &&
+                              !string.IsNullOrWhiteSpace(configuredOptionValue)
+                ? configuredOptionValue
+                : optionLabel;
+
+            if (!string.IsNullOrWhiteSpace(optionLabel))
+            {
+                yield return new QuestionOption($"option-{optionId}", optionLabel, optionValue);
+            }
+
+            index += 1;
+        }
+    }
+
+    private static string ResolveCodeScript(JsonElement config)
+    {
+        if (TryGetTrimmedString(config, "script", out var script) && !string.IsNullOrWhiteSpace(script))
+        {
+            return script;
+        }
+
+        var targetVariable = TryGetTrimmedString(config, "targetVariable", out var configuredTargetVariable)
+            ? configuredTargetVariable
+            : "codeResult";
+        var operation = TryGetTrimmedString(config, "operation", out var configuredOperation)
+            ? configuredOperation
+            : "template";
+        var primaryInput = TryGetTrimmedString(config, "input", out var configuredInput)
+            ? configuredInput
+            : string.Empty;
+        var secondInput = TryGetTrimmedString(config, "secondInput", out var configuredSecondInput)
+            ? configuredSecondInput
+            : string.Empty;
+
         return operation switch
         {
-            "lowercase" => "lowercase",
-            "uppercase" => "uppercase",
-            "trim" => "trim",
-            "concat" => "concat",
-            _ => "template"
+            "lowercase" => $"vars[{JsonSerializer.Serialize(targetVariable)}] = String(interpolate({JsonSerializer.Serialize(primaryInput)})).toLowerCase();",
+            "uppercase" => $"vars[{JsonSerializer.Serialize(targetVariable)}] = String(interpolate({JsonSerializer.Serialize(primaryInput)})).toUpperCase();",
+            "trim" => $"vars[{JsonSerializer.Serialize(targetVariable)}] = String(interpolate({JsonSerializer.Serialize(primaryInput)})).trim();",
+            "concat" => $"vars[{JsonSerializer.Serialize(targetVariable)}] = String(interpolate({JsonSerializer.Serialize(primaryInput)})) + String(interpolate({JsonSerializer.Serialize(secondInput)}));",
+            _ => $"vars[{JsonSerializer.Serialize(targetVariable)}] = interpolate({JsonSerializer.Serialize(primaryInput)});"
         };
     }
 
@@ -894,4 +957,8 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
 
         public DateTime CreatedAt { get; }
     }
+
+    private sealed record QuestionOption(string HandleId, string Label, string Value);
+
+    private sealed record ResolvedQuestionChoice(string HandleId, string StoredValue);
 }

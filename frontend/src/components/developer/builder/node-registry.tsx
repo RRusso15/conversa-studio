@@ -126,10 +126,8 @@ export const nodeRegistry: Record<NodeType, NodeDefinition> = {
     accentColor: "#4B5563",
     defaultConfig: () => ({
       kind: "code",
-      targetVariable: "computedValue",
-      operation: "template",
-      input: "{userIntent}",
-      secondInput: "",
+      script: "vars.result = vars.userIntent ?? \"\";",
+      timeoutMs: 1000,
     }),
   },
   handoff: {

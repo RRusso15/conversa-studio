@@ -3,6 +3,7 @@ import {
   conditionOperatorRequiresValue,
   collectGraphVariables,
   extractVariableReferences,
+  getQuestionChoiceHandleId,
   getNodeTextTemplates,
   getVariableOperation,
 } from "./variable-utils";
@@ -94,6 +95,7 @@ export function validateBotGraph(graph: BotGraph): ValidationResult[] {
     }
 
     if (node.type === "question" && node.config.kind === "question") {
+      const outgoingEdges = graph.edges.filter((edge) => edge.source === node.id);
       if (!node.config.question.trim()) {
         results.push({
           id: `question-text-${node.id}`,
@@ -114,8 +116,11 @@ export function validateBotGraph(graph: BotGraph): ValidationResult[] {
 
       if ((node.config.inputMode ?? "text") === "choice") {
         const normalizedOptions = (node.config.options ?? [])
-          .map((option) => option.trim())
-          .filter((option) => option.length > 0);
+          .map((option) => ({
+            id: option.id.trim(),
+            label: option.label.trim(),
+          }))
+          .filter((option) => option.label.length > 0);
 
         if (normalizedOptions.length === 0) {
           results.push({
@@ -126,14 +131,53 @@ export function validateBotGraph(graph: BotGraph): ValidationResult[] {
           });
         }
 
-        if (new Set(normalizedOptions.map((option) => option.toLowerCase())).size !== normalizedOptions.length) {
+        if (new Set(normalizedOptions.map((option) => option.label.toLowerCase())).size !== normalizedOptions.length) {
           results.push({
             id: `question-options-duplicate-${node.id}`,
-            severity: "warning",
+            severity: "error",
             message: "Choice question options should be unique.",
             relatedNodeId: node.id,
           });
         }
+
+        if (new Set(normalizedOptions.map((option) => option.id)).size !== normalizedOptions.length) {
+          results.push({
+            id: `question-options-id-${node.id}`,
+            severity: "error",
+            message: "Choice question options require stable unique IDs.",
+            relatedNodeId: node.id,
+          });
+        }
+
+        const duplicateHandles = outgoingEdges.reduce<Map<string, number>>((map, edge) => {
+          const sourceHandle = edge.sourceHandle || "";
+          map.set(sourceHandle, (map.get(sourceHandle) ?? 0) + 1);
+          return map;
+        }, new Map<string, number>());
+
+        duplicateHandles.forEach((count, sourceHandle) => {
+          if (count <= 1 || sourceHandle === "invalid" || !sourceHandle.startsWith("option-")) {
+            return;
+          }
+
+          results.push({
+            id: `question-duplicate-handle-${node.id}-${sourceHandle}`,
+            severity: "warning",
+            message: "Choice option handles should only have one outgoing edge each.",
+            relatedNodeId: node.id,
+          });
+        });
+
+        normalizedOptions.forEach((option, index) => {
+          if (!outgoingEdges.some((edge) => edge.sourceHandle === getQuestionChoiceHandleId(option.id))) {
+            results.push({
+              id: `question-option-edge-${node.id}-${index}`,
+              severity: "warning",
+              message: `Choice option "${option.label}" does not have an outgoing edge.`,
+              relatedNodeId: node.id,
+            });
+          }
+        });
       }
     }
 
@@ -375,29 +419,40 @@ export function validateBotGraph(graph: BotGraph): ValidationResult[] {
     }
 
     if (node.type === "code" && node.config.kind === "code") {
-      if (!node.config.targetVariable.trim()) {
+      const outgoingEdges = graph.edges.filter((edge) => edge.source === node.id);
+
+      if (!node.config.script.trim()) {
         results.push({
-          id: `code-target-${node.id}`,
+          id: `code-script-${node.id}`,
           severity: "error",
-          message: "Code nodes require a target variable.",
+          message: "Code nodes require JavaScript.",
           relatedNodeId: node.id,
         });
       }
 
-      if (!node.config.input.trim()) {
+      if ((node.config.timeoutMs ?? 0) <= 0) {
         results.push({
-          id: `code-input-${node.id}`,
+          id: `code-timeout-${node.id}`,
           severity: "error",
-          message: "Code nodes require an input value or template.",
+          message: "Code nodes require a timeout greater than zero.",
           relatedNodeId: node.id,
         });
       }
 
-      if ((node.config.operation ?? "template") === "concat" && !node.config.secondInput?.trim()) {
+      if (!outgoingEdges.some((edge) => edge.sourceHandle === "success")) {
         results.push({
-          id: `code-second-input-${node.id}`,
-          severity: "error",
-          message: "Concat operations require a second input.",
+          id: `code-success-edge-${node.id}`,
+          severity: "warning",
+          message: "Code success route does not have an outgoing edge.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      if (!outgoingEdges.some((edge) => edge.sourceHandle === "error")) {
+        results.push({
+          id: `code-error-edge-${node.id}`,
+          severity: "warning",
+          message: "Code error route does not have an outgoing edge.",
           relatedNodeId: node.id,
         });
       }
