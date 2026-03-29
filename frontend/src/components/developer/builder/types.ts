@@ -33,6 +33,9 @@ export interface QuestionNodeConfig {
   kind: "question";
   question: string;
   variableName: string;
+  inputMode?: "text" | "choice";
+  options?: string[];
+  invalidInputMessage?: string;
 }
 
 export type ConditionOperator =
@@ -70,6 +73,20 @@ export interface ApiNodeConfig {
   kind: "api";
   endpoint: string;
   method: "GET" | "POST";
+  headers?: Array<{
+    id: string;
+    key: string;
+    value: string;
+  }>;
+  body?: string;
+  timeoutMs?: number;
+  responseMappings?: Array<{
+    id: string;
+    variableName: string;
+    path: string;
+  }>;
+  successLabel?: string;
+  errorLabel?: string;
 }
 
 export interface AiNodeConfig {
@@ -78,9 +95,19 @@ export interface AiNodeConfig {
   fallbackText: string;
 }
 
+export type CodeOperation =
+  | "template"
+  | "lowercase"
+  | "uppercase"
+  | "trim"
+  | "concat";
+
 export interface CodeNodeConfig {
   kind: "code";
-  snippet: string;
+  targetVariable: string;
+  operation?: CodeOperation;
+  input: string;
+  secondInput?: string;
 }
 
 export interface HandoffNodeConfig {
@@ -167,6 +194,7 @@ export interface SimulatorState {
   messages: SimulatorMessage[];
   variables: Record<string, string>;
   awaitingInput: boolean;
-  awaitingInputMode?: "question";
+  awaitingInputMode?: "question" | "choice";
   pendingQuestionVariable?: string;
+  pendingQuestionOptions?: string[];
 }

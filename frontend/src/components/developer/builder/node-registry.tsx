@@ -44,6 +44,9 @@ export const nodeRegistry: Record<NodeType, NodeDefinition> = {
       kind: "question",
       question: "What can I help you with today?",
       variableName: "userIntent",
+      inputMode: "text",
+      options: [],
+      invalidInputMessage: "Please choose one of the available options.",
     }),
   },
   condition: {
@@ -89,6 +92,18 @@ export const nodeRegistry: Record<NodeType, NodeDefinition> = {
       kind: "api",
       endpoint: "https://api.example.com/orders",
       method: "GET",
+      headers: [],
+      body: "",
+      timeoutMs: 10000,
+      responseMappings: [
+        {
+          id: "mapping-1",
+          variableName: "apiResult",
+          path: "body",
+        },
+      ],
+      successLabel: "Success",
+      errorLabel: "Error",
     }),
   },
   ai: {
@@ -111,7 +126,10 @@ export const nodeRegistry: Record<NodeType, NodeDefinition> = {
     accentColor: "#4B5563",
     defaultConfig: () => ({
       kind: "code",
-      snippet: "return { onSuccess: true };",
+      targetVariable: "computedValue",
+      operation: "template",
+      input: "{userIntent}",
+      secondInput: "",
     }),
   },
   handoff: {

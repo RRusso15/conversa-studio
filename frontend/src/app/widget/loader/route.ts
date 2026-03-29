@@ -10,12 +10,14 @@ export function GET() {
   window.__conversaWidgetLoaded = true;
   var config = window.ConversaStudioWidgetConfig || {};
   var deploymentKey = config.deploymentKey;
-  var apiBaseUrl = config.apiBaseUrl;
-  var clientBaseUrl = config.clientBaseUrl || window.location.origin;
   var launcherLabel = config.launcherLabel || "Chat";
   var themeColor = config.themeColor || "#2563EB";
+  var currentScript = document.currentScript;
+  var resolvedClientBaseUrl = currentScript && currentScript.src
+    ? new URL(currentScript.src).origin
+    : window.location.origin;
 
-  if (!deploymentKey || !apiBaseUrl || !clientBaseUrl) {
+  if (!deploymentKey || !resolvedClientBaseUrl) {
     console.error("Conversa widget is missing required configuration.");
     return;
   }
@@ -54,9 +56,8 @@ export function GET() {
   iframe.style.display = "none";
   iframe.allow = "clipboard-write";
 
-  var iframeUrl = new URL(clientBaseUrl.replace(/\\/$/, "") + "/widget/embed");
+  var iframeUrl = new URL(resolvedClientBaseUrl.replace(/\\/$/, "") + "/widget/embed");
   iframeUrl.searchParams.set("deploymentKey", deploymentKey);
-  iframeUrl.searchParams.set("apiBaseUrl", apiBaseUrl);
   iframeUrl.searchParams.set("parentOrigin", window.location.origin);
   iframe.src = iframeUrl.toString();
 

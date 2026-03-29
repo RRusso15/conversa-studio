@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using ConversaStudio.Domains.Deployments;
 using ConversaStudio.Domains.Runtime;
 using ConversaStudio.Domains.Transcripts;
 using ConversaStudio.Services.Runtime.Dto;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConversaStudio.Services.Runtime;
@@ -32,19 +34,22 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
     private readonly IRepository<RuntimeSession, Guid> _runtimeSessionRepository;
     private readonly IRepository<TranscriptMessage, Guid> _transcriptMessageRepository;
     private readonly PublishedGraphRuntimeValidator _runtimeValidator;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public WidgetRuntimeAppService(
         IRepository<BotDeployment, Guid> botDeploymentRepository,
         IRepository<BotDefinition, Guid> botDefinitionRepository,
         IRepository<RuntimeSession, Guid> runtimeSessionRepository,
         IRepository<TranscriptMessage, Guid> transcriptMessageRepository,
-        PublishedGraphRuntimeValidator runtimeValidator)
+        PublishedGraphRuntimeValidator runtimeValidator,
+        IHttpClientFactory httpClientFactory)
     {
         _botDeploymentRepository = botDeploymentRepository;
         _botDefinitionRepository = botDefinitionRepository;
         _runtimeSessionRepository = runtimeSessionRepository;
         _transcriptMessageRepository = transcriptMessageRepository;
         _runtimeValidator = runtimeValidator;
+        _httpClientFactory = httpClientFactory;
     }
 
     /// <summary>
@@ -76,14 +81,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         if (!string.IsNullOrWhiteSpace(input.SessionId) && session != null)
         {
             var transcript = await GetSessionTranscriptAsync(session.Id);
-            return new WidgetSessionResponseDto
-            {
-                SessionId = session.SessionToken,
-                BotName = context.Bot.Name,
-                AwaitingInput = session.AwaitingInput,
-                IsCompleted = session.IsCompleted,
-                Messages = transcript
-            };
+            return CreateSessionResponse(context.Graph, session, context.Bot.Name, transcript);
         }
 
         var createdSession = new RuntimeSession(
@@ -94,7 +92,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
             context.Bot.PublishedVersion ?? 0,
             Guid.NewGuid().ToString("N"));
 
-        var executionResult = ExecuteGraph(context.Graph, createdSession, null);
+        var executionResult = await ExecuteGraphAsync(context.Graph, createdSession, null);
         createdSession.UpdateState(
             executionResult.CurrentNodeId,
             SerializeVariables(executionResult.Variables),
@@ -107,14 +105,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         await PersistMessagesAsync(createdSession, executionResult.Messages);
         await CurrentUnitOfWork.SaveChangesAsync();
 
-        return new WidgetSessionResponseDto
-        {
-            SessionId = createdSession.SessionToken,
-            BotName = context.Bot.Name,
-            AwaitingInput = createdSession.AwaitingInput,
-            IsCompleted = createdSession.IsCompleted,
-            Messages = ToDtoMessages(executionResult.Messages)
-        };
+        return CreateSessionResponse(context.Graph, createdSession, context.Bot.Name, ToDtoMessages(executionResult.Messages));
     }
 
     /// <summary>
@@ -131,7 +122,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         var session = await ResolveSessionAsync(context, sessionId)
             ?? throw new UserFriendlyException("The requested session could not be found.");
 
-        var executionResult = ExecuteGraph(context.Graph, session, input.Message.Trim());
+        var executionResult = await ExecuteGraphAsync(context.Graph, session, input.Message.Trim());
         session.UpdateState(
             executionResult.CurrentNodeId,
             SerializeVariables(executionResult.Variables),
@@ -144,14 +135,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         await PersistMessagesAsync(session, executionResult.Messages);
         await CurrentUnitOfWork.SaveChangesAsync();
 
-        return new WidgetSessionResponseDto
-        {
-            SessionId = session.SessionToken,
-            BotName = context.Bot.Name,
-            AwaitingInput = session.AwaitingInput,
-            IsCompleted = session.IsCompleted,
-            Messages = ToDtoMessages(executionResult.Messages)
-        };
+        return CreateSessionResponse(context.Graph, session, context.Bot.Name, ToDtoMessages(executionResult.Messages));
     }
 
     private async Task<DeploymentContext> GetDeploymentContextAsync(string deploymentKey, string embedOrigin, bool requireActive)
@@ -249,7 +233,25 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         }).ToList();
     }
 
-    private static ExecutionState ExecuteGraph(BotGraphDefinition graph, RuntimeSession session, string userInput)
+    private static WidgetSessionResponseDto CreateSessionResponse(
+        BotGraphDefinition graph,
+        RuntimeSession session,
+        string botName,
+        List<WidgetChatMessageDto> messages)
+    {
+        return new WidgetSessionResponseDto
+        {
+            SessionId = session.SessionToken,
+            BotName = botName,
+            Messages = messages,
+            AwaitingInput = session.AwaitingInput,
+            AwaitingInputMode = ResolveAwaitingInputMode(graph, session),
+            SuggestedReplies = ResolveSuggestedReplies(graph, session),
+            IsCompleted = session.IsCompleted
+        };
+    }
+
+    private async Task<ExecutionState> ExecuteGraphAsync(BotGraphDefinition graph, RuntimeSession session, string userInput)
     {
         var state = new ExecutionState
         {
@@ -272,11 +274,25 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
             }
 
             state.Messages.Add(new RuntimeMessage("user", userInput));
-
-            state.Variables[state.PendingQuestionVariable] = userInput;
-            state.AwaitingInput = false;
-            state.PendingQuestionVariable = string.Empty;
-            state.CurrentNodeId = GetOutgoingTarget(graph, state.CurrentNodeId, null);
+            if (TryResolveQuestionChoice(graph, state.CurrentNodeId, userInput, out var resolvedChoice))
+            {
+                state.Variables[state.PendingQuestionVariable] = resolvedChoice;
+                state.AwaitingInput = false;
+                state.PendingQuestionVariable = string.Empty;
+                state.CurrentNodeId = GetOutgoingTarget(graph, state.CurrentNodeId, null);
+            }
+            else if (IsChoiceQuestion(graph, state.CurrentNodeId))
+            {
+                state.Messages.Add(new RuntimeMessage("bot", GetInvalidQuestionInputMessage(graph, state.CurrentNodeId)));
+                return state;
+            }
+            else
+            {
+                state.Variables[state.PendingQuestionVariable] = userInput;
+                state.AwaitingInput = false;
+                state.PendingQuestionVariable = string.Empty;
+                state.CurrentNodeId = GetOutgoingTarget(graph, state.CurrentNodeId, null);
+            }
         }
 
         var safetyCounter = 0;
@@ -339,6 +355,26 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
             if (IsNodeType(currentNode, "variable"))
             {
                 ApplyVariableNode(currentNode.Config, state.Variables);
+                state.CurrentNodeId = GetOutgoingTarget(graph, currentNode.Id, null);
+                continue;
+            }
+
+            if (IsNodeType(currentNode, "api"))
+            {
+                var nextHandle = await ExecuteApiNodeAsync(currentNode.Config, state.Variables);
+                state.CurrentNodeId = GetOutgoingTarget(graph, currentNode.Id, nextHandle);
+
+                if (string.IsNullOrWhiteSpace(state.CurrentNodeId))
+                {
+                    state.IsCompleted = true;
+                }
+
+                continue;
+            }
+
+            if (IsNodeType(currentNode, "code"))
+            {
+                ApplyCodeNode(currentNode.Config, state.Variables);
                 state.CurrentNodeId = GetOutgoingTarget(graph, currentNode.Id, null);
                 continue;
             }
@@ -458,6 +494,180 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         }
     }
 
+    private static void ApplyCodeNode(JsonElement config, IDictionary<string, string> variables)
+    {
+        if (!TryGetTrimmedString(config, "targetVariable", out var targetVariable) || string.IsNullOrWhiteSpace(targetVariable))
+        {
+            return;
+        }
+
+        var operation = TryGetTrimmedString(config, "operation", out var configuredOperation)
+            ? NormalizeCodeOperation(configuredOperation)
+            : "template";
+        var primaryInput = TryGetTrimmedString(config, "input", out var configuredInput)
+            ? Interpolate(configuredInput, new Dictionary<string, string>(variables))
+            : string.Empty;
+        var secondInput = TryGetTrimmedString(config, "secondInput", out var configuredSecondInput)
+            ? Interpolate(configuredSecondInput, new Dictionary<string, string>(variables))
+            : string.Empty;
+
+        variables[targetVariable] = operation switch
+        {
+            "lowercase" => primaryInput.ToLowerInvariant(),
+            "uppercase" => primaryInput.ToUpperInvariant(),
+            "trim" => primaryInput.Trim(),
+            "concat" => $"{primaryInput}{secondInput}",
+            _ => primaryInput
+        };
+    }
+
+    private async Task<string> ExecuteApiNodeAsync(JsonElement config, IDictionary<string, string> variables)
+    {
+        var client = _httpClientFactory.CreateClient();
+        var method = TryGetTrimmedString(config, "method", out var configuredMethod)
+            ? configuredMethod.ToUpperInvariant()
+            : "GET";
+        var endpoint = TryGetTrimmedString(config, "endpoint", out var configuredEndpoint)
+            ? Interpolate(configuredEndpoint, new Dictionary<string, string>(variables))
+            : string.Empty;
+
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            return "error";
+        }
+
+        using var request = new HttpRequestMessage(new HttpMethod(method), endpoint);
+        if (config.TryGetProperty("headers", out var headers) && headers.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var header in headers.EnumerateArray())
+            {
+                if (!TryGetTrimmedString(header, "key", out var headerKey) || string.IsNullOrWhiteSpace(headerKey))
+                {
+                    continue;
+                }
+
+                var headerValue = TryGetTrimmedString(header, "value", out var configuredHeaderValue)
+                    ? Interpolate(configuredHeaderValue, new Dictionary<string, string>(variables))
+                    : string.Empty;
+                request.Headers.TryAddWithoutValidation(headerKey, headerValue);
+            }
+        }
+
+        if (string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase))
+        {
+            var body = TryGetTrimmedString(config, "body", out var configuredBody)
+                ? Interpolate(configuredBody, new Dictionary<string, string>(variables))
+                : string.Empty;
+            request.Content = new StringContent(body ?? string.Empty, System.Text.Encoding.UTF8, "application/json");
+        }
+
+        var timeoutMs = config.TryGetProperty("timeoutMs", out var timeoutElement) && timeoutElement.ValueKind == JsonValueKind.Number && timeoutElement.TryGetInt32(out var configuredTimeout)
+            ? configuredTimeout
+            : 10000;
+
+        try
+        {
+            using var cancellationSource = new System.Threading.CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
+            using var response = await client.SendAsync(request, cancellationSource.Token);
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationSource.Token);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return "error";
+            }
+
+            ApplyApiResponseMappings(config, responseBody, variables);
+            return "success";
+        }
+        catch
+        {
+            return "error";
+        }
+    }
+
+    private static void ApplyApiResponseMappings(JsonElement config, string responseBody, IDictionary<string, string> variables)
+    {
+        if (!config.TryGetProperty("responseMappings", out var responseMappings) || responseMappings.ValueKind != JsonValueKind.Array)
+        {
+            return;
+        }
+
+        JsonDocument responseDocument = null;
+
+        foreach (var mapping in responseMappings.EnumerateArray())
+        {
+            if (!TryGetTrimmedString(mapping, "variableName", out var variableName) || string.IsNullOrWhiteSpace(variableName))
+            {
+                continue;
+            }
+
+            var path = TryGetTrimmedString(mapping, "path", out var configuredPath)
+                ? configuredPath
+                : "body";
+
+            if (string.Equals(path, "body", StringComparison.OrdinalIgnoreCase))
+            {
+                variables[variableName] = responseBody ?? string.Empty;
+                continue;
+            }
+
+            responseDocument ??= TryParseJsonDocument(responseBody);
+            if (responseDocument == null)
+            {
+                variables[variableName] = string.Empty;
+                continue;
+            }
+
+            variables[variableName] = ResolveJsonPathValue(responseDocument.RootElement, path);
+        }
+
+        responseDocument?.Dispose();
+    }
+
+    private static JsonDocument TryParseJsonDocument(string responseBody)
+    {
+        try
+        {
+            return JsonDocument.Parse(responseBody ?? string.Empty);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string ResolveJsonPathValue(JsonElement rootElement, string path)
+    {
+        var current = rootElement;
+        foreach (var segment in (path ?? string.Empty).Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (current.ValueKind != JsonValueKind.Object)
+            {
+                return string.Empty;
+            }
+
+            var matchedProperty = current.EnumerateObject()
+                .FirstOrDefault(property => string.Equals(property.Name, segment, StringComparison.OrdinalIgnoreCase));
+
+            if (string.IsNullOrWhiteSpace(matchedProperty.Name))
+            {
+                return string.Empty;
+            }
+
+            current = matchedProperty.Value;
+        }
+
+        return current.ValueKind switch
+        {
+            JsonValueKind.String => current.GetString() ?? string.Empty,
+            JsonValueKind.Number => current.ToString(),
+            JsonValueKind.True => bool.TrueString.ToLowerInvariant(),
+            JsonValueKind.False => bool.FalseString.ToLowerInvariant(),
+            JsonValueKind.Null => string.Empty,
+            _ => current.ToString()
+        };
+    }
+
     private static string GetOutgoingTarget(BotGraphDefinition graph, string sourceNodeId, string sourceHandle)
     {
         var matchingEdge = graph.Edges.FirstOrDefault(edge =>
@@ -539,6 +749,110 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         {
             throw new UserFriendlyException("This origin is not allowed for the requested deployment.");
         }
+    }
+
+    private static string ResolveAwaitingInputMode(BotGraphDefinition graph, RuntimeSession session)
+    {
+        if (!session.AwaitingInput)
+        {
+            return string.Empty;
+        }
+
+        return IsChoiceQuestion(graph, session.CurrentNodeId) ? "choice" : "question";
+    }
+
+    private static List<string> ResolveSuggestedReplies(BotGraphDefinition graph, RuntimeSession session)
+    {
+        if (!session.AwaitingInput)
+        {
+            return [];
+        }
+
+        var questionNode = graph.Nodes.FirstOrDefault(node => node.Id == session.CurrentNodeId && IsNodeType(node, "question"));
+        if (questionNode == null ||
+            !questionNode.Config.TryGetProperty("options", out var options) ||
+            options.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return options.EnumerateArray()
+            .Where(option => option.ValueKind == JsonValueKind.String)
+            .Select(option => option.GetString()?.Trim() ?? string.Empty)
+            .Where(option => !string.IsNullOrWhiteSpace(option))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static bool IsChoiceQuestion(BotGraphDefinition graph, string currentNodeId)
+    {
+        var questionNode = graph.Nodes.FirstOrDefault(node => node.Id == currentNodeId && IsNodeType(node, "question"));
+        return questionNode != null &&
+               TryGetTrimmedString(questionNode.Config, "inputMode", out var inputMode) &&
+               string.Equals(inputMode, "choice", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool TryResolveQuestionChoice(BotGraphDefinition graph, string currentNodeId, string userInput, out string resolvedChoice)
+    {
+        resolvedChoice = string.Empty;
+        var questionNode = graph.Nodes.FirstOrDefault(node => node.Id == currentNodeId && IsNodeType(node, "question"));
+        if (questionNode == null || !IsChoiceQuestion(graph, currentNodeId))
+        {
+            return false;
+        }
+
+        if (!questionNode.Config.TryGetProperty("options", out var options) || options.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        foreach (var option in options.EnumerateArray())
+        {
+            if (option.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            var normalizedOption = option.GetString()?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedOption))
+            {
+                continue;
+            }
+
+            if (string.Equals(normalizedOption, userInput.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                resolvedChoice = normalizedOption;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string GetInvalidQuestionInputMessage(BotGraphDefinition graph, string currentNodeId)
+    {
+        var questionNode = graph.Nodes.FirstOrDefault(node => node.Id == currentNodeId && IsNodeType(node, "question"));
+        if (questionNode == null)
+        {
+            return "Please choose one of the available options.";
+        }
+
+        return TryGetTrimmedString(questionNode.Config, "invalidInputMessage", out var invalidInputMessage) &&
+               !string.IsNullOrWhiteSpace(invalidInputMessage)
+            ? invalidInputMessage
+            : "Please choose one of the available options.";
+    }
+
+    private static string NormalizeCodeOperation(string operation)
+    {
+        return operation switch
+        {
+            "lowercase" => "lowercase",
+            "uppercase" => "uppercase",
+            "trim" => "trim",
+            "concat" => "concat",
+            _ => "template"
+        };
     }
 
     private sealed class DeploymentContext

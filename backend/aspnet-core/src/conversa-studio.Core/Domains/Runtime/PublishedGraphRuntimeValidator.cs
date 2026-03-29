@@ -18,6 +18,8 @@ public class PublishedGraphRuntimeValidator : ITransientDependency
         "question",
         "condition",
         "variable",
+        "api",
+        "code",
         "end"
     };
 
