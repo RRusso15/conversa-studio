@@ -163,7 +163,6 @@ public class BotDeploymentAppService : ConversaStudioAppServiceBase, IBotDeploym
     {
         var deployment = await GetOwnedDeploymentAsync(input.Id);
         var clientRootAddress = ResolveClientRootAddress();
-        var serverRootAddress = ResolveServerRootAddress();
 
         return new DeploymentSnippetDto
         {
@@ -172,8 +171,6 @@ public class BotDeploymentAppService : ConversaStudioAppServiceBase, IBotDeploym
                 "<script>\n" +
                 "  window.ConversaStudioWidgetConfig = {\n" +
                 $"    deploymentKey: \"{deployment.DeploymentKey}\",\n" +
-                $"    apiBaseUrl: \"{serverRootAddress.TrimEnd('/')}\",\n" +
-                $"    clientBaseUrl: \"{clientRootAddress.TrimEnd('/')}\",\n" +
                 $"    launcherLabel: {JsonSerializer.Serialize(deployment.LauncherLabel)},\n" +
                 $"    themeColor: {JsonSerializer.Serialize(deployment.ThemeColor)}\n" +
                 "  };\n" +

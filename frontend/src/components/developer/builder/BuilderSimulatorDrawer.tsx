@@ -86,8 +86,8 @@ export function BuilderSimulatorDrawer() {
             Runtime state
           </Title>
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            This MVP simulator walks through local graph state for linear flows, questions,
-            conditions, and end nodes.
+            This local simulator previews question capture, branching, variable updates, code transforms,
+            and API success paths with sample mapped values.
           </Paragraph>
           <Space wrap>
             <Tag color={runtime.awaitingInput ? "blue" : "default"}>
@@ -105,6 +105,8 @@ export function BuilderSimulatorDrawer() {
             placeholder={
               runtime.awaitingInputMode === "question"
                 ? "Type a reply to continue the flow"
+                : runtime.awaitingInputMode === "choice"
+                  ? "Select a button or type a matching option"
                 : "Input is available once the bot asks a question"
             }
             onPressEnter={handleSend}
@@ -119,6 +121,18 @@ export function BuilderSimulatorDrawer() {
             Send
           </Button>
         </Space.Compact>
+        {runtime.awaitingInputMode === "choice" && (runtime.pendingQuestionOptions?.length ?? 0) > 0 ? (
+          <Space wrap>
+            {runtime.pendingQuestionOptions?.map((option) => (
+              <Button
+                key={option}
+                onClick={() => setRuntime((current) => advanceSimulator(state.graph, current, option))}
+              >
+                {option}
+              </Button>
+            ))}
+          </Space>
+        ) : null}
       </Space>
     </Drawer>
   );

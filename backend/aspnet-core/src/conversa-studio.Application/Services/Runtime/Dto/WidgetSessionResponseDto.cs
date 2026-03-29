@@ -28,6 +28,16 @@ public class WidgetSessionResponseDto
     public bool AwaitingInput { get; set; }
 
     /// <summary>
+    /// Gets or sets the expected input mode while awaiting a reply.
+    /// </summary>
+    public string AwaitingInputMode { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets suggested replies for choice-based question nodes.
+    /// </summary>
+    public List<string> SuggestedReplies { get; set; } = [];
+
+    /// <summary>
     /// Gets or sets whether the conversation has completed.
     /// </summary>
     public bool IsCompleted { get; set; }

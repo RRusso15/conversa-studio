@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { Button, Input, Spin, Typography } from "antd";
 
 const { Text, Title } = Typography;
 
 interface WidgetEmbedClientProps {
     deploymentKey: string;
-    apiBaseUrl: string;
     parentOrigin: string;
 }
 
@@ -31,6 +30,8 @@ interface IWidgetSessionResponse {
     botName: string;
     messages: IWidgetMessage[];
     awaitingInput: boolean;
+    awaitingInputMode: "question" | "choice" | "";
+    suggestedReplies: string[];
     isCompleted: boolean;
 }
 
@@ -51,13 +52,14 @@ const SESSION_STORAGE_PREFIX = "conversa-widget-session";
 
 export function WidgetEmbedClient({
     deploymentKey,
-    apiBaseUrl,
     parentOrigin
 }: WidgetEmbedClientProps) {
     const [bootstrap, setBootstrap] = useState<IWidgetBootstrap>();
     const [messages, setMessages] = useState<IWidgetMessage[]>([]);
     const [sessionId, setSessionId] = useState<string>();
     const [awaitingInput, setAwaitingInput] = useState(false);
+    const [awaitingInputMode, setAwaitingInputMode] = useState<"question" | "choice" | "">("");
+    const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
     const [isCompleted, setIsCompleted] = useState(false);
     const [draft, setDraft] = useState("");
     const [isLoading, setIsLoading] = useState(true);
@@ -69,16 +71,12 @@ export function WidgetEmbedClient({
         [deploymentKey]
     );
 
-    useEffect(() => {
-        void initializeWidget();
-    }, [deploymentKey, apiBaseUrl, parentOrigin]);
-
-    const initializeWidget = async () => {
+    const initializeWidget = useEffectEvent(async () => {
         setIsLoading(true);
         setError(undefined);
 
         try {
-            const bootstrapResponse = await fetch(`${apiBaseUrl}/api/widget/deployments/${encodeURIComponent(deploymentKey)}/bootstrap`, {
+            const bootstrapResponse = await fetch(`/widget/runtime/${encodeURIComponent(deploymentKey)}/bootstrap`, {
                 headers: {
                     "X-Conversa-Embed-Origin": parentOrigin
                 }
@@ -95,7 +93,7 @@ export function WidgetEmbedClient({
                 ? window.localStorage.getItem(sessionStorageKey) ?? ""
                 : "";
 
-            const sessionResponse = await fetch(`${apiBaseUrl}/api/widget/deployments/${encodeURIComponent(deploymentKey)}/sessions`, {
+            const sessionResponse = await fetch(`/widget/runtime/${encodeURIComponent(deploymentKey)}/sessions`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -112,6 +110,8 @@ export function WidgetEmbedClient({
             setSessionId(sessionPayload.sessionId);
             setMessages(sessionPayload.messages ?? []);
             setAwaitingInput(sessionPayload.awaitingInput);
+            setAwaitingInputMode(sessionPayload.awaitingInputMode);
+            setSuggestedReplies(sessionPayload.suggestedReplies);
             setIsCompleted(sessionPayload.isCompleted);
 
             if (typeof window !== "undefined") {
@@ -122,7 +122,11 @@ export function WidgetEmbedClient({
         } finally {
             setIsLoading(false);
         }
-    };
+    });
+
+    useEffect(() => {
+        void initializeWidget();
+    }, [deploymentKey, parentOrigin]);
 
     const handleSend = async () => {
         if (!draft.trim() || !sessionId) {
@@ -133,7 +137,7 @@ export function WidgetEmbedClient({
 
         try {
             const response = await fetch(
-                `${apiBaseUrl}/api/widget/deployments/${encodeURIComponent(deploymentKey)}/sessions/${encodeURIComponent(sessionId)}/messages`,
+                `/widget/runtime/${encodeURIComponent(deploymentKey)}/sessions/${encodeURIComponent(sessionId)}/messages`,
                 {
                     method: "POST",
                     headers: {
@@ -151,6 +155,8 @@ export function WidgetEmbedClient({
             const payload = unwrapWidgetResponse<IWidgetSessionResponse>(await response.json());
             setMessages((current) => [...current, ...(payload.messages ?? [])]);
             setAwaitingInput(payload.awaitingInput);
+            setAwaitingInputMode(payload.awaitingInputMode);
+            setSuggestedReplies(payload.suggestedReplies);
             setIsCompleted(payload.isCompleted);
             setDraft("");
         } catch (caughtError) {
@@ -163,6 +169,46 @@ export function WidgetEmbedClient({
     const handleClose = () => {
         if (typeof window !== "undefined") {
             window.parent.postMessage({ type: "conversa-widget-close" }, "*");
+        }
+    };
+
+    const handleSuggestedReply = async (reply: string) => {
+        setDraft(reply);
+
+        if (!sessionId) {
+            return;
+        }
+
+        setIsSending(true);
+
+        try {
+            const response = await fetch(
+                `/widget/runtime/${encodeURIComponent(deploymentKey)}/sessions/${encodeURIComponent(sessionId)}/messages`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Conversa-Embed-Origin": parentOrigin
+                    },
+                    body: JSON.stringify({ message: reply })
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error("The message could not be sent.");
+            }
+
+            const payload = await response.json() as IWidgetSessionResponse;
+            setMessages((current) => [...current, ...payload.messages]);
+            setAwaitingInput(payload.awaitingInput);
+            setAwaitingInputMode(payload.awaitingInputMode);
+            setSuggestedReplies(payload.suggestedReplies);
+            setIsCompleted(payload.isCompleted);
+            setDraft("");
+        } catch (caughtError) {
+            setError(caughtError instanceof Error ? caughtError.message : "The widget message could not be sent.");
+        } finally {
+            setIsSending(false);
         }
     };
 
@@ -232,9 +278,22 @@ export function WidgetEmbedClient({
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
                     autoSize={{ minRows: 2, maxRows: 4 }}
-                    placeholder={awaitingInput ? "Type your reply..." : isCompleted ? "Conversation ended" : "Waiting for the bot..."}
+                    placeholder={awaitingInput ? awaitingInputMode === "choice" ? "Choose a button or type a matching option..." : "Type your reply..." : isCompleted ? "Conversation ended" : "Waiting for the bot..."}
                     disabled={!awaitingInput || isCompleted || Boolean(error)}
                 />
+                {awaitingInputMode === "choice" && suggestedReplies.length > 0 ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                        {suggestedReplies.map((reply) => (
+                            <Button
+                                key={reply}
+                                onClick={() => void handleSuggestedReply(reply)}
+                                disabled={isSending || isCompleted || Boolean(error)}
+                            >
+                                {reply}
+                            </Button>
+                        ))}
+                    </div>
+                ) : null}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
                     <Text type="secondary">
                         {awaitingInput ? "Reply required" : isCompleted ? "Completed" : "Auto-running"}

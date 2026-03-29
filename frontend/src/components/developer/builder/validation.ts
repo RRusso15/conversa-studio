@@ -111,6 +111,30 @@ export function validateBotGraph(graph: BotGraph): ValidationResult[] {
           relatedNodeId: node.id,
         });
       }
+
+      if ((node.config.inputMode ?? "text") === "choice") {
+        const normalizedOptions = (node.config.options ?? [])
+          .map((option) => option.trim())
+          .filter((option) => option.length > 0);
+
+        if (normalizedOptions.length === 0) {
+          results.push({
+            id: `question-options-${node.id}`,
+            severity: "error",
+            message: "Choice questions require at least one option.",
+            relatedNodeId: node.id,
+          });
+        }
+
+        if (new Set(normalizedOptions.map((option) => option.toLowerCase())).size !== normalizedOptions.length) {
+          results.push({
+            id: `question-options-duplicate-${node.id}`,
+            severity: "warning",
+            message: "Choice question options should be unique.",
+            relatedNodeId: node.id,
+          });
+        }
+      }
     }
 
     if (node.type === "condition" && node.config.kind === "condition") {
@@ -251,6 +275,96 @@ export function validateBotGraph(graph: BotGraph): ValidationResult[] {
       }
     }
 
+    if (node.type === "api" && node.config.kind === "api") {
+      const outgoingEdges = graph.edges.filter((edge) => edge.source === node.id);
+      const duplicateHandles = outgoingEdges.reduce<Map<string, number>>((map, edge) => {
+        const sourceHandle = edge.sourceHandle || "";
+        map.set(sourceHandle, (map.get(sourceHandle) ?? 0) + 1);
+        return map;
+      }, new Map<string, number>());
+
+      if (!node.config.endpoint.trim()) {
+        results.push({
+          id: `api-endpoint-${node.id}`,
+          severity: "error",
+          message: "API nodes require an endpoint.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      if (!node.config.method.trim()) {
+        results.push({
+          id: `api-method-${node.id}`,
+          severity: "error",
+          message: "API nodes require a method.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      if ((node.config.timeoutMs ?? 0) <= 0) {
+        results.push({
+          id: `api-timeout-${node.id}`,
+          severity: "error",
+          message: "API nodes require a timeout greater than zero.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      (node.config.responseMappings ?? []).forEach((mapping, index) => {
+        if (!mapping.variableName.trim()) {
+          results.push({
+            id: `api-mapping-variable-${node.id}-${index}`,
+            severity: "error",
+            message: `Response mapping ${index + 1} requires a target variable.`,
+            relatedNodeId: node.id,
+          });
+        }
+
+        if (!mapping.path.trim()) {
+          results.push({
+            id: `api-mapping-path-${node.id}-${index}`,
+            severity: "warning",
+            message: `Response mapping ${index + 1} has no path. The raw response body will be used.`,
+            relatedNodeId: node.id,
+          });
+        }
+      });
+
+      duplicateHandles.forEach((count, sourceHandle) => {
+        if (count <= 1) {
+          return;
+        }
+
+        results.push({
+          id: `api-duplicate-handle-${node.id}-${sourceHandle || "default"}`,
+          severity: "warning",
+          message:
+            sourceHandle === "error"
+              ? "API error route has multiple outgoing edges. Only one edge should leave the error handle."
+              : "API success route has multiple outgoing edges. Only one edge should leave the success handle.",
+          relatedNodeId: node.id,
+        });
+      });
+
+      if (!outgoingEdges.some((edge) => edge.sourceHandle === "success")) {
+        results.push({
+          id: `api-success-edge-${node.id}`,
+          severity: "warning",
+          message: "API success route does not have an outgoing edge.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      if (!outgoingEdges.some((edge) => edge.sourceHandle === "error")) {
+        results.push({
+          id: `api-error-edge-${node.id}`,
+          severity: "warning",
+          message: "API error route does not have an outgoing edge.",
+          relatedNodeId: node.id,
+        });
+      }
+    }
+
     if (node.type === "ai" && node.config.kind === "ai" && !node.config.instructions.trim()) {
       results.push({
         id: `ai-instructions-${node.id}`,
@@ -258,6 +372,35 @@ export function validateBotGraph(graph: BotGraph): ValidationResult[] {
         message: "AI nodes require instructions.",
         relatedNodeId: node.id,
       });
+    }
+
+    if (node.type === "code" && node.config.kind === "code") {
+      if (!node.config.targetVariable.trim()) {
+        results.push({
+          id: `code-target-${node.id}`,
+          severity: "error",
+          message: "Code nodes require a target variable.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      if (!node.config.input.trim()) {
+        results.push({
+          id: `code-input-${node.id}`,
+          severity: "error",
+          message: "Code nodes require an input value or template.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      if ((node.config.operation ?? "template") === "concat" && !node.config.secondInput?.trim()) {
+        results.push({
+          id: `code-second-input-${node.id}`,
+          severity: "error",
+          message: "Concat operations require a second input.",
+          relatedNodeId: node.id,
+        });
+      }
     }
 
     getNodeTextTemplates(node.config).forEach((template, index) => {

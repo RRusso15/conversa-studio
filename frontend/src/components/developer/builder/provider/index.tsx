@@ -30,9 +30,11 @@ import {
 import { BuilderReducer } from "./reducer";
 import { nodeRegistry } from "../node-registry";
 import type {
+    ApiNodeConfig,
     BotEdge,
     BotGraph,
     BotNode,
+    CodeNodeConfig,
     NodeConfig,
     NodeType,
     SimulatorMessage,
@@ -44,7 +46,10 @@ import { validateBotGraph } from "../validation";
 import {
     getVariableOperation,
     interpolateVariableText,
-    normalizeConditionConfig
+    normalizeApiConfig,
+    normalizeCodeConfig,
+    normalizeConditionConfig,
+    normalizeQuestionConfig
 } from "../variable-utils";
 
 interface BuilderProviderProps {
@@ -350,7 +355,19 @@ function createNodeId(nodeType: NodeType, nodes: BotNode[]) {
 }
 
 function findEdgeLabel(sourceNode?: BotNode, sourceHandle?: string) {
-    if (!sourceNode || sourceNode.type !== "condition" || sourceNode.config.kind !== "condition") {
+    if (!sourceNode) {
+        return sourceHandle || "Next";
+    }
+
+    if (sourceNode.type === "api" && sourceNode.config.kind === "api") {
+        if (sourceHandle === "error") {
+            return sourceNode.config.errorLabel?.trim() || "Error";
+        }
+
+        return sourceNode.config.successLabel?.trim() || "Success";
+    }
+
+    if (sourceNode.type !== "condition" || sourceNode.config.kind !== "condition") {
         return sourceHandle || "Next";
     }
 
@@ -375,7 +392,9 @@ function getNodeSummary(node: BotNode) {
         case "message":
             return node.config.message.trim() || "Send a fixed message to the user.";
         case "question":
-            return `${node.config.question.trim() || "Ask for input."} Captures into ${node.config.variableName || "a variable"}.`;
+            return (node.config.inputMode ?? "text") === "choice"
+                ? `${node.config.question.trim() || "Ask the user to choose an option."} Saves the selection into ${node.config.variableName || "a variable"} from ${(node.config.options ?? []).filter((option) => option.trim().length > 0).length} choice(s).`
+                : `${node.config.question.trim() || "Ask for input."} Captures into ${node.config.variableName || "a variable"}.`;
         case "condition": {
             const ruleCount = node.config.rules.length;
             const ruleSummary = ruleCount === 1 ? "1 branch rule" : `${ruleCount} branch rules`;
@@ -385,11 +404,11 @@ function getNodeSummary(node: BotNode) {
         case "variable":
             return getVariableSummary(node.config);
         case "api":
-            return `${node.config.method} ${node.config.endpoint}`;
+            return `${node.config.method} ${node.config.endpoint || "endpoint"} with ${(node.config.responseMappings ?? []).length} response mapping(s), ${getApiBranchLabel(node.config.successLabel, "Success")} and ${getApiBranchLabel(node.config.errorLabel, "Error")} routes.`;
         case "ai":
             return node.config.instructions.trim() || "Generate a grounded AI response.";
         case "code":
-            return "Run custom logic before moving to the next step.";
+            return `Compute ${node.config.targetVariable || "a variable"} using ${(node.config.operation ?? "template")} logic.`;
         case "handoff":
             return `Route the conversation to ${node.config.queueName || "a live team"}.`;
         case "end":
@@ -465,6 +484,31 @@ export function advanceSimulator(
     if (userInput && simulator.awaitingInput) {
         nextState.messages.push(createUserMessage(userInput));
 
+        if (simulator.awaitingInputMode === "choice" && simulator.pendingQuestionVariable) {
+            const matchedChoice = findMatchingQuestionOption(simulator.pendingQuestionOptions ?? [], userInput);
+
+            if (!matchedChoice) {
+                nextState.messages.push(createBotMessage(
+                    getCurrentQuestionInvalidInputMessage(graph, simulator.currentNodeId)
+                ));
+                return nextState;
+            }
+
+            const outgoing = getOutgoingEdges(graph, simulator.currentNodeId || "");
+            return {
+                ...nextState,
+                variables: {
+                    ...nextState.variables,
+                    [simulator.pendingQuestionVariable]: matchedChoice
+                },
+                awaitingInput: false,
+                awaitingInputMode: undefined,
+                pendingQuestionVariable: undefined,
+                pendingQuestionOptions: undefined,
+                currentNodeId: outgoing[0]?.target
+            };
+        }
+
         if (simulator.awaitingInputMode === "question" && simulator.pendingQuestionVariable) {
             nextState.variables[simulator.pendingQuestionVariable] = userInput;
             const outgoing = getOutgoingEdges(graph, simulator.currentNodeId || "");
@@ -473,6 +517,7 @@ export function advanceSimulator(
                 awaitingInput: false,
                 awaitingInputMode: undefined,
                 pendingQuestionVariable: undefined,
+                pendingQuestionOptions: undefined,
                 currentNodeId: outgoing[0]?.target
             };
         }
@@ -508,8 +553,11 @@ export function advanceSimulator(
                 interpolateVariableText(currentNode.config.question, nextState.variables)
             ));
             nextState.awaitingInput = true;
-            nextState.awaitingInputMode = "question";
+            nextState.awaitingInputMode = currentNode.config.inputMode === "choice" ? "choice" : "question";
             nextState.pendingQuestionVariable = currentNode.config.variableName;
+            nextState.pendingQuestionOptions = currentNode.config.inputMode === "choice"
+                ? (currentNode.config.options ?? []).filter((option) => option.trim().length > 0)
+                : undefined;
             break;
         }
 
@@ -538,16 +586,18 @@ export function advanceSimulator(
         }
 
         if (currentNode.type === "api" && currentNode.config.kind === "api") {
+            nextState.variables = applyApiPreview(currentNode.config, nextState.variables);
             nextState.messages.push(createSystemMessage(
-                `Preview API call: ${currentNode.config.method} ${currentNode.config.endpoint}`
+                `Preview API call: ${currentNode.config.method} ${currentNode.config.endpoint}. Response mappings were filled with sample values and the ${getApiBranchLabel(currentNode.config.successLabel, "Success").toLowerCase()} route was used.`
             ));
-            nextState.currentNodeId = outgoing[0]?.target;
+            nextState.currentNodeId = outgoing.find((edge) => edge.sourceHandle === "success")?.target ?? outgoing[0]?.target;
             continue;
         }
 
         if (currentNode.type === "code" && currentNode.config.kind === "code") {
+            nextState.variables = applyCodeNode(currentNode.config, nextState.variables);
             nextState.messages.push(createSystemMessage(
-                "Preview logic node executed. Custom code runtime is not simulated yet."
+                getCodeSummary(currentNode.config, nextState.variables)
             ));
             nextState.currentNodeId = outgoing[0]?.target;
             continue;
@@ -650,6 +700,7 @@ function resolveConditionVariableMode(
         awaitingInput: false,
         awaitingInputMode: undefined,
         pendingQuestionVariable: undefined,
+        pendingQuestionOptions: undefined,
         currentNodeId: chosenEdge?.target
     };
 }
@@ -683,6 +734,27 @@ function normalizeGraph(graph: BotGraph): BotGraph {
     return {
         ...graph,
         nodes: graph.nodes.map((node) => {
+            if (node.config.kind === "question") {
+                return {
+                    ...node,
+                    config: normalizeQuestionConfig(node.config)
+                };
+            }
+
+            if (node.config.kind === "code") {
+                return {
+                    ...node,
+                    config: normalizeCodeConfig(node.config)
+                };
+            }
+
+            if (node.config.kind === "api") {
+                return {
+                    ...node,
+                    config: normalizeApiConfig(node.config)
+                };
+            }
+
             if (node.config.kind !== "condition") {
                 return node;
             }
@@ -693,4 +765,87 @@ function normalizeGraph(graph: BotGraph): BotGraph {
             };
         })
     };
+}
+
+function findMatchingQuestionOption(options: string[], userInput: string): string | undefined {
+    const normalizedInput = userInput.trim().toLowerCase();
+
+    return options.find((option) => option.trim().toLowerCase() === normalizedInput);
+}
+
+function getCurrentQuestionInvalidInputMessage(graph: BotGraph, nodeId?: string): string {
+    const currentNode = graph.nodes.find((node) => node.id === nodeId);
+
+    if (currentNode?.config.kind !== "question") {
+        return "Please choose one of the available options.";
+    }
+
+    return currentNode.config.invalidInputMessage?.trim() || "Please choose one of the available options.";
+}
+
+function applyCodeNode(
+    config: CodeNodeConfig,
+    variables: Record<string, string>
+): Record<string, string> {
+    const nextVariables = { ...variables };
+    const targetVariable = config.targetVariable.trim();
+
+    if (!targetVariable) {
+        return nextVariables;
+    }
+
+    nextVariables[targetVariable] = executeCodeOperation(config, variables);
+    return nextVariables;
+}
+
+function executeCodeOperation(
+    config: CodeNodeConfig,
+    variables: Record<string, string>
+): string {
+    const primaryInput = interpolateVariableText(config.input, variables);
+    const secondInput = interpolateVariableText(config.secondInput ?? "", variables);
+
+    switch (config.operation ?? "template") {
+        case "lowercase":
+            return primaryInput.toLowerCase();
+        case "uppercase":
+            return primaryInput.toUpperCase();
+        case "trim":
+            return primaryInput.trim();
+        case "concat":
+            return `${primaryInput}${secondInput}`;
+        case "template":
+        default:
+            return primaryInput;
+    }
+}
+
+function getCodeSummary(
+    config: CodeNodeConfig,
+    variables: Record<string, string>
+): string {
+    return `Computed ${config.targetVariable || "a variable"} = ${executeCodeOperation(config, variables) || "(empty value)"}.`;
+}
+
+function getApiBranchLabel(label: string | undefined, fallback: string): string {
+    return label?.trim() || fallback;
+}
+
+function applyApiPreview(
+    config: ApiNodeConfig,
+    variables: Record<string, string>
+): Record<string, string> {
+    const nextVariables = { ...variables };
+
+    (config.responseMappings ?? []).forEach((mapping) => {
+        const variableName = mapping.variableName.trim();
+
+        if (!variableName) {
+            return;
+        }
+
+        nextVariables[variableName] = `preview:${mapping.path || "body"}`;
+    });
+
+    return nextVariables;
 }
