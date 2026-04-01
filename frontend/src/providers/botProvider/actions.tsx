@@ -5,6 +5,9 @@ import type { IBotDefinition, IBotRequestError, IBotStateContext, IBotSummary } 
 import type { ValidationResult } from "@/components/developer/builder/types";
 
 type IBotStatePatch = Partial<IBotStateContext>;
+type IDeleteBotStatePatch = IBotStatePatch & {
+    deletedBotId: string;
+};
 
 export enum BotActionEnums {
     getBotsPending = "GET_BOTS_PENDING",
@@ -24,6 +27,10 @@ export enum BotActionEnums {
     updateBotDraftPending = "UPDATE_BOT_DRAFT_PENDING",
     updateBotDraftSuccess = "UPDATE_BOT_DRAFT_SUCCESS",
     updateBotDraftError = "UPDATE_BOT_DRAFT_ERROR",
+
+    deleteBotPending = "DELETE_BOT_PENDING",
+    deleteBotSuccess = "DELETE_BOT_SUCCESS",
+    deleteBotError = "DELETE_BOT_ERROR",
 
     validateBotDraftPending = "VALIDATE_BOT_DRAFT_PENDING",
     validateBotDraftSuccess = "VALIDATE_BOT_DRAFT_SUCCESS",
@@ -206,6 +213,31 @@ export const updateBotDraftError = createAction<IBotStatePatch, IBotRequestError
     })
 );
 
+export const deleteBotPending = createAction<IBotStatePatch>(
+    BotActionEnums.deleteBotPending,
+    () => ({
+        deleteStatus: "deleting",
+        deleteErrorMessage: undefined
+    })
+);
+
+export const deleteBotSuccess = createAction<IDeleteBotStatePatch, { deletedBotId: string }>(
+    BotActionEnums.deleteBotSuccess,
+    ({ deletedBotId }) => ({
+        deleteStatus: "idle",
+        deleteErrorMessage: undefined,
+        deletedBotId
+    })
+);
+
+export const deleteBotError = createAction<IBotStatePatch, IBotRequestError | undefined>(
+    BotActionEnums.deleteBotError,
+    (error) => ({
+        deleteStatus: "error",
+        deleteErrorMessage: error?.message
+    })
+);
+
 export const validateBotDraftPending = createAction<IBotStatePatch>(
     BotActionEnums.validateBotDraftPending,
     () => ({
@@ -291,6 +323,8 @@ export const clearActiveBot = createAction<IBotStatePatch>(
         activeBot: undefined,
         draftIdentity: "temporary",
         saveStatus: "idle",
+        deleteStatus: "idle",
+        deleteErrorMessage: undefined,
         aiKnowledgeStatus: "idle",
         aiKnowledgeErrorMessage: undefined,
         validationResults: undefined,

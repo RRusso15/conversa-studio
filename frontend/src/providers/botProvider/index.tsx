@@ -12,6 +12,9 @@ import {
     createBotDraftError,
     createBotDraftPending,
     createBotDraftSuccess,
+    deleteBotError,
+    deleteBotPending,
+    deleteBotSuccess,
     getBotError,
     getBotPending,
     getBotSuccess,
@@ -96,6 +99,7 @@ const GET_BOTS_URL = "/api/services/app/BotDefinition/GetBots";
 const GET_BOT_URL = "/api/services/app/BotDefinition/GetBot";
 const CREATE_DRAFT_URL = "/api/services/app/BotDefinition/CreateDraft";
 const UPDATE_DRAFT_URL = "/api/services/app/BotDefinition/UpdateDraft";
+const DELETE_BOT_URL = "/api/services/app/BotDefinition/DeleteBot";
 const PUBLISH_DRAFT_URL = "/api/services/app/BotDefinition/PublishDraft";
 const VALIDATE_DRAFT_URL = "/api/services/app/BotDefinition/ValidateDraft";
 const BOT_REQUEST_CONFIG = {
@@ -108,7 +112,7 @@ const BOT_REQUEST_CONFIG = {
  */
 export const BotProvider = ({ children }: BotProviderProps) => {
     const [state, rawDispatch] = useReducer(BotReducer, INITIAL_STATE);
-    const dispatch = rawDispatch as React.Dispatch<Action<Partial<IBotStateContext>>>;
+    const dispatch = rawDispatch as React.Dispatch<Action<Partial<IBotStateContext> & { deletedBotId?: string }>>;
     const activeBotId = state.activeBot?.id;
     const draftIdentity = state.draftIdentity;
 
@@ -223,6 +227,21 @@ export const BotProvider = ({ children }: BotProviderProps) => {
         } catch (error) {
             const requestError = toRequestError(error, "We could not save this bot.");
             dispatch(updateBotDraftError(requestError));
+            return { error: requestError };
+        }
+    }, [dispatch]);
+
+    const deleteBot = useCallback(async (id: string): Promise<{ error?: IBotRequestError }> => {
+        dispatch(deleteBotPending());
+
+        try {
+            const instance = getAxiosInstance();
+            await instance.post(DELETE_BOT_URL, { id }, BOT_REQUEST_CONFIG);
+            dispatch(deleteBotSuccess({ deletedBotId: id }));
+            return {};
+        } catch (error) {
+            const requestError = toRequestError(error, "We could not delete this bot.");
+            dispatch(deleteBotError(requestError));
             return { error: requestError };
         }
     }, [dispatch]);
@@ -399,6 +418,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
         initializeNewBotDraft,
         createBotDraft,
         updateBotDraft,
+        deleteBot,
         publishBotDraft,
         validateBotDraft,
         upsertBotAiSettings,
@@ -418,6 +438,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
         clearBotAiKnowledgeError,
         createBotDraft,
         deleteBotAiSource,
+        deleteBot,
         getBot,
         getBotAiKnowledge,
         getBots,

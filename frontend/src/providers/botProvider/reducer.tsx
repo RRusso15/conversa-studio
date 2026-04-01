@@ -5,7 +5,9 @@ import { INITIAL_STATE, type IBotStateContext } from "./context";
 import { BotActionEnums } from "./actions";
 
 interface IReducerAction {
-    payload?: IBotStateContext;
+    payload?: Partial<IBotStateContext> & {
+        deletedBotId?: string;
+    };
 }
 
 export const BotReducer = handleActions<IBotStateContext, IBotStateContext>(
@@ -65,6 +67,27 @@ export const BotReducer = handleActions<IBotStateContext, IBotStateContext>(
                 : state.bots
         }),
         [BotActionEnums.updateBotDraftError]: (state, action: IReducerAction) => ({
+            ...state,
+            ...action.payload
+        }),
+        [BotActionEnums.deleteBotPending]: (state, action: IReducerAction) => ({
+            ...state,
+            ...action.payload
+        }),
+        [BotActionEnums.deleteBotSuccess]: (state, action: IReducerAction) => ({
+            ...state,
+            ...action.payload,
+            activeBot: state.activeBot?.id === action.payload?.deletedBotId ? undefined : state.activeBot,
+            draftIdentity: state.activeBot?.id === action.payload?.deletedBotId ? "temporary" : state.draftIdentity,
+            saveStatus: state.activeBot?.id === action.payload?.deletedBotId ? "idle" : state.saveStatus,
+            aiKnowledgeStatus: state.activeBot?.id === action.payload?.deletedBotId ? "idle" : state.aiKnowledgeStatus,
+            aiKnowledgeErrorMessage: state.activeBot?.id === action.payload?.deletedBotId ? undefined : state.aiKnowledgeErrorMessage,
+            validationResults: state.activeBot?.id === action.payload?.deletedBotId ? undefined : state.validationResults,
+            errorCode: state.activeBot?.id === action.payload?.deletedBotId ? undefined : state.errorCode,
+            errorMessage: state.activeBot?.id === action.payload?.deletedBotId ? undefined : state.errorMessage,
+            bots: state.bots?.filter((bot) => bot.id !== action.payload?.deletedBotId)
+        }),
+        [BotActionEnums.deleteBotError]: (state, action: IReducerAction) => ({
             ...state,
             ...action.payload
         }),
