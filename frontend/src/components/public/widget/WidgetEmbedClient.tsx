@@ -36,6 +36,19 @@ interface IWidgetSessionResponse {
     isCompleted: boolean;
 }
 
+interface IWidgetErrorResponse {
+    error?: string;
+}
+
+interface IAbpWidgetResponse<T> {
+    result?: T;
+    success?: boolean;
+    error?: {
+        message?: string;
+        details?: string;
+    };
+}
+
 const SESSION_STORAGE_PREFIX = "conversa-widget-session";
 const MIN_TYPING_DISPLAY_MS = 700;
 const POWERED_BY_LABEL = "Powered by Conversa Studio";
@@ -78,10 +91,15 @@ export function WidgetEmbedClient({
             });
 
             if (!bootstrapResponse.ok) {
-                throw new Error("The widget could not be loaded for this deployment.");
+                throw new Error(
+                    await readWidgetError(
+                        bootstrapResponse,
+                        "The widget could not be loaded for this deployment."
+                    )
+                );
             }
 
-            const bootstrapPayload = await bootstrapResponse.json() as IWidgetBootstrap;
+            const bootstrapPayload = unwrapWidgetResponse<IWidgetBootstrap>(await bootstrapResponse.json());
             setBootstrap(bootstrapPayload);
 
             const storedSessionId = typeof window !== "undefined"
@@ -150,10 +168,10 @@ export function WidgetEmbedClient({
         });
 
         if (!response.ok) {
-            throw new Error("The widget session could not be started.");
+            throw new Error(await readWidgetError(response, "The widget session could not be started."));
         }
 
-        const sessionPayload = await response.json() as IWidgetSessionResponse;
+        const sessionPayload = unwrapWidgetResponse<IWidgetSessionResponse>(await response.json());
         applySessionPayload(sessionPayload, false);
     }
 
@@ -180,10 +198,10 @@ export function WidgetEmbedClient({
             );
 
             if (!response.ok) {
-                throw new Error("The message could not be sent.");
+                throw new Error(await readWidgetError(response, "The message could not be sent."));
             }
 
-            const payload = await response.json() as IWidgetSessionResponse;
+            const payload = unwrapWidgetResponse<IWidgetSessionResponse>(await response.json());
             await ensureMinimumTypingDelay(startedAt);
             applySessionPayload(payload, true);
             setDraft("");
@@ -197,10 +215,12 @@ export function WidgetEmbedClient({
 
     function applySessionPayload(payload: IWidgetSessionResponse, appendMessages: boolean): void {
         setSessionId(payload.sessionId);
-        setMessages((currentMessages) => appendMessages ? [...currentMessages, ...payload.messages] : payload.messages);
+        setMessages((currentMessages) =>
+            appendMessages ? [...currentMessages, ...(payload.messages ?? [])] : (payload.messages ?? [])
+        );
         setAwaitingInput(payload.awaitingInput);
         setAwaitingInputMode(payload.awaitingInputMode);
-        setSuggestedReplies(payload.suggestedReplies);
+        setSuggestedReplies(payload.suggestedReplies ?? []);
         setIsCompleted(payload.isCompleted);
 
         if (typeof window !== "undefined") {
@@ -373,6 +393,45 @@ async function ensureMinimumTypingDelay(startedAt: number): Promise<void> {
     if (remainingDelay > 0) {
         await new Promise((resolve) => setTimeout(resolve, remainingDelay));
     }
+}
+
+function unwrapWidgetResponse<T>(payload: unknown): T {
+    if (payload && typeof payload === "object" && "result" in payload) {
+        const wrappedPayload = payload as IAbpWidgetResponse<T>;
+
+        if (wrappedPayload.result !== undefined) {
+            return wrappedPayload.result;
+        }
+
+        throw new Error(
+            wrappedPayload.error?.details ??
+            wrappedPayload.error?.message ??
+            "The widget response was empty."
+        );
+    }
+
+    return payload as T;
+}
+
+async function readWidgetError(response: Response, fallbackMessage: string): Promise<string> {
+    try {
+        const payload = await response.json() as IWidgetErrorResponse | IAbpWidgetResponse<unknown>;
+
+        if (payload && typeof payload === "object") {
+            if ("error" in payload && typeof payload.error === "string" && payload.error) {
+                return payload.error;
+            }
+
+            if ("error" in payload && payload.error && typeof payload.error === "object") {
+                const wrappedError = payload.error as { message?: string; details?: string };
+                return wrappedError.details ?? wrappedError.message ?? fallbackMessage;
+            }
+        }
+    } catch {
+        // ignore response parsing and fall back to the generic message
+    }
+
+    return fallbackMessage;
 }
 
 function withAlpha(hexColor: string, alpha: number): string {
