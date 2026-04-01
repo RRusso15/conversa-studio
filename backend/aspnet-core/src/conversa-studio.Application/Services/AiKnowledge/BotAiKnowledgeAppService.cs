@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -122,9 +124,7 @@ public class BotAiKnowledgeAppService : ConversaStudioAppServiceBase, IBotAiKnow
         var source = CreateSource(BotAiKnowledgeSourceType.Url, ResolveSourceTitle(input.Title, url), url, string.Empty);
         snapshot.Sources.Add(source);
 
-        var html = await FetchUrlAsync(url);
-        var extractedText = await ExtractReadableHtmlTextAsync(html);
-        await IngestSourceAsync(bot, source, extractedText);
+        await IngestUrlSourceAsync(bot, source);
 
         bot.UpdateAiKnowledge(SerializeSnapshot(snapshot));
         await _botDefinitionRepository.UpdateAsync(bot);
@@ -166,13 +166,14 @@ public class BotAiKnowledgeAppService : ConversaStudioAppServiceBase, IBotAiKnow
         var source = snapshot.Sources.FirstOrDefault(candidate => candidate.Id == input.SourceId)
             ?? throw new UserFriendlyException("The requested AI knowledge source could not be found.");
 
-        var refreshedText = source.SourceType switch
+        if (string.Equals(source.SourceType, BotAiKnowledgeSourceType.Url, StringComparison.OrdinalIgnoreCase))
         {
-            BotAiKnowledgeSourceType.Url => await ExtractReadableHtmlTextAsync(await FetchUrlAsync(source.SourceUrl)),
-            _ => source.RawText
-        };
-
-        await IngestSourceAsync(bot, source, refreshedText);
+            await IngestUrlSourceAsync(bot, source);
+        }
+        else
+        {
+            await IngestSourceAsync(bot, source, source.RawText);
+        }
 
         bot.UpdateAiKnowledge(SerializeSnapshot(snapshot));
         await _botDefinitionRepository.UpdateAsync(bot);
@@ -276,6 +277,28 @@ public class BotAiKnowledgeAppService : ConversaStudioAppServiceBase, IBotAiKnow
         }
     }
 
+    private async Task IngestUrlSourceAsync(BotDefinition bot, BotAiKnowledgeSource source)
+    {
+        source.Status = BotAiKnowledgeSourceStatus.Processing;
+        source.FailureReason = string.Empty;
+        source.LastIngestedAtUtc = DateTime.UtcNow;
+        source.Chunks = [];
+
+        try
+        {
+            var html = await FetchUrlAsync(source.SourceUrl);
+            var extractedText = await ExtractReadableHtmlTextAsync(html);
+            await IngestSourceAsync(bot, source, extractedText);
+        }
+        catch (Exception exception)
+        {
+            source.Status = BotAiKnowledgeSourceStatus.Failed;
+            source.FailureReason = exception.Message;
+            source.RawText = string.Empty;
+            source.Chunks = [];
+        }
+    }
+
     private static BotAiKnowledgeSource CreateSource(string sourceType, string title, string sourceUrl, string sourceFileName)
     {
         return new BotAiKnowledgeSource
@@ -310,9 +333,28 @@ public class BotAiKnowledgeAppService : ConversaStudioAppServiceBase, IBotAiKnow
     private async Task<string> FetchUrlAsync(string url)
     {
         var client = _httpClientFactory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.UserAgent.ParseAdd("Mozilla/5.0 (compatible; ConversaStudioBot/1.0; +https://russell.servecounterstrike.com)");
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xhtml+xml"));
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain", 0.8));
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.5));
+        request.Headers.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
+
         using var cancellationSource = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-        using var response = await client.GetAsync(url, cancellationSource.Token);
-        response.EnsureSuccessStatusCode();
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationSource.Token);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw CreateFetchFailureException(response.StatusCode);
+        }
+
+        var mediaType = response.Content.Headers.ContentType?.MediaType?.Trim().ToLowerInvariant();
+        if (!IsSupportedReadableContentType(mediaType))
+        {
+            throw new UserFriendlyException("This URL returned unsupported content. Please use a page that serves readable HTML or text.");
+        }
+
         return await response.Content.ReadAsStringAsync(cancellationSource.Token);
     }
 
@@ -327,7 +369,13 @@ public class BotAiKnowledgeAppService : ConversaStudioAppServiceBase, IBotAiKnow
         }
 
         var bodyText = document.Body?.TextContent ?? document.DocumentElement?.TextContent ?? string.Empty;
-        return NormalizeRawText(bodyText);
+        var normalizedText = NormalizeRawText(bodyText);
+        if (string.IsNullOrWhiteSpace(normalizedText))
+        {
+            throw new UserFriendlyException("This page did not contain enough readable text to ingest.");
+        }
+
+        return normalizedText;
     }
 
     private static string ExtractPdfText(byte[] pdfBytes)
@@ -350,6 +398,31 @@ public class BotAiKnowledgeAppService : ConversaStudioAppServiceBase, IBotAiKnow
         return normalized.Length > MaxKnowledgeTextLength
             ? normalized[..MaxKnowledgeTextLength]
             : normalized;
+    }
+
+    private static bool IsSupportedReadableContentType(string mediaType)
+    {
+        if (string.IsNullOrWhiteSpace(mediaType))
+        {
+            return true;
+        }
+
+        return mediaType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase) ||
+               mediaType.StartsWith("application/xhtml+xml", StringComparison.OrdinalIgnoreCase) ||
+               mediaType.StartsWith("text/plain", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static UserFriendlyException CreateFetchFailureException(HttpStatusCode statusCode)
+    {
+        return statusCode switch
+        {
+            HttpStatusCode.Forbidden => new UserFriendlyException("This website blocked remote access from the bot server."),
+            HttpStatusCode.Unauthorized => new UserFriendlyException("This website requires authentication before its content can be ingested."),
+            HttpStatusCode.NotFound => new UserFriendlyException("That URL returned 404 and could not be ingested."),
+            (HttpStatusCode)429 => new UserFriendlyException("This website is rate-limiting requests right now. Please try again later."),
+            _ when (int)statusCode >= 500 => new UserFriendlyException("This website returned a server error and could not be ingested right now."),
+            _ => new UserFriendlyException($"This website returned {(int)statusCode} and could not be ingested.")
+        };
     }
 
     private static List<string> BuildChunks(string text)
