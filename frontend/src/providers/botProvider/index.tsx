@@ -4,7 +4,11 @@ import { useCallback, useContext, useMemo, useReducer } from "react";
 import type { ReactNode } from "react";
 import type { Action } from "redux-actions";
 import {
+    botAiKnowledgeError,
+    botAiKnowledgePending,
+    botAiKnowledgeSuccess,
     clearActiveBot as clearActiveBotAction,
+    clearBotAiKnowledgeError as clearBotAiKnowledgeErrorAction,
     createBotDraftError,
     createBotDraftPending,
     createBotDraftSuccess,
@@ -38,7 +42,16 @@ import { BotReducer } from "./reducer";
 import { getAxiosInstance, type IAxiosRedirectControlConfig } from "@/utils/axiosInstance";
 import type { BotGraph, ValidationResult } from "@/components/developer/builder/types";
 import { createStarterGraph } from "@/components/developer/builder/mock-data";
-import type { IAiKnowledgeStatus } from "@/utils/ai-knowledge-api";
+import {
+    addBotAiPdfSource as addBotAiPdfSourceRequest,
+    addBotAiTextSource as addBotAiTextSourceRequest,
+    addBotAiUrlSource as addBotAiUrlSourceRequest,
+    deleteBotAiSource as deleteBotAiSourceRequest,
+    getBotAiKnowledge as getBotAiKnowledgeRequest,
+    reingestBotAiSource as reingestBotAiSourceRequest,
+    type IAiKnowledgeStatus,
+    upsertBotAiSettings as upsertBotAiSettingsRequest
+} from "@/utils/ai-knowledge-api";
 
 interface BotProviderProps {
     children: ReactNode;
@@ -110,7 +123,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
         } catch (error) {
             dispatch(getBotsError(toRequestError(error, "We could not load your bots.")));
         }
-    }, []);
+    }, [dispatch]);
 
     const getBot = useCallback(async (id: string): Promise<IBotDefinition | undefined> => {
         dispatch(getBotPending());
@@ -130,7 +143,22 @@ export const BotProvider = ({ children }: BotProviderProps) => {
             dispatch(getBotError(toRequestError(error, "We could not load this bot.")));
             return undefined;
         }
-    }, []);
+    }, [dispatch]);
+
+    const getBotAiKnowledge = useCallback(async (botId: string): Promise<IAiKnowledgeStatus | undefined> => {
+        dispatch(botAiKnowledgePending({ status: "loading" }));
+
+        try {
+            const aiKnowledge = await getBotAiKnowledgeRequest(botId);
+            dispatch(botAiKnowledgeSuccess({
+                activeBot: updateBotAiKnowledge(state.activeBot, aiKnowledge)
+            }));
+            return aiKnowledge;
+        } catch (error) {
+            dispatch(botAiKnowledgeError(toAiKnowledgeRequestError(error, "We could not load the AI knowledge settings for this bot.")));
+            return undefined;
+        }
+    }, [dispatch, state.activeBot]);
 
     const initializeNewBotDraft = useCallback(async (): Promise<IBotDefinition> => {
         const graph = createStarterGraph("new-bot", "Untitled Bot");
@@ -146,7 +174,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
 
         dispatch(initializeNewBotDraftAction(activeBot));
         return activeBot;
-    }, []);
+    }, [dispatch]);
 
     const createBotDraft = useCallback(async (graph: BotGraph): Promise<IBotMutationResult> => {
         dispatch(createBotDraftPending());
@@ -171,7 +199,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
             dispatch(createBotDraftError(requestError));
             return { error: requestError };
         }
-    }, []);
+    }, [dispatch]);
 
     const updateBotDraft = useCallback(async (id: string, graph: BotGraph): Promise<IBotMutationResult> => {
         dispatch(updateBotDraftPending());
@@ -197,7 +225,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
             dispatch(updateBotDraftError(requestError));
             return { error: requestError };
         }
-    }, []);
+    }, [dispatch]);
 
     const validateBotDraft = useCallback(async (graph: BotGraph): Promise<IBotValidationOutcome> => {
         dispatch(validateBotDraftPending());
@@ -242,34 +270,162 @@ export const BotProvider = ({ children }: BotProviderProps) => {
             dispatch(updateBotDraftError(requestError));
             return { error: requestError };
         }
-    }, []);
+    }, [dispatch]);
+
+    const upsertBotAiSettings = useCallback(async (input: {
+        botId: string;
+        apiKey: string;
+        generationModel: string;
+        embeddingModel: string;
+    }): Promise<IAiKnowledgeStatus | undefined> => {
+        dispatch(botAiKnowledgePending({ status: "saving" }));
+
+        try {
+            const aiKnowledge = await upsertBotAiSettingsRequest(input);
+            dispatch(botAiKnowledgeSuccess({
+                activeBot: updateBotAiKnowledge(state.activeBot, aiKnowledge)
+            }));
+            return aiKnowledge;
+        } catch (error) {
+            dispatch(botAiKnowledgeError(toAiKnowledgeRequestError(error, "We could not save the AI settings for this bot.")));
+            return undefined;
+        }
+    }, [dispatch, state.activeBot]);
+
+    const addBotAiTextSource = useCallback(async (input: {
+        botId: string;
+        title: string;
+        text: string;
+    }): Promise<IAiKnowledgeStatus | undefined> => {
+        dispatch(botAiKnowledgePending({ status: "saving" }));
+
+        try {
+            const aiKnowledge = await addBotAiTextSourceRequest(input);
+            dispatch(botAiKnowledgeSuccess({
+                activeBot: updateBotAiKnowledge(state.activeBot, aiKnowledge)
+            }));
+            return aiKnowledge;
+        } catch (error) {
+            dispatch(botAiKnowledgeError(toAiKnowledgeRequestError(error, "We could not add that text knowledge source.")));
+            return undefined;
+        }
+    }, [dispatch, state.activeBot]);
+
+    const addBotAiUrlSource = useCallback(async (input: {
+        botId: string;
+        title: string;
+        url: string;
+    }): Promise<IAiKnowledgeStatus | undefined> => {
+        dispatch(botAiKnowledgePending({ status: "saving" }));
+
+        try {
+            const aiKnowledge = await addBotAiUrlSourceRequest(input);
+            dispatch(botAiKnowledgeSuccess({
+                activeBot: updateBotAiKnowledge(state.activeBot, aiKnowledge)
+            }));
+            return aiKnowledge;
+        } catch (error) {
+            dispatch(botAiKnowledgeError(toAiKnowledgeRequestError(error, "We could not add that URL knowledge source.")));
+            return undefined;
+        }
+    }, [dispatch, state.activeBot]);
+
+    const addBotAiPdfSource = useCallback(async (input: {
+        botId: string;
+        title: string;
+        fileName: string;
+        base64Content: string;
+    }): Promise<IAiKnowledgeStatus | undefined> => {
+        dispatch(botAiKnowledgePending({ status: "saving" }));
+
+        try {
+            const aiKnowledge = await addBotAiPdfSourceRequest(input);
+            dispatch(botAiKnowledgeSuccess({
+                activeBot: updateBotAiKnowledge(state.activeBot, aiKnowledge)
+            }));
+            return aiKnowledge;
+        } catch (error) {
+            dispatch(botAiKnowledgeError(toAiKnowledgeRequestError(error, "We could not add that PDF knowledge source.")));
+            return undefined;
+        }
+    }, [dispatch, state.activeBot]);
+
+    const reingestBotAiSource = useCallback(async (botId: string, sourceId: string): Promise<IAiKnowledgeStatus | undefined> => {
+        dispatch(botAiKnowledgePending({ status: "saving" }));
+
+        try {
+            const aiKnowledge = await reingestBotAiSourceRequest(botId, sourceId);
+            dispatch(botAiKnowledgeSuccess({
+                activeBot: updateBotAiKnowledge(state.activeBot, aiKnowledge)
+            }));
+            return aiKnowledge;
+        } catch (error) {
+            dispatch(botAiKnowledgeError(toAiKnowledgeRequestError(error, "We could not re-ingest that knowledge source.")));
+            return undefined;
+        }
+    }, [dispatch, state.activeBot]);
+
+    const deleteBotAiSource = useCallback(async (botId: string, sourceId: string): Promise<IAiKnowledgeStatus | undefined> => {
+        dispatch(botAiKnowledgePending({ status: "saving" }));
+
+        try {
+            const aiKnowledge = await deleteBotAiSourceRequest(botId, sourceId);
+            dispatch(botAiKnowledgeSuccess({
+                activeBot: updateBotAiKnowledge(state.activeBot, aiKnowledge)
+            }));
+            return aiKnowledge;
+        } catch (error) {
+            dispatch(botAiKnowledgeError(toAiKnowledgeRequestError(error, "We could not remove that knowledge source.")));
+            return undefined;
+        }
+    }, [dispatch, state.activeBot]);
+
+    const clearBotAiKnowledgeError = useCallback((): void => {
+        dispatch(clearBotAiKnowledgeErrorAction());
+    }, [dispatch]);
 
     const clearActiveBot = useCallback((): void => {
         dispatch(clearActiveBotAction());
-    }, []);
+    }, [dispatch]);
 
     const setSaveStatus = useCallback((status: IBotStateContext["saveStatus"], errorMessage?: string): void => {
         dispatch(setSaveStatusAction({ status, errorMessage }));
-    }, []);
+    }, [dispatch]);
 
     const actionValue = useMemo(() => ({
         getBots,
         getBot,
+        getBotAiKnowledge,
         initializeNewBotDraft,
         createBotDraft,
         updateBotDraft,
         publishBotDraft,
         validateBotDraft,
+        upsertBotAiSettings,
+        addBotAiTextSource,
+        addBotAiUrlSource,
+        addBotAiPdfSource,
+        reingestBotAiSource,
+        deleteBotAiSource,
+        clearBotAiKnowledgeError,
         setSaveStatus,
         clearActiveBot
     }), [
+        addBotAiPdfSource,
+        addBotAiTextSource,
+        addBotAiUrlSource,
         clearActiveBot,
+        clearBotAiKnowledgeError,
         createBotDraft,
+        deleteBotAiSource,
         getBot,
+        getBotAiKnowledge,
         getBots,
         initializeNewBotDraft,
         publishBotDraft,
+        reingestBotAiSource,
         setSaveStatus,
+        upsertBotAiSettings,
         updateBotDraft,
         validateBotDraft
     ]);
@@ -427,6 +583,86 @@ function toRequestError(error: unknown, fallbackMessage: string): IBotRequestErr
     return {
         code: "unknown",
         message: fallbackMessage
+    };
+}
+
+function toAiKnowledgeRequestError(error: unknown, fallbackMessage: string): IBotRequestError {
+    if (
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof error.response === "object" &&
+        error.response !== null &&
+        "data" in error.response &&
+        "status" in error.response
+    ) {
+        const data = error.response.data as IAbpAjaxResponse<unknown>;
+        const status = error.response.status as number | undefined;
+        const backendMessage = buildBackendErrorMessage(data, fallbackMessage);
+
+        if (status === 401) {
+            return {
+                code: "unauthorized",
+                status,
+                message: "Your session has expired. Please sign in again."
+            };
+        }
+
+        if (status === 403) {
+            return {
+                code: "forbidden",
+                status,
+                message: "You do not have permission to manage AI knowledge for this bot."
+            };
+        }
+
+        if (status === 404 || status === 405) {
+            return {
+                code: "method_not_allowed",
+                status,
+                message: "The deployed AI knowledge API is out of sync with this frontend. Please redeploy the backend."
+            };
+        }
+
+        if (status !== undefined && status >= 500) {
+            return {
+                code: "server_error",
+                status,
+                message: backendMessage
+            };
+        }
+
+        return {
+            code: "unknown",
+            status,
+            message: backendMessage
+        };
+    }
+
+    if (error instanceof Error && error.message) {
+        return {
+            code: "network_error",
+            message: error.message
+        };
+    }
+
+    return {
+        code: "unknown",
+        message: fallbackMessage
+    };
+}
+
+function updateBotAiKnowledge(
+    activeBot: IBotDefinition | undefined,
+    aiKnowledge: IAiKnowledgeStatus
+): IBotDefinition | undefined {
+    if (!activeBot || activeBot.id !== aiKnowledge.botId) {
+        return activeBot;
+    }
+
+    return {
+        ...activeBot,
+        aiKnowledge
     };
 }
 

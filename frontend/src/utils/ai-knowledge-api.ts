@@ -39,12 +39,12 @@ export interface IAiKnowledgeStatus {
 }
 
 const BOT_AI_KNOWLEDGE_GET_URL = "/api/services/app/BotAiKnowledge/Get";
-const BOT_AI_KNOWLEDGE_UPSERT_URL = "/api/services/app/BotAiKnowledge/UpsertSettingsAsync";
-const BOT_AI_KNOWLEDGE_ADD_TEXT_URL = "/api/services/app/BotAiKnowledge/AddTextSourceAsync";
-const BOT_AI_KNOWLEDGE_ADD_URL_URL = "/api/services/app/BotAiKnowledge/AddUrlSourceAsync";
-const BOT_AI_KNOWLEDGE_ADD_PDF_URL = "/api/services/app/BotAiKnowledge/AddPdfSourceAsync";
-const BOT_AI_KNOWLEDGE_REINGEST_URL = "/api/services/app/BotAiKnowledge/ReingestSourceAsync";
-const BOT_AI_KNOWLEDGE_DELETE_URL = "/api/services/app/BotAiKnowledge/DeleteSourceAsync";
+const BOT_AI_KNOWLEDGE_UPSERT_URL = "/api/services/app/BotAiKnowledge/UpsertSettings";
+const BOT_AI_KNOWLEDGE_ADD_TEXT_URL = "/api/services/app/BotAiKnowledge/AddTextSource";
+const BOT_AI_KNOWLEDGE_ADD_URL_URL = "/api/services/app/BotAiKnowledge/AddUrlSource";
+const BOT_AI_KNOWLEDGE_ADD_PDF_URL = "/api/services/app/BotAiKnowledge/AddPdfSource";
+const BOT_AI_KNOWLEDGE_REINGEST_URL = "/api/services/app/BotAiKnowledge/ReingestSource";
+const BOT_AI_KNOWLEDGE_DELETE_URL = "/api/services/app/BotAiKnowledge/DeleteSource";
 
 const REQUEST_CONFIG = {
     skipUnauthorizedRedirect: true,
