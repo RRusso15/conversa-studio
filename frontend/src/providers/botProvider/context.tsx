@@ -51,6 +51,8 @@ export interface IBotStateContext {
     activeBot?: IBotDefinition;
     draftIdentity: "temporary" | "persisted";
     saveStatus: "idle" | "saving" | "saved" | "error" | "validation_blocked" | "permission_denied" | "api_mismatch";
+    aiKnowledgeStatus: "idle" | "loading" | "saving" | "error";
+    aiKnowledgeErrorMessage?: string;
     validationResults?: ValidationResult[];
     errorCode?: BotRequestErrorCode;
     errorMessage?: string;
@@ -59,11 +61,37 @@ export interface IBotStateContext {
 export interface IBotActionContext {
     getBots: () => Promise<void>;
     getBot: (id: string) => Promise<IBotDefinition | undefined>;
+    getBotAiKnowledge: (botId: string) => Promise<IAiKnowledgeStatus | undefined>;
     initializeNewBotDraft: () => Promise<IBotDefinition>;
     createBotDraft: (graph: BotGraph) => Promise<IBotMutationResult>;
     updateBotDraft: (id: string, graph: BotGraph) => Promise<IBotMutationResult>;
     publishBotDraft: (id: string) => Promise<IBotMutationResult>;
     validateBotDraft: (graph: BotGraph) => Promise<IBotValidationOutcome>;
+    upsertBotAiSettings: (input: {
+        botId: string;
+        apiKey: string;
+        generationModel: string;
+        embeddingModel: string;
+    }) => Promise<IAiKnowledgeStatus | undefined>;
+    addBotAiTextSource: (input: {
+        botId: string;
+        title: string;
+        text: string;
+    }) => Promise<IAiKnowledgeStatus | undefined>;
+    addBotAiUrlSource: (input: {
+        botId: string;
+        title: string;
+        url: string;
+    }) => Promise<IAiKnowledgeStatus | undefined>;
+    addBotAiPdfSource: (input: {
+        botId: string;
+        title: string;
+        fileName: string;
+        base64Content: string;
+    }) => Promise<IAiKnowledgeStatus | undefined>;
+    reingestBotAiSource: (botId: string, sourceId: string) => Promise<IAiKnowledgeStatus | undefined>;
+    deleteBotAiSource: (botId: string, sourceId: string) => Promise<IAiKnowledgeStatus | undefined>;
+    clearBotAiKnowledgeError: () => void;
     setSaveStatus: (status: IBotStateContext["saveStatus"], errorMessage?: string) => void;
     clearActiveBot: () => void;
 }
@@ -73,12 +101,14 @@ export const INITIAL_STATE: IBotStateContext = {
     isSuccess: false,
     isError: false,
     draftIdentity: "temporary",
-    saveStatus: "idle"
+    saveStatus: "idle",
+    aiKnowledgeStatus: "idle"
 };
 
 export const INITIAL_ACTION_STATE: IBotActionContext = {
     getBots: async () => undefined,
     getBot: async () => undefined,
+    getBotAiKnowledge: async () => undefined,
     initializeNewBotDraft: async () => ({
         id: "new-bot",
         name: "Untitled Bot",
@@ -102,6 +132,13 @@ export const INITIAL_ACTION_STATE: IBotActionContext = {
     updateBotDraft: async () => ({}),
     publishBotDraft: async () => ({}),
     validateBotDraft: async () => ({}),
+    upsertBotAiSettings: async () => undefined,
+    addBotAiTextSource: async () => undefined,
+    addBotAiUrlSource: async () => undefined,
+    addBotAiPdfSource: async () => undefined,
+    reingestBotAiSource: async () => undefined,
+    deleteBotAiSource: async () => undefined,
+    clearBotAiKnowledgeError: () => undefined,
     setSaveStatus: () => undefined,
     clearActiveBot: () => undefined
 };

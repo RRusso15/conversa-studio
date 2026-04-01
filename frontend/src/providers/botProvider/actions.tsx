@@ -29,6 +29,11 @@ export enum BotActionEnums {
     validateBotDraftSuccess = "VALIDATE_BOT_DRAFT_SUCCESS",
     validateBotDraftError = "VALIDATE_BOT_DRAFT_ERROR",
 
+    botAiKnowledgePending = "BOT_AI_KNOWLEDGE_PENDING",
+    botAiKnowledgeSuccess = "BOT_AI_KNOWLEDGE_SUCCESS",
+    botAiKnowledgeError = "BOT_AI_KNOWLEDGE_ERROR",
+    clearBotAiKnowledgeError = "CLEAR_BOT_AI_KNOWLEDGE_ERROR",
+
     setSaveStatus = "SET_SAVE_STATUS",
 
     clearActiveBot = "CLEAR_ACTIVE_BOT"
@@ -235,6 +240,41 @@ export const validateBotDraftError = createAction<IBotStatePatch, IBotRequestErr
     })
 );
 
+export const botAiKnowledgePending = createAction<IBotStatePatch, { status: IBotStateContext["aiKnowledgeStatus"] }>(
+    BotActionEnums.botAiKnowledgePending,
+    ({ status }) => ({
+        aiKnowledgeStatus: status,
+        aiKnowledgeErrorMessage: undefined
+    })
+);
+
+export const botAiKnowledgeSuccess = createAction<IBotStatePatch, {
+    activeBot?: IBotDefinition;
+}>(
+    BotActionEnums.botAiKnowledgeSuccess,
+    ({ activeBot }) => ({
+        aiKnowledgeStatus: "idle",
+        aiKnowledgeErrorMessage: undefined,
+        activeBot
+    })
+);
+
+export const botAiKnowledgeError = createAction<IBotStatePatch, IBotRequestError | undefined>(
+    BotActionEnums.botAiKnowledgeError,
+    (error) => ({
+        aiKnowledgeStatus: "error",
+        aiKnowledgeErrorMessage: error?.message
+    })
+);
+
+export const clearBotAiKnowledgeError = createAction<IBotStatePatch>(
+    BotActionEnums.clearBotAiKnowledgeError,
+    () => ({
+        aiKnowledgeStatus: "idle",
+        aiKnowledgeErrorMessage: undefined
+    })
+);
+
 export const setSaveStatus = createAction<IBotStatePatch, { status: IBotStateContext["saveStatus"]; errorMessage?: string }>(
     BotActionEnums.setSaveStatus,
     ({ status, errorMessage }) => ({
@@ -251,6 +291,8 @@ export const clearActiveBot = createAction<IBotStatePatch>(
         activeBot: undefined,
         draftIdentity: "temporary",
         saveStatus: "idle",
+        aiKnowledgeStatus: "idle",
+        aiKnowledgeErrorMessage: undefined,
         validationResults: undefined,
         errorCode: undefined,
         errorMessage: undefined
