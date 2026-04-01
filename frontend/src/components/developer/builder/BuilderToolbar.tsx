@@ -3,7 +3,9 @@
 import Link from "next/link";
 import {
   ArrowLeftOutlined,
+  DownloadOutlined,
   ExclamationCircleOutlined,
+  ImportOutlined,
   PlayCircleOutlined,
   RocketOutlined,
   SaveOutlined,
@@ -22,6 +24,8 @@ interface BuilderToolbarProps {
   deployLabel?: string;
   onBotNameChange: (name: string) => void;
   onSave: () => void;
+  onExport: () => void;
+  onImport: () => void;
   onValidate: () => void;
   onTest: () => void;
   onDeploy: () => void;
@@ -35,6 +39,8 @@ export function BuilderToolbar({
   deployLabel,
   onBotNameChange,
   onSave,
+  onExport,
+  onImport,
   onValidate,
   onTest,
   onDeploy,
@@ -102,6 +108,12 @@ export function BuilderToolbar({
       <Space wrap>
         <Button icon={<SaveOutlined />} onClick={onSave} loading={saveStatus === "saving"}>
           Save
+        </Button>
+        <Button icon={<DownloadOutlined />} onClick={onExport}>
+          Export
+        </Button>
+        <Button icon={<ImportOutlined />} onClick={onImport}>
+          Import
         </Button>
         <Button icon={<CheckCircleOutlined />} onClick={onValidate}>
           Validate

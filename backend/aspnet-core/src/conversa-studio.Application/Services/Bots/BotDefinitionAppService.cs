@@ -10,6 +10,9 @@ using Abp.UI;
 using ConversaStudio.Authorization;
 using ConversaStudio.Domains.AiKnowledge;
 using ConversaStudio.Domains.Bots;
+using ConversaStudio.Domains.Deployments;
+using ConversaStudio.Domains.Runtime;
+using ConversaStudio.Domains.Transcripts;
 using ConversaStudio.Services.AiKnowledge.Dto;
 using ConversaStudio.Services.Bots.Dto;
 using Microsoft.AspNetCore.Mvc;
@@ -30,13 +33,22 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
     };
 
     private readonly IRepository<BotDefinition, Guid> _botDefinitionRepository;
+    private readonly IRepository<BotDeployment, Guid> _botDeploymentRepository;
+    private readonly IRepository<RuntimeSession, Guid> _runtimeSessionRepository;
+    private readonly IRepository<TranscriptMessage, Guid> _transcriptMessageRepository;
     private readonly BotGraphValidator _botGraphValidator;
 
     public BotDefinitionAppService(
         IRepository<BotDefinition, Guid> botDefinitionRepository,
+        IRepository<BotDeployment, Guid> botDeploymentRepository,
+        IRepository<RuntimeSession, Guid> runtimeSessionRepository,
+        IRepository<TranscriptMessage, Guid> transcriptMessageRepository,
         BotGraphValidator botGraphValidator)
     {
         _botDefinitionRepository = botDefinitionRepository;
+        _botDeploymentRepository = botDeploymentRepository;
+        _runtimeSessionRepository = runtimeSessionRepository;
+        _transcriptMessageRepository = transcriptMessageRepository;
         _botGraphValidator = botGraphValidator;
     }
 
@@ -137,6 +149,18 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
         await CurrentUnitOfWork.SaveChangesAsync();
 
         return MapToDefinitionDto(bot, graph);
+    }
+
+    /// <summary>
+    /// Deletes a bot together with its deployments, runtime sessions, and transcript history.
+    /// </summary>
+    [HttpPost]
+    public async Task DeleteBot(EntityDto<Guid> input)
+    {
+        var bot = await GetOwnedBotAsync(input.Id);
+        await DeleteBotOperationalDataAsync(bot.Id);
+        await _botDefinitionRepository.DeleteAsync(bot);
+        await CurrentUnitOfWork.SaveChangesAsync();
     }
 
     /// <summary>
@@ -422,5 +446,35 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
     {
         return JsonSerializer.Deserialize<BotAiKnowledgeSnapshot>(knowledgeJson ?? string.Empty, GraphSerializerOptions)
                ?? new BotAiKnowledgeSnapshot();
+    }
+
+    /// <summary>
+    /// Removes runtime records owned by a bot before the bot itself is deleted.
+    /// </summary>
+    private async Task DeleteBotOperationalDataAsync(Guid botId)
+    {
+        var transcriptMessages = await _transcriptMessageRepository.GetAll()
+            .Where(message => message.BotDefinitionId == botId)
+            .ToListAsync();
+        foreach (var transcriptMessage in transcriptMessages)
+        {
+            await _transcriptMessageRepository.DeleteAsync(transcriptMessage);
+        }
+
+        var runtimeSessions = await _runtimeSessionRepository.GetAll()
+            .Where(session => session.BotDefinitionId == botId)
+            .ToListAsync();
+        foreach (var runtimeSession in runtimeSessions)
+        {
+            await _runtimeSessionRepository.DeleteAsync(runtimeSession);
+        }
+
+        var deployments = await _botDeploymentRepository.GetAll()
+            .Where(deployment => deployment.BotDefinitionId == botId)
+            .ToListAsync();
+        foreach (var deployment in deployments)
+        {
+            await _botDeploymentRepository.DeleteAsync(deployment);
+        }
     }
 }
