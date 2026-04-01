@@ -183,24 +183,41 @@ export const useStyles = createStyles(({ css, token }) => ({
     display: grid;
     grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
     gap: 20px;
-    align-items: start;
+    align-items: stretch;
+    min-height: calc(100vh - 220px);
 
     @media (max-width: 1100px) {
       grid-template-columns: 1fr;
+      min-height: auto;
     }
   `,
   transcriptPane: css`
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     border-radius: 22px;
     border: 1px solid ${token.colorBorder};
     background: ${token.colorBgContainer};
     box-shadow: 0 16px 34px rgba(17, 24, 39, 0.04);
+
+    @media (min-width: 1101px) {
+      height: calc(100vh - 220px);
+    }
   `,
   transcriptPaneHeader: css`
+    flex-shrink: 0;
     padding: 18px 18px 14px;
     border-bottom: 1px solid ${token.colorBorder};
   `,
   transcriptPaneBody: css`
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
     padding: 16px 18px 18px;
+
+    @media (max-width: 1100px) {
+      overflow: visible;
+    }
   `,
   transcriptList: css`
     display: flex;
@@ -258,8 +275,6 @@ export const useStyles = createStyles(({ css, token }) => ({
     display: flex;
     flex-direction: column;
     gap: 12px;
-    max-height: 70vh;
-    overflow: auto;
     padding-right: 4px;
   `,
   transcriptMessageRow: css`
@@ -293,6 +308,63 @@ export const useStyles = createStyles(({ css, token }) => ({
     margin-top: 8px;
     font-size: 11px;
     opacity: 0.72;
+  `,
+  analyticsMetaCard: css`
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid ${token.colorBorder};
+    background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  `,
+  analyticsTrendScroller: css`
+    overflow-x: auto;
+    padding-bottom: 6px;
+  `,
+  analyticsTrendBars: css`
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(48px, 1fr);
+    gap: 10px;
+    align-items: end;
+    min-width: min-content;
+    min-height: 260px;
+  `,
+  analyticsTrendBarColumn: css`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-width: 48px;
+  `,
+  analyticsTrendBarTrack: css`
+    position: relative;
+    width: 100%;
+    height: 180px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 16px;
+    background:
+      linear-gradient(180deg, rgba(15, 23, 42, 0.04) 0%, rgba(15, 23, 42, 0.08) 100%);
+    border: 1px solid ${token.colorBorder};
+  `,
+  analyticsTrendBarFill: css`
+    width: 100%;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #34d399 0%, #047857 100%);
+    box-shadow: 0 12px 20px rgba(4, 120, 87, 0.2);
+    transition: height 0.2s ease;
+  `,
+  analyticsTrendValue: css`
+    font-size: 12px;
+    font-weight: 700;
+    color: ${token.colorTextBase};
+  `,
+  analyticsTrendLabel: css`
+    font-size: 11px;
+    line-height: 1.4;
+    color: ${token.colorTextSecondary};
+    text-align: center;
   `,
   createCard: css`
     height: 100%;
