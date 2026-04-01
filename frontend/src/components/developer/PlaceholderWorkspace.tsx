@@ -2,10 +2,11 @@
 
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { Button, Card, Space, Typography } from "antd";
+import { InfoNotice } from "./InfoNotice";
 import { PageHeader } from "./PageHeader";
 import { useStyles } from "./styles";
 
-const { Paragraph, Text } = Typography;
+const { Paragraph } = Typography;
 
 interface PlaceholderWorkspaceProps {
   title: string;
@@ -26,11 +27,12 @@ export function PlaceholderWorkspace({
 
       <Card className={styles.placeholderCard}>
         <Space direction="vertical" size="large">
-          <Text strong>{highlight}</Text>
+          <InfoNotice
+            title={highlight}
+            description="This destination is already part of the workspace so navigation stays complete while the surrounding product surfaces continue to expand."
+          />
           <Paragraph type="secondary" style={{ maxWidth: 720, marginBottom: 0 }}>
-            This area is intentionally scaffolded for the MVP so the developer
-            workspace navigation is complete and non-broken while we focus on
-            bots, the builder, and core flow execution first.
+            This area is available now so the developer workspace remains coherent and easy to navigate while the rest of the product experience continues to grow.
           </Paragraph>
           <Button type="default" icon={<ArrowRightOutlined />}>
             Coming next in the product flow
