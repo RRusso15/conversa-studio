@@ -16,6 +16,7 @@ interface IWidgetBootstrap {
     deploymentKey: string;
     botName: string;
     launcherLabel: string;
+    assistantTitle?: string;
     themeColor: string;
     isActive: boolean;
 }
@@ -78,6 +79,8 @@ export function WidgetEmbedClient({
     const themeColor = bootstrap?.themeColor ?? "#2563EB";
     const themeColorMuted = withAlpha(themeColor, 0.1);
     const shellStyles = createWidgetStyles(themeColor, themeColorMuted);
+    const assistantTitle = resolveAssistantTitle(bootstrap?.assistantTitle, bootstrap?.botName, bootstrap?.launcherLabel);
+    const assistantSubtitle = resolveAssistantSubtitle(assistantTitle);
 
     const initializeWidget = useEffectEvent(async () => {
         setIsLoading(true);
@@ -232,12 +235,12 @@ export function WidgetEmbedClient({
         <div style={shellStyles.shell}>
             <div style={shellStyles.header}>
                 <div style={shellStyles.headerCopy}>
-                    <div style={shellStyles.headerEyebrow}>Live bot assistant</div>
+                    <div style={shellStyles.headerEyebrow}>Conversa assistant</div>
                     <Title level={5} style={shellStyles.headerTitle}>
-                        {bootstrap?.botName ?? "Conversa Widget"}
+                        {assistantTitle}
                     </Title>
                     <Text style={shellStyles.headerSubtitle}>
-                        Ask a question and continue when you are ready.
+                        {assistantSubtitle}
                     </Text>
                 </div>
                 <div style={shellStyles.headerActions}>
@@ -366,26 +369,80 @@ function resolvePlaceholder(
     }
 
     if (!awaitingInput) {
-        return "Waiting for the bot…";
+        return "Waiting for the assistant...";
     }
 
     if (awaitingInputMode === "choice") {
-        return "Choose a button or type a matching option…";
+        return "Choose an option or type a matching reply...";
     }
 
-    return "Type your reply…";
+    return "Write your reply...";
 }
 
 function resolveStatusLabel(awaitingInput: boolean, isCompleted: boolean, isSending: boolean): string {
     if (isSending) {
-        return "Bot is replying";
+        return "Assistant is replying";
     }
 
     if (isCompleted) {
         return "Conversation completed";
     }
 
-    return awaitingInput ? "Reply required" : "Bot is working";
+    return awaitingInput ? "Reply requested" : "Assistant is preparing a response";
+}
+
+function resolveAssistantTitle(
+    explicitAssistantTitle?: string,
+    botName?: string,
+    launcherLabel?: string
+): string {
+    const candidates = [explicitAssistantTitle, botName, launcherLabel]
+        .map((candidate) => sanitizeAssistantLabel(candidate))
+        .filter((candidate): candidate is string => Boolean(candidate));
+
+    return candidates[0] ?? "Assistant";
+}
+
+function resolveAssistantSubtitle(assistantTitle: string): string {
+    return assistantTitle === "Assistant"
+        ? "Ask a question whenever you are ready."
+        : `Ask ${assistantTitle} a question whenever you are ready.`;
+}
+
+function sanitizeAssistantLabel(value?: string): string | undefined {
+    if (!value) {
+        return undefined;
+    }
+
+    const trimmedValue = value.trim();
+    if (!trimmedValue) {
+        return undefined;
+    }
+
+    const withoutCallToAction = trimmedValue
+        .replace(/^(chat with|talk to|open|launch|start conversation with|start conversation|ask)\s+/i, "")
+        .replace(/\b(widget|chatbot|bot)\b/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+
+    const normalizedValue = withoutCallToAction
+        .replace(/\b(ai|test|demo|node)\b/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .trim()
+        .replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, "");
+
+    if (!normalizedValue) {
+        return undefined;
+    }
+
+    const compactValue = normalizedValue.length > 36
+        ? normalizedValue.slice(0, 36).trim()
+        : normalizedValue;
+
+    return compactValue
+        .split(/\s+/)
+        .map((segment) => segment ? `${segment.charAt(0).toUpperCase()}${segment.slice(1)}` : "")
+        .join(" ");
 }
 
 async function ensureMinimumTypingDelay(startedAt: number): Promise<void> {
@@ -471,20 +528,24 @@ function createWidgetStyles(themeColor: string, themeColorMuted: string): Record
         headerCopy: {
             display: "flex",
             flexDirection: "column",
-            gap: 4
+            gap: 6,
+            maxWidth: "100%"
         },
         headerEyebrow: {
             fontSize: 11,
-            letterSpacing: "0.08em",
+            letterSpacing: "0.12em",
             textTransform: "uppercase",
-            color: "rgba(255,255,255,0.72)"
+            color: "rgba(255,255,255,0.66)",
+            fontWeight: 700
         },
         headerTitle: {
             color: "#ffffff",
-            margin: 0
+            margin: 0,
+            lineHeight: 1.1
         },
         headerSubtitle: {
-            color: "rgba(255,255,255,0.86)"
+            color: "rgba(255,255,255,0.84)",
+            maxWidth: 320
         },
         headerActions: {
             display: "flex",

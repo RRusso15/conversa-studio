@@ -92,7 +92,7 @@ public class BotDeploymentAppService : ConversaStudioAppServiceBase, IBotDeploym
             ResolveName(input.Name, bot.Name),
             CreateDeploymentKey(),
             SerializeDomains(input.AllowedDomains),
-            ResolveLauncherLabel(input.LauncherLabel, bot.Name),
+            ResolveLauncherLabel(input.LauncherLabel),
             ResolveThemeColor(input.ThemeColor));
 
         await _botDeploymentRepository.InsertAsync(deployment);
@@ -113,7 +113,7 @@ public class BotDeploymentAppService : ConversaStudioAppServiceBase, IBotDeploym
         deployment.UpdateSettings(
             ResolveName(input.Name, bot.Name),
             SerializeDomains(input.AllowedDomains),
-            ResolveLauncherLabel(input.LauncherLabel, bot.Name),
+            ResolveLauncherLabel(input.LauncherLabel),
             ResolveThemeColor(input.ThemeColor));
 
         await _botDeploymentRepository.UpdateAsync(deployment);
@@ -275,10 +275,10 @@ public class BotDeploymentAppService : ConversaStudioAppServiceBase, IBotDeploym
         return resolved;
     }
 
-    private static string ResolveLauncherLabel(string requestedLabel, string botName)
+    private static string ResolveLauncherLabel(string requestedLabel)
     {
         return string.IsNullOrWhiteSpace(requestedLabel)
-            ? $"Chat with {botName}"
+            ? "Start conversation"
             : requestedLabel.Trim();
     }
 

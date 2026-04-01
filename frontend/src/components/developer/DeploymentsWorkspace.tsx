@@ -39,7 +39,7 @@ import {
     type IDeploymentDefinition
 } from "@/utils/deployment-api";
 
-const { Paragraph, Text, Title } = Typography;
+const { Text, Title } = Typography;
 const DEFAULT_THEME_COLOR = "#2563EB";
 
 interface DeploymentsWorkspaceProps {
@@ -103,7 +103,7 @@ export function DeploymentsWorkspace({ requestedBotId }: DeploymentsWorkspacePro
         form.setFieldsValue({
             name: selectedBot ? `${selectedBot.name} Widget` : "",
             allowedDomainsText: "",
-            launcherLabel: selectedBot ? `Chat with ${selectedBot.name}` : "",
+            launcherLabel: "Start conversation",
             themeColor: DEFAULT_THEME_COLOR
         });
         setIsDrawerOpen(true);
@@ -403,7 +403,7 @@ export function DeploymentsWorkspace({ requestedBotId }: DeploymentsWorkspacePro
                             name="launcherLabel"
                             rules={[{ required: true, message: "Enter a launcher label." }]}
                         >
-                            <Input placeholder="Chat with Support Bot" />
+                            <Input placeholder="Start conversation" />
                         </Form.Item>
 
                         <Form.Item
