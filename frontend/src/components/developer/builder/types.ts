@@ -99,6 +99,7 @@ export interface AiNodeConfig {
   kind: "ai";
   instructions: string;
   fallbackText: string;
+  responseMode?: "strict" | "hybrid" | "free";
 }
 
 export type CodeOperation =

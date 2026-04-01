@@ -1,4 +1,5 @@
 using System;
+using ConversaStudio.Services.AiKnowledge.Dto;
 
 namespace ConversaStudio.Services.Bots.Dto;
 
@@ -46,4 +47,9 @@ public class BotDefinitionDto
     /// Gets or sets the current editable graph.
     /// </summary>
     public BotGraphDto Graph { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the bot-scoped AI knowledge status.
+    /// </summary>
+    public BotAiKnowledgeDto AiKnowledge { get; set; } = new();
 }

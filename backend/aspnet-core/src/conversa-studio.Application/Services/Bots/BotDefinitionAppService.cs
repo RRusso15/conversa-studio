@@ -8,7 +8,9 @@ using Abp.Authorization;
 using Abp.Domain.Repositories;
 using Abp.UI;
 using ConversaStudio.Authorization;
+using ConversaStudio.Domains.AiKnowledge;
 using ConversaStudio.Domains.Bots;
+using ConversaStudio.Services.AiKnowledge.Dto;
 using ConversaStudio.Services.Bots.Dto;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -112,6 +114,7 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
         var bot = await GetOwnedBotAsync(input.Id);
         var graph = DeserializeGraph(bot.DraftGraphJson);
         ThrowIfInvalid(graph);
+        ThrowIfAiKnowledgeNotReadyForPublish(bot, graph);
 
         bot.PublishDraft();
         await _botDefinitionRepository.UpdateAsync(bot);
@@ -145,6 +148,7 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
         await GetCurrentUserAsync();
         var graph = MapToDomainGraph(input.Graph);
         var results = _botGraphValidator.Validate(graph)
+            .Concat(await GetAiValidationIssuesAsync(input.Id, graph))
             .Select(issue => new BotValidationResultDto
             {
                 Id = issue.Id,
@@ -185,6 +189,86 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
         }
 
         throw new UserFriendlyException(string.Join(" ", blockingIssues.Select(issue => issue.Message).Distinct()));
+    }
+
+    private async Task<List<BotValidationIssue>> GetAiValidationIssuesAsync(Guid? botId, BotGraphDefinition graph)
+    {
+        if (!GraphContainsAiNode(graph))
+        {
+            return [];
+        }
+
+        if (!botId.HasValue)
+        {
+            return
+            [
+                new BotValidationIssue
+                {
+                    Id = "ai-bot-persist-warning",
+                    Severity = BotValidationSeverity.Warning,
+                    Message = "Save this bot first, then configure the shared AI knowledge hub for its AI nodes."
+                }
+            ];
+        }
+
+        var bot = await GetOwnedBotAsync(botId.Value);
+        return BuildAiKnowledgeIssues(bot, graph, forPublish: false);
+    }
+
+    private static bool GraphContainsAiNode(BotGraphDefinition graph)
+    {
+        return graph.Nodes.Any(node => string.Equals(node.Type, "ai", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void ThrowIfAiKnowledgeNotReadyForPublish(BotDefinition bot, BotGraphDefinition graph)
+    {
+        var blockingIssues = BuildAiKnowledgeIssues(bot, graph, forPublish: true)
+            .Where(issue => issue.Severity == BotValidationSeverity.Error)
+            .ToList();
+
+        if (blockingIssues.Count == 0)
+        {
+            return;
+        }
+
+        throw new UserFriendlyException(string.Join(" ", blockingIssues.Select(issue => issue.Message).Distinct()));
+    }
+
+    private static List<BotValidationIssue> BuildAiKnowledgeIssues(BotDefinition bot, BotGraphDefinition graph, bool forPublish)
+    {
+        if (!GraphContainsAiNode(graph))
+        {
+            return [];
+        }
+
+        var issues = new List<BotValidationIssue>();
+        var knowledge = DeserializeAiKnowledge(bot.AiKnowledgeJson);
+        var readySourceCount = knowledge.Sources.Count(source =>
+            string.Equals(source.Status, BotAiKnowledgeSourceStatus.Ready, StringComparison.OrdinalIgnoreCase) &&
+            source.Chunks.Count > 0);
+        var severity = forPublish ? BotValidationSeverity.Error : BotValidationSeverity.Warning;
+
+        if (string.IsNullOrWhiteSpace(bot.AiApiKeyEncrypted))
+        {
+            issues.Add(new BotValidationIssue
+            {
+                Id = "ai-provider-key-missing",
+                Severity = severity,
+                Message = "AI nodes require a configured Gemini API key for this bot."
+            });
+        }
+
+        if (readySourceCount == 0)
+        {
+            issues.Add(new BotValidationIssue
+            {
+                Id = "ai-knowledge-missing",
+                Severity = severity,
+                Message = "AI nodes require at least one ready knowledge source for this bot."
+            });
+        }
+
+        return issues;
     }
 
     private static string ResolveBotName(string requestName, string graphName)
@@ -288,6 +372,10 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
     private static BotDefinitionDto MapToDefinitionDto(BotDefinition bot, BotGraphDefinition graph = null)
     {
         var resolvedGraph = graph ?? DeserializeGraph(bot.DraftGraphJson);
+        var knowledge = DeserializeAiKnowledge(bot.AiKnowledgeJson);
+        var readySourceCount = knowledge.Sources.Count(source =>
+            string.Equals(source.Status, BotAiKnowledgeSourceStatus.Ready, StringComparison.OrdinalIgnoreCase) &&
+            source.Chunks.Count > 0);
 
         resolvedGraph.Metadata.Id = bot.Id.ToString();
         resolvedGraph.Metadata.Name = bot.Name;
@@ -303,7 +391,36 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
             PublishedVersion = bot.PublishedVersion,
             HasUnpublishedChanges = !bot.PublishedVersion.HasValue || bot.PublishedVersion.Value != bot.DraftVersion,
             UpdatedAt = bot.LastModificationTime ?? bot.CreationTime,
-            Graph = MapToGraphDto(resolvedGraph)
+            Graph = MapToGraphDto(resolvedGraph),
+            AiKnowledge = new BotAiKnowledgeDto
+            {
+                BotId = bot.Id,
+                Provider = string.IsNullOrWhiteSpace(bot.AiProvider) ? "gemini" : bot.AiProvider,
+                GenerationModel = string.IsNullOrWhiteSpace(bot.AiGenerationModel) ? "gemini-2.5-flash" : bot.AiGenerationModel,
+                EmbeddingModel = string.IsNullOrWhiteSpace(bot.AiEmbeddingModel) ? "gemini-embedding-001" : bot.AiEmbeddingModel,
+                HasApiKey = !string.IsNullOrWhiteSpace(bot.AiApiKeyEncrypted),
+                SourceCount = knowledge.Sources.Count,
+                ReadySourceCount = readySourceCount,
+                IsKnowledgeConfigured = !string.IsNullOrWhiteSpace(bot.AiApiKeyEncrypted) && readySourceCount > 0,
+                Sources = knowledge.Sources.Select(source => new BotAiKnowledgeSourceDto
+                {
+                    Id = source.Id,
+                    SourceType = source.SourceType,
+                    Title = source.Title,
+                    Status = source.Status,
+                    FailureReason = source.FailureReason,
+                    SourceUrl = source.SourceUrl,
+                    SourceFileName = source.SourceFileName,
+                    LastIngestedAtUtc = source.LastIngestedAtUtc,
+                    ChunkCount = source.Chunks.Count
+                }).ToList()
+            }
         };
+    }
+
+    private static BotAiKnowledgeSnapshot DeserializeAiKnowledge(string knowledgeJson)
+    {
+        return JsonSerializer.Deserialize<BotAiKnowledgeSnapshot>(knowledgeJson ?? string.Empty, GraphSerializerOptions)
+               ?? new BotAiKnowledgeSnapshot();
     }
 }

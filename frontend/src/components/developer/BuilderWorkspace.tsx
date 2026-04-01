@@ -42,7 +42,7 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     setValidationResults,
     markSaved
   } = useBuilder();
-  const { activeBot, saveStatus, errorMessage } = useBotState();
+  const { activeBot, saveStatus, errorMessage, draftIdentity } = useBotState();
   const { createBotDraft, updateBotDraft, publishBotDraft, validateBotDraft, setSaveStatus } = useBotActions();
   const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const saveInFlightRef = useRef(false);
@@ -94,7 +94,7 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
       return undefined;
     }
 
-    const localResults = validateBotGraph(graphSnapshot);
+    const localResults = validateBotGraph(graphSnapshot, activeBot?.aiKnowledge, draftIdentity);
     const localErrors = localResults.filter((result) => result.severity === "error");
     setValidationResults(localResults);
 

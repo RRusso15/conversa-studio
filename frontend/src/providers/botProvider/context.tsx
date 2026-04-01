@@ -2,6 +2,7 @@
 
 import { createContext } from "react";
 import type { BotGraph, ValidationResult } from "@/components/developer/builder/types";
+import type { IAiKnowledgeStatus } from "@/utils/ai-knowledge-api";
 
 export interface IBotSummary {
     id: string;
@@ -15,6 +16,7 @@ export interface IBotSummary {
 
 export interface IBotDefinition extends IBotSummary {
     graph: BotGraph;
+    aiKnowledge?: IAiKnowledgeStatus;
 }
 
 export type BotRequestErrorCode =
@@ -93,7 +95,8 @@ export const INITIAL_ACTION_STATE: IBotActionContext = {
             },
             nodes: [],
             edges: []
-        }
+        },
+        aiKnowledge: undefined
     }),
     createBotDraft: async () => ({}),
     updateBotDraft: async () => ({}),
