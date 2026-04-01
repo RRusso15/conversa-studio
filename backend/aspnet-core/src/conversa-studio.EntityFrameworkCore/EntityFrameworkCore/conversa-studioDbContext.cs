@@ -2,6 +2,7 @@ using System;
 using Abp.Zero.EntityFrameworkCore;
 using ConversaStudio.Authorization.Roles;
 using ConversaStudio.Authorization.Users;
+using ConversaStudio.Domains.Billing;
 using ConversaStudio.Domains.Bots;
 using ConversaStudio.Domains.Deployments;
 using ConversaStudio.Domains.Runtime;
@@ -43,6 +44,11 @@ public class ConversaStudioDbContext : AbpZeroDbContext<Tenant, Role, User, Conv
     /// Gets or sets persisted transcript messages.
     /// </summary>
     public DbSet<TranscriptMessage> TranscriptMessages { get; set; }
+
+    /// <summary>
+    /// Gets or sets persisted tenant billing subscriptions.
+    /// </summary>
+    public DbSet<BillingSubscription> BillingSubscriptions { get; set; }
 
     public ConversaStudioDbContext(DbContextOptions<ConversaStudioDbContext> options)
         : base(options)
@@ -99,6 +105,20 @@ public class ConversaStudioDbContext : AbpZeroDbContext<Tenant, Role, User, Conv
             entity.Property(message => message.Role).IsRequired().HasMaxLength(TranscriptMessage.MaxRoleLength);
             entity.Property(message => message.Content).IsRequired().HasMaxLength(TranscriptMessage.MaxContentLength);
             entity.HasIndex(message => new { message.TenantId, message.RuntimeSessionId, message.CreationTime });
+        });
+
+        modelBuilder.Entity<BillingSubscription>(entity =>
+        {
+            entity.ToTable("AppBillingSubscriptions");
+            entity.Property(subscription => subscription.PlanCode).IsRequired().HasMaxLength(BillingSubscription.MaxPlanCodeLength);
+            entity.Property(subscription => subscription.Provider).IsRequired().HasMaxLength(BillingSubscription.MaxProviderLength);
+            entity.Property(subscription => subscription.ProviderSubscriptionId).HasMaxLength(BillingSubscription.MaxProviderSubscriptionIdLength);
+            entity.Property(subscription => subscription.ProviderPlanId).HasMaxLength(BillingSubscription.MaxProviderPlanIdLength);
+            entity.Property(subscription => subscription.Status).IsRequired().HasMaxLength(BillingSubscription.MaxStatusLength);
+            entity.Property(subscription => subscription.PayerEmail).HasMaxLength(BillingSubscription.MaxPayerEmailLength);
+            entity.Property(subscription => subscription.SubscriberName).HasMaxLength(BillingSubscription.MaxSubscriberNameLength);
+            entity.HasIndex(subscription => subscription.TenantId).IsUnique();
+            entity.HasIndex(subscription => subscription.ProviderSubscriptionId).IsUnique();
         });
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
