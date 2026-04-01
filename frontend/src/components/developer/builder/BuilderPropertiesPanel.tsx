@@ -19,14 +19,6 @@ import {
 import { useRef, useState, type ChangeEvent } from "react";
 import { useBuilder } from "./builder-context";
 import { useBotActions, useBotState } from "@/providers/botProvider";
-import {
-  addBotAiPdfSource,
-  addBotAiTextSource,
-  addBotAiUrlSource,
-  deleteBotAiSource,
-  reingestBotAiSource,
-  upsertBotAiSettings,
-} from "@/utils/ai-knowledge-api";
 import type { ConditionRule } from "./types";
 import { nodeRegistry } from "./node-registry";
 import { useBuilderStyles } from "./styles";
@@ -58,11 +50,18 @@ export function BuilderPropertiesPanel({
   const [aiTextDraft, setAiTextDraft] = useState("");
   const [aiUrlTitleDraft, setAiUrlTitleDraft] = useState("");
   const [aiUrlDraft, setAiUrlDraft] = useState("");
-  const [isAiSaving, setIsAiSaving] = useState(false);
   const expandEditorButtonRef = useRef<HTMLButtonElement | null>(null);
   const aiFileInputRef = useRef<HTMLInputElement | null>(null);
-  const { activeBot, draftIdentity } = useBotState();
-  const { getBot } = useBotActions();
+  const { activeBot, draftIdentity, aiKnowledgeErrorMessage, aiKnowledgeStatus } = useBotState();
+  const {
+    addBotAiPdfSource,
+    addBotAiTextSource,
+    addBotAiUrlSource,
+    clearBotAiKnowledgeError,
+    deleteBotAiSource,
+    reingestBotAiSource,
+    upsertBotAiSettings,
+  } = useBotActions();
   const {
     selectedNode,
     selectedEdge,
@@ -130,20 +129,14 @@ export function BuilderPropertiesPanel({
   const isPersistedBot = draftIdentity === "persisted" && Boolean(activeBot?.id);
   const aiReadySources = activeAiKnowledge?.readySourceCount ?? 0;
   const aiSourceCount = activeAiKnowledge?.sourceCount ?? 0;
+  const isAiSaving = aiKnowledgeStatus === "saving";
 
   const openAiKnowledgeModal = () => {
+    clearBotAiKnowledgeError();
     setAiApiKeyDraft("");
     setAiGenerationModelDraft(activeAiKnowledge?.generationModel || "gemini-2.5-flash");
     setAiEmbeddingModelDraft(activeAiKnowledge?.embeddingModel || "gemini-embedding-001");
     setIsAiKnowledgeModalOpen(true);
-  };
-
-  const refreshActiveBot = async () => {
-    if (!activeBot?.id) {
-      return;
-    }
-
-    await getBot(activeBot.id);
   };
 
   const handleSaveAiSettings = async () => {
@@ -151,28 +144,26 @@ export function BuilderPropertiesPanel({
       return;
     }
 
-    setIsAiSaving(true);
-    try {
-      await upsertBotAiSettings({
-        botId: activeBot.id,
-        apiKey: aiApiKeyDraft,
-        generationModel: aiGenerationModelDraft,
-        embeddingModel: aiEmbeddingModelDraft,
-      });
-      await refreshActiveBot();
+    const result = await upsertBotAiSettings({
+      botId: activeBot.id,
+      apiKey: aiApiKeyDraft,
+      generationModel: aiGenerationModelDraft,
+      embeddingModel: aiEmbeddingModelDraft,
+    });
+
+    if (result) {
       setAiApiKeyDraft("");
       notification.success({
         message: "AI settings saved",
         description: "Gemini settings were updated for this bot.",
       });
-    } catch (error) {
-      notification.error({
-        message: "AI settings failed",
-        description: error instanceof Error ? error.message : "The AI settings could not be saved.",
-      });
-    } finally {
-      setIsAiSaving(false);
+      return;
     }
+
+    notification.error({
+      message: "AI settings failed",
+      description: aiKnowledgeErrorMessage ?? "The AI settings could not be saved.",
+    });
   };
 
   const handleAddAiTextSource = async () => {
@@ -180,28 +171,26 @@ export function BuilderPropertiesPanel({
       return;
     }
 
-    setIsAiSaving(true);
-    try {
-      await addBotAiTextSource({
-        botId: activeBot.id,
-        title: aiTextTitleDraft,
-        text: aiTextDraft,
-      });
-      await refreshActiveBot();
+    const result = await addBotAiTextSource({
+      botId: activeBot.id,
+      title: aiTextTitleDraft,
+      text: aiTextDraft,
+    });
+
+    if (result) {
       setAiTextTitleDraft("");
       setAiTextDraft("");
       notification.success({
         message: "Text knowledge added",
         description: "The pasted text was ingested for this bot.",
       });
-    } catch (error) {
-      notification.error({
-        message: "Text knowledge failed",
-        description: error instanceof Error ? error.message : "The text source could not be added.",
-      });
-    } finally {
-      setIsAiSaving(false);
+      return;
     }
+
+    notification.error({
+      message: "Text knowledge failed",
+      description: aiKnowledgeErrorMessage ?? "The text source could not be added.",
+    });
   };
 
   const handleAddAiUrlSource = async () => {
@@ -209,28 +198,26 @@ export function BuilderPropertiesPanel({
       return;
     }
 
-    setIsAiSaving(true);
-    try {
-      await addBotAiUrlSource({
-        botId: activeBot.id,
-        title: aiUrlTitleDraft,
-        url: aiUrlDraft,
-      });
-      await refreshActiveBot();
+    const result = await addBotAiUrlSource({
+      botId: activeBot.id,
+      title: aiUrlTitleDraft,
+      url: aiUrlDraft,
+    });
+
+    if (result) {
       setAiUrlTitleDraft("");
       setAiUrlDraft("");
       notification.success({
         message: "Website knowledge added",
         description: "The page snapshot was ingested for this bot.",
       });
-    } catch (error) {
-      notification.error({
-        message: "Website knowledge failed",
-        description: error instanceof Error ? error.message : "The URL source could not be added.",
-      });
-    } finally {
-      setIsAiSaving(false);
+      return;
     }
+
+    notification.error({
+      message: "Website knowledge failed",
+      description: aiKnowledgeErrorMessage ?? "The URL source could not be added.",
+    });
   };
 
   const handleAiPdfSelected = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -239,19 +226,26 @@ export function BuilderPropertiesPanel({
       return;
     }
 
-    setIsAiSaving(true);
     try {
       const base64Content = await readFileAsBase64(file);
-      await addBotAiPdfSource({
+      const result = await addBotAiPdfSource({
         botId: activeBot.id,
         title: file.name,
         fileName: file.name,
         base64Content,
       });
-      await refreshActiveBot();
-      notification.success({
-        message: "PDF knowledge added",
-        description: `${file.name} was ingested for this bot.`,
+
+      if (result) {
+        notification.success({
+          message: "PDF knowledge added",
+          description: `${file.name} was ingested for this bot.`,
+        });
+        return;
+      }
+
+      notification.error({
+        message: "PDF knowledge failed",
+        description: aiKnowledgeErrorMessage ?? "The PDF source could not be added.",
       });
     } catch (error) {
       notification.error({
@@ -260,7 +254,6 @@ export function BuilderPropertiesPanel({
       });
     } finally {
       event.target.value = "";
-      setIsAiSaving(false);
     }
   };
 
@@ -269,22 +262,20 @@ export function BuilderPropertiesPanel({
       return;
     }
 
-    setIsAiSaving(true);
-    try {
-      await reingestBotAiSource(activeBot.id, sourceId);
-      await refreshActiveBot();
+    const result = await reingestBotAiSource(activeBot.id, sourceId);
+
+    if (result) {
       notification.success({
         message: "Knowledge refreshed",
         description: "The selected knowledge source was re-ingested.",
       });
-    } catch (error) {
-      notification.error({
-        message: "Refresh failed",
-        description: error instanceof Error ? error.message : "The knowledge source could not be refreshed.",
-      });
-    } finally {
-      setIsAiSaving(false);
+      return;
     }
+
+    notification.error({
+      message: "Refresh failed",
+      description: aiKnowledgeErrorMessage ?? "The knowledge source could not be refreshed.",
+    });
   };
 
   const handleDeleteAiSource = async (sourceId: string) => {
@@ -292,22 +283,20 @@ export function BuilderPropertiesPanel({
       return;
     }
 
-    setIsAiSaving(true);
-    try {
-      await deleteBotAiSource(activeBot.id, sourceId);
-      await refreshActiveBot();
+    const result = await deleteBotAiSource(activeBot.id, sourceId);
+
+    if (result) {
       notification.success({
         message: "Knowledge removed",
         description: "The selected knowledge source was removed.",
       });
-    } catch (error) {
-      notification.error({
-        message: "Delete failed",
-        description: error instanceof Error ? error.message : "The knowledge source could not be removed.",
-      });
-    } finally {
-      setIsAiSaving(false);
+      return;
     }
+
+    notification.error({
+      message: "Delete failed",
+      description: aiKnowledgeErrorMessage ?? "The knowledge source could not be removed.",
+    });
   };
 
   const updateRule = (index: number, patch: Partial<ConditionRule>) => {
@@ -1343,6 +1332,15 @@ export function BuilderPropertiesPanel({
                     />
                   ) : (
                     <>
+                      {aiKnowledgeErrorMessage ? (
+                        <Alert
+                          type="error"
+                          showIcon
+                          message="AI knowledge request failed"
+                          description={aiKnowledgeErrorMessage}
+                        />
+                      ) : null}
+
                       <div className={styles.compactCardList}>
                         <div className={`${styles.compactEditorCard} ${styles.compactEditorCardAccent}`}>
                           <div className={styles.compactCardHeader}>

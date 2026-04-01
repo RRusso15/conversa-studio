@@ -80,6 +80,25 @@ export const BotReducer = handleActions<IBotStateContext, IBotStateContext>(
             ...state,
             ...action.payload
         }),
+        [BotActionEnums.botAiKnowledgePending]: (state, action: IReducerAction) => ({
+            ...state,
+            ...action.payload
+        }),
+        [BotActionEnums.botAiKnowledgeSuccess]: (state, action: IReducerAction) => ({
+            ...state,
+            ...action.payload,
+            bots: state.bots && action.payload?.activeBot
+                ? upsertBotSummary(state.bots, action.payload.activeBot)
+                : state.bots
+        }),
+        [BotActionEnums.botAiKnowledgeError]: (state, action: IReducerAction) => ({
+            ...state,
+            ...action.payload
+        }),
+        [BotActionEnums.clearBotAiKnowledgeError]: (state, action: IReducerAction) => ({
+            ...state,
+            ...action.payload
+        }),
         [BotActionEnums.setSaveStatus]: (state, action: IReducerAction) => ({
             ...state,
             ...action.payload
