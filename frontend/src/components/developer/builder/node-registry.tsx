@@ -2,6 +2,7 @@
 
 import {
   BranchesOutlined,
+  BulbOutlined,
   CloudOutlined,
   CodeOutlined,
   DatabaseOutlined,
@@ -9,7 +10,6 @@ import {
   PlayCircleOutlined,
   QuestionCircleOutlined,
   StopOutlined,
-  BulbOutlined,
   UserSwitchOutlined,
 } from "@ant-design/icons";
 import type { NodeDefinition, NodeType } from "./types";
@@ -115,7 +115,8 @@ export const nodeRegistry: Record<NodeType, NodeDefinition> = {
     defaultConfig: () => ({
       kind: "ai",
       instructions: "Answer the question using the attached knowledge base.",
-      fallbackText: "I’m not confident enough to answer that yet.",
+      fallbackText: "I'm not confident enough to answer that yet.",
+      responseMode: "strict",
     }),
   },
   code: {

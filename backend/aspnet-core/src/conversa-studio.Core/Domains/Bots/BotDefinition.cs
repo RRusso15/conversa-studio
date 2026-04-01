@@ -10,6 +10,8 @@ public class BotDefinition : FullAuditedEntity<Guid>
 {
     public const int MaxNameLength = 128;
     public const int MaxStatusLength = 32;
+    public const int MaxAiProviderLength = 32;
+    public const int MaxAiModelLength = 64;
 
     /// <summary>
     /// Gets or sets the tenant that owns the bot.
@@ -52,6 +54,31 @@ public class BotDefinition : FullAuditedEntity<Guid>
     public string PublishedGraphJson { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the configured AI provider for this bot.
+    /// </summary>
+    public string AiProvider { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the encrypted provider API key for this bot.
+    /// </summary>
+    public string AiApiKeyEncrypted { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the configured generation model for this bot.
+    /// </summary>
+    public string AiGenerationModel { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the configured embedding model for this bot.
+    /// </summary>
+    public string AiEmbeddingModel { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the serialized knowledge snapshot for this bot.
+    /// </summary>
+    public string AiKnowledgeJson { get; set; } = string.Empty;
+
+    /// <summary>
     /// Initializes a new empty instance for EF Core.
     /// </summary>
     public BotDefinition()
@@ -70,6 +97,7 @@ public class BotDefinition : FullAuditedEntity<Guid>
         DraftGraphJson = draftGraphJson;
         Status = BotStatus.Draft;
         DraftVersion = 1;
+        AiKnowledgeJson = "{\"sources\":[]}";
     }
 
     /// <summary>
@@ -101,5 +129,24 @@ public class BotDefinition : FullAuditedEntity<Guid>
         PublishedGraphJson = string.Empty;
         PublishedVersion = null;
         Status = BotStatus.Draft;
+    }
+
+    /// <summary>
+    /// Updates the bot-scoped AI provider settings.
+    /// </summary>
+    public void UpdateAiSettings(string provider, string apiKeyEncrypted, string generationModel, string embeddingModel)
+    {
+        AiProvider = provider?.Trim() ?? string.Empty;
+        AiApiKeyEncrypted = apiKeyEncrypted?.Trim() ?? string.Empty;
+        AiGenerationModel = generationModel?.Trim() ?? string.Empty;
+        AiEmbeddingModel = embeddingModel?.Trim() ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Replaces the serialized knowledge snapshot.
+    /// </summary>
+    public void UpdateAiKnowledge(string aiKnowledgeJson)
+    {
+        AiKnowledgeJson = aiKnowledgeJson?.Trim() ?? "{\"sources\":[]}";
     }
 }

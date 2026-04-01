@@ -60,6 +60,11 @@ public class ConversaStudioDbContext : AbpZeroDbContext<Tenant, Role, User, Conv
             entity.Property(bot => bot.Status).IsRequired().HasMaxLength(BotDefinition.MaxStatusLength);
             entity.Property(bot => bot.DraftGraphJson).IsRequired();
             entity.Property(bot => bot.PublishedGraphJson);
+            entity.Property(bot => bot.AiProvider).HasMaxLength(BotDefinition.MaxAiProviderLength);
+            entity.Property(bot => bot.AiApiKeyEncrypted);
+            entity.Property(bot => bot.AiGenerationModel).HasMaxLength(BotDefinition.MaxAiModelLength);
+            entity.Property(bot => bot.AiEmbeddingModel).HasMaxLength(BotDefinition.MaxAiModelLength);
+            entity.Property(bot => bot.AiKnowledgeJson).IsRequired();
             entity.HasIndex(bot => new { bot.TenantId, bot.OwnerUserId, bot.CreationTime });
         });
 

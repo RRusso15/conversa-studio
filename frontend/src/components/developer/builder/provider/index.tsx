@@ -43,12 +43,14 @@ import type {
     ValidationResult
 } from "../types";
 import { validateBotGraph } from "../validation";
+import { useBotState } from "@/providers/botProvider";
 import {
     getQuestionChoiceHandleId,
     getQuestionChoiceValue,
     getVariableOperation,
     interpolateVariableText,
     normalizeApiConfig,
+    normalizeAiConfig,
     normalizeCodeConfig,
     normalizeConditionConfig,
     normalizeQuestionConfig
@@ -63,6 +65,7 @@ interface BuilderProviderProps {
  * Provides in-editor builder state separate from persisted bot CRUD workflows.
  */
 export function BuilderProvider({ graph, children }: BuilderProviderProps) {
+    const { activeBot, draftIdentity } = useBotState();
     const [state, dispatch] = useReducer(BuilderReducer, normalizeGraph(graph), createInitialState);
 
     const reactFlowNodes = useMemo(
@@ -229,7 +232,7 @@ export function BuilderProvider({ graph, children }: BuilderProviderProps) {
             }))));
         },
         runValidation: () => {
-            const results = validateBotGraph(state.graph);
+            const results = validateBotGraph(state.graph, activeBot?.aiKnowledge, draftIdentity);
             dispatch(setValidationResultsAction(results));
             return results;
         },
@@ -245,7 +248,7 @@ export function BuilderProvider({ graph, children }: BuilderProviderProps) {
         resetGraph: (nextGraph: BotGraph) => {
             dispatch(resetGraphAction(normalizeGraph(nextGraph)));
         }
-    }), [reactFlowEdges, selectedNode, state.graph, state.graph.nodes]);
+    }), [activeBot?.aiKnowledge, draftIdentity, reactFlowEdges, selectedNode, state.graph, state.graph.nodes]);
 
     const value = useMemo<IBuilderStateContext>(() => ({
         state,
@@ -431,7 +434,7 @@ function getNodeSummary(node: BotNode) {
         case "api":
             return `${node.config.method} ${node.config.endpoint || "endpoint"} with ${(node.config.responseMappings ?? []).length} response mapping(s), ${getApiBranchLabel(node.config.successLabel, "Success")} and ${getApiBranchLabel(node.config.errorLabel, "Error")} routes.`;
         case "ai":
-            return node.config.instructions.trim() || "Generate a grounded AI response.";
+            return `${node.config.instructions.trim() || "Generate a grounded AI response."} Mode: ${(node.config.responseMode ?? "strict")}.`;
         case "code":
             return `Run custom JavaScript with success and error routes.`;
         case "handoff":
@@ -777,6 +780,13 @@ function normalizeGraph(graph: BotGraph): BotGraph {
                 return {
                     ...node,
                     config: normalizeApiConfig(node.config)
+                };
+            }
+
+            if (node.config.kind === "ai") {
+                return {
+                    ...node,
+                    config: normalizeAiConfig(node.config)
                 };
             }
 
