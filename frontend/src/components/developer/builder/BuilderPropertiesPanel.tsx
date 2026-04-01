@@ -1,6 +1,6 @@
 "use client";
 
-import { DeleteOutlined, MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import { DeleteOutlined, ExpandOutlined, MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   Alert,
   AutoComplete,
@@ -9,11 +9,13 @@ import {
   Empty,
   Form,
   Input,
+  Modal,
   Select,
   Space,
   Tag,
   Typography,
 } from "antd";
+import { useRef, useState } from "react";
 import { useBuilder } from "./builder-context";
 import type { ConditionRule } from "./types";
 import { nodeRegistry } from "./node-registry";
@@ -36,6 +38,8 @@ export function BuilderPropertiesPanel({
   compact = false,
 }: BuilderPropertiesPanelProps) {
   const { styles } = useBuilderStyles();
+  const [isCodeEditorModalOpen, setIsCodeEditorModalOpen] = useState(false);
+  const expandEditorButtonRef = useRef<HTMLButtonElement | null>(null);
   const {
     selectedNode,
     selectedEdge,
@@ -879,7 +883,7 @@ export function BuilderPropertiesPanel({
                           </Button>
                         </div>
                       </div>
-                      <div className={styles.inlineFieldGridTwo}>
+                      <div className={styles.compactCardList}>
                         <div className={`${styles.compactEditorCard} ${styles.compactEditorCardAccent}`}>
                           <div className={styles.compactCardHeader}>
                             <div>
@@ -994,6 +998,15 @@ export function BuilderPropertiesPanel({
                         Timeout {codeConfig.timeoutMs ?? 1000}ms
                       </Tag>
                       <Tag className={styles.codeEditorTag}>Backend Only</Tag>
+                      <Button
+                        ref={expandEditorButtonRef}
+                        size="small"
+                        icon={<ExpandOutlined />}
+                        className={styles.codeEditorExpandButton}
+                        onClick={() => setIsCodeEditorModalOpen(true)}
+                      >
+                        Expand editor
+                      </Button>
                     </div>
                   </div>
                   <div className={styles.codeEditorBody}>
@@ -1040,6 +1053,70 @@ export function BuilderPropertiesPanel({
                 />
               </Form.Item>
               <VariableHints availableVariables={availableVariables} />
+
+              <Modal
+                centered
+                open={isCodeEditorModalOpen}
+                onCancel={() => setIsCodeEditorModalOpen(false)}
+                footer={null}
+                width={960}
+                destroyOnHidden={false}
+                className={styles.codeEditorModal}
+                afterOpenChange={(open) => {
+                  if (!open) {
+                    expandEditorButtonRef.current?.focus();
+                  }
+                }}
+              >
+                <div className={styles.codeEditorShell}>
+                  <div className={styles.codeEditorHeader}>
+                    <div className={styles.codeEditorTitle}>
+                      <span className={styles.codeEditorDots}>
+                        <span />
+                        <span />
+                        <span />
+                      </span>
+                      <span>JavaScript</span>
+                    </div>
+                    <div className={styles.codeEditorHeaderTags}>
+                      <Tag className={styles.codeEditorTag}>
+                        Timeout {codeConfig.timeoutMs ?? 1000}ms
+                      </Tag>
+                      <Tag className={styles.codeEditorTag}>Backend Only</Tag>
+                    </div>
+                  </div>
+                  <div className={`${styles.codeEditorBody} ${styles.codeEditorBodyExpanded}`}>
+                    <div className={`${styles.codeEditorTextarea} ${styles.codeEditorTextareaExpanded}`}>
+                      <Input.TextArea
+                        rows={18}
+                        value={codeConfig.script}
+                        placeholder={"vars.customerName = vars.customerName ?? \"\";\nvars.summary = `${vars.customerName} is ready`;"} 
+                        onChange={(event) =>
+                          updateNodeConfig(selectedNode.id, {
+                            ...codeConfig,
+                            script: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className={styles.codeEditorHelp}>
+                      <Text className={styles.codeEditorHelpText}>
+                        Use <Text code>vars.&lt;name&gt;</Text> to read or write variables. The script runs on the backend and follows the <Text code>success</Text> or <Text code>error</Text> branch.
+                      </Text>
+                      <div className={styles.codeEditorExamples}>
+                        <pre className={styles.codeEditorExample}>
+{`vars.fullName = \`\${vars.firstName ?? ""} \${vars.lastName ?? ""}\`.trim();`}
+                        </pre>
+                        <pre className={styles.codeEditorExample}>
+{`if (!vars.email) {
+  throw new Error("Missing email");
+}`}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Modal>
             </>
           ) : null}
 

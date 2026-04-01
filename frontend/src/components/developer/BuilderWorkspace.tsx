@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { App, Button, Grid, Result, Spin } from "antd";
 import { BuilderProvider, useBuilder } from "./builder/builder-context";
@@ -23,11 +23,17 @@ interface BuilderWorkspaceContentProps {
   botId?: string;
 }
 
+const BUILDER_RIGHT_PANEL_WIDTH_KEY = "builder:right-panel-width";
+const DEFAULT_RIGHT_PANEL_WIDTH = 360;
+const MIN_RIGHT_PANEL_WIDTH = 320;
+const MAX_RIGHT_PANEL_WIDTH = 640;
+
 function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
   const screens = Grid.useBreakpoint();
   const { notification } = App.useApp();
   const router = useRouter();
   const { styles } = useBuilderStyles();
+  const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_RIGHT_PANEL_WIDTH);
   const {
     state,
     runValidation,
@@ -51,6 +57,32 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
   useEffect(() => {
     persistedBotIdRef.current = toPersistedBotId(activeBot?.id);
   }, [activeBot?.id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const storedWidth = window.localStorage.getItem(BUILDER_RIGHT_PANEL_WIDTH_KEY);
+    if (!storedWidth) {
+      return;
+    }
+
+    const parsedWidth = Number(storedWidth);
+    if (!Number.isFinite(parsedWidth)) {
+      return;
+    }
+
+    setRightPanelWidth(clampRightPanelWidth(parsedWidth));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(BUILDER_RIGHT_PANEL_WIDTH_KEY, String(rightPanelWidth));
+  }, [rightPanelWidth]);
 
   const persistGraph = async (
     origin: "autosave" | "manual",
@@ -219,8 +251,32 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     });
   };
 
+  const handleResizeStart = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (typeof window === "undefined" || window.innerWidth <= 1100) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const handlePointerMove = (moveEvent: MouseEvent) => {
+      const nextWidth = clampRightPanelWidth(window.innerWidth - moveEvent.clientX);
+      setRightPanelWidth(nextWidth);
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener("mousemove", handlePointerMove);
+      window.removeEventListener("mouseup", handlePointerUp);
+    };
+
+    window.addEventListener("mousemove", handlePointerMove);
+    window.addEventListener("mouseup", handlePointerUp);
+  };
+
   return (
-    <div className={styles.builderShell}>
+    <div
+      className={styles.builderShell}
+      style={{ ["--builder-right-panel-width" as string]: `${rightPanelWidth}px` }}
+    >
       <BuilderToolbar
         botName={state.graph.metadata.name}
         isDirty={state.isDirty}
@@ -242,6 +298,14 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
         <main className={styles.builderCanvasRegion}>
           <BuilderCanvas />
         </main>
+
+        <div
+          className={styles.builderResizeHandle}
+          onMouseDown={handleResizeStart}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize right panel"
+        />
 
         <aside className={styles.builderRightPanel}>
           <div className={`${styles.builderSideSection} ${styles.builderPropertiesSection}`}>
@@ -336,4 +400,8 @@ function mergeValidationResults(
     seen.add(key);
     return true;
   });
+}
+
+function clampRightPanelWidth(value: number): number {
+  return Math.min(MAX_RIGHT_PANEL_WIDTH, Math.max(MIN_RIGHT_PANEL_WIDTH, Math.round(value)));
 }
