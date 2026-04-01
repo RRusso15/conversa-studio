@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { App, Button, Grid, Result, Spin } from "antd";
 import { BuilderProvider, useBuilder } from "./builder/builder-context";
@@ -11,9 +11,10 @@ import { BuilderToolbar } from "./builder/BuilderToolbar";
 import { BuilderValidationPanel } from "./builder/BuilderValidationPanel";
 import { NodePalette } from "./builder/NodePalette";
 import { useBuilderStyles } from "./builder/styles";
+import { downloadBotExport, parseImportedBotFile } from "./builder/bot-portability";
 import { useBotActions, useBotState } from "@/providers/botProvider";
 import { validateBotGraph } from "./builder/validation";
-import type { ValidationResult } from "./builder/types";
+import type { BotGraph, ValidationResult } from "./builder/types";
 
 interface BuilderWorkspaceProps {
   botId?: string;
@@ -45,6 +46,7 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
   const { activeBot, saveStatus, errorMessage, draftIdentity } = useBotState();
   const { createBotDraft, updateBotDraft, publishBotDraft, validateBotDraft, setSaveStatus } = useBotActions();
   const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const importFileInputRef = useRef<HTMLInputElement | null>(null);
   const saveInFlightRef = useRef(false);
   const queuedSaveOriginRef = useRef<"autosave" | "manual" | undefined>(undefined);
   const latestGraphRef = useRef(state.graph);
@@ -192,6 +194,67 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     await persistGraph("manual");
   };
 
+  const handleExport = () => {
+    downloadBotExport(state.graph.metadata.name, state.graph);
+    notification.success({
+      message: "Bot exported",
+      description: "Your bot definition has been downloaded as a .cstu file."
+    });
+  };
+
+  const handleImport = () => {
+    importFileInputRef.current?.click();
+  };
+
+  const handleImportedFileSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    let importedBot: { name: string; graph: BotGraph };
+
+    try {
+      const fileContents = await file.text();
+      importedBot = parseImportedBotFile(fileContents);
+    } catch (error) {
+      notification.error({
+        message: "Import failed",
+        description: error instanceof Error ? error.message : "The selected file could not be imported."
+      });
+      return;
+    }
+
+    const localResults = validateBotGraph(importedBot.graph, undefined, "temporary");
+    const localErrors = localResults.filter((result) => result.severity === "error");
+
+    if (localErrors.length > 0) {
+      notification.error({
+        message: "Import blocked by validation",
+        description: localErrors.map((result) => result.message).join(" ")
+      });
+      return;
+    }
+
+    const creationResult = await createBotDraft(importedBot.graph);
+
+    if (!creationResult.bot) {
+      notification.error({
+        message: "Import failed",
+        description: creationResult.error?.message ?? "The imported bot could not be created."
+      });
+      return;
+    }
+
+    notification.success({
+      message: "Bot imported",
+      description: `${creationResult.bot.name} was created as a new draft bot.`
+    });
+    router.replace(`/developer/builder/${creationResult.bot.id}`);
+  };
+
   const handleDeploy = async () => {
     const savedBot = await persistGraph("manual");
     const persistedBotId = toPersistedBotId(savedBot?.id ?? activeBot?.id);
@@ -285,9 +348,19 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
         deployLabel={activeBot?.publishedVersion && !activeBot.hasUnpublishedChanges ? "Manage Deployments" : "Publish & Deploy"}
         onBotNameChange={updateBotName}
         onSave={handleSave}
+        onExport={handleExport}
+        onImport={handleImport}
         onValidate={handleValidate}
         onTest={() => setSimulatorOpen(true)}
         onDeploy={handleDeploy}
+      />
+
+      <input
+        ref={importFileInputRef}
+        type="file"
+        accept=".cstu,application/json,.json"
+        style={{ display: "none" }}
+        onChange={(event) => void handleImportedFileSelected(event)}
       />
 
       <div className={styles.builderMain}>

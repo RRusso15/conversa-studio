@@ -42,6 +42,11 @@ public interface IBotDefinitionAppService : IApplicationService
     Task<BotDefinitionDto> Unpublish(EntityDto<Guid> input);
 
     /// <summary>
+    /// Deletes a bot and its owned operational data.
+    /// </summary>
+    Task DeleteBot(EntityDto<Guid> input);
+
+    /// <summary>
     /// Validates a bot graph without persisting it.
     /// </summary>
     Task<ListResultDto<BotValidationResultDto>> ValidateDraft(ValidateBotDefinitionRequest input);

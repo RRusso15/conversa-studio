@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,6 +15,7 @@ import {
 } from "antd";
 import { developerNavItems } from "./navigation";
 import { useStyles } from "./styles";
+import { useAuthActions, useAuthState } from "@/providers/authProvider";
 
 const { Paragraph, Text } = Typography;
 
@@ -24,6 +26,36 @@ interface DeveloperSidebarProps {
 export function DeveloperSidebar({ onNavigate }: DeveloperSidebarProps) {
   const pathname = usePathname();
   const { styles } = useStyles();
+  const { signOut } = useAuthActions();
+  const { currentLoginInformations, isPending, isBootstrapped } = useAuthState();
+
+  const user = currentLoginInformations?.user;
+  const tenant = currentLoginInformations?.tenant;
+  const displayName = useMemo(() => {
+    const fullName = `${user?.name ?? ""} ${user?.surname ?? ""}`.trim();
+
+    if (fullName) {
+      return fullName;
+    }
+
+    return user?.userName ?? "Developer";
+  }, [user?.name, user?.surname, user?.userName]);
+  const emailAddress = user?.emailAddress ?? "Loading your profile...";
+  const profileTag = tenant?.name ?? tenant?.tenancyName ?? "Workspace";
+  const initials = useMemo(() => {
+    const initialParts = [user?.name, user?.surname]
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value));
+
+    if (initialParts.length > 0) {
+      return initialParts
+        .slice(0, 2)
+        .map((value) => value[0]?.toUpperCase() ?? "")
+        .join("");
+    }
+
+    return (user?.userName ?? "DV").slice(0, 2).toUpperCase();
+  }, [user?.name, user?.surname, user?.userName]);
 
   const selectedKey =
     developerNavItems.find((item) => pathname.startsWith(item.href))?.key ??
@@ -74,21 +106,30 @@ export function DeveloperSidebar({ onNavigate }: DeveloperSidebarProps) {
       <div className={styles.profileCard}>
         <Space direction="vertical" size={10} style={{ width: "100%" }}>
           <div className={styles.profileMeta}>
-            <span className={styles.avatar}>DV</span>
+            <span className={styles.avatar}>{initials}</span>
             <div>
-              <Text strong>Developer User</Text>
+              <Text strong>{displayName}</Text>
               <Paragraph
                 type="secondary"
                 style={{ margin: 0, fontSize: 12, lineHeight: 1.4 }}
               >
-                developer@conversa.studio
+                {emailAddress}
               </Paragraph>
             </div>
           </div>
 
           <Space style={{ justifyContent: "space-between", width: "100%" }}>
-            <Tag color="green">Developer</Tag>
-            <Button type="text" icon={<LogoutOutlined />} size="small">
+            <Tag color="green">{profileTag}</Tag>
+            <Button
+              type="text"
+              icon={<LogoutOutlined />}
+              size="small"
+              disabled={!isBootstrapped && isPending}
+              onClick={() => {
+                onNavigate?.();
+                signOut();
+              }}
+            >
               Sign out
             </Button>
           </Space>

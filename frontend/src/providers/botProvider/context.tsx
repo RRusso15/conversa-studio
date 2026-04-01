@@ -51,6 +51,8 @@ export interface IBotStateContext {
     activeBot?: IBotDefinition;
     draftIdentity: "temporary" | "persisted";
     saveStatus: "idle" | "saving" | "saved" | "error" | "validation_blocked" | "permission_denied" | "api_mismatch";
+    deleteStatus: "idle" | "deleting" | "error";
+    deleteErrorMessage?: string;
     aiKnowledgeStatus: "idle" | "loading" | "saving" | "error";
     aiKnowledgeErrorMessage?: string;
     validationResults?: ValidationResult[];
@@ -65,6 +67,7 @@ export interface IBotActionContext {
     initializeNewBotDraft: () => Promise<IBotDefinition>;
     createBotDraft: (graph: BotGraph) => Promise<IBotMutationResult>;
     updateBotDraft: (id: string, graph: BotGraph) => Promise<IBotMutationResult>;
+    deleteBot: (id: string) => Promise<{ error?: IBotRequestError }>;
     publishBotDraft: (id: string) => Promise<IBotMutationResult>;
     validateBotDraft: (graph: BotGraph) => Promise<IBotValidationOutcome>;
     upsertBotAiSettings: (input: {
@@ -102,6 +105,7 @@ export const INITIAL_STATE: IBotStateContext = {
     isError: false,
     draftIdentity: "temporary",
     saveStatus: "idle",
+    deleteStatus: "idle",
     aiKnowledgeStatus: "idle"
 };
 
@@ -130,6 +134,7 @@ export const INITIAL_ACTION_STATE: IBotActionContext = {
     }),
     createBotDraft: async () => ({}),
     updateBotDraft: async () => ({}),
+    deleteBot: async () => ({}),
     publishBotDraft: async () => ({}),
     validateBotDraft: async () => ({}),
     upsertBotAiSettings: async () => undefined,

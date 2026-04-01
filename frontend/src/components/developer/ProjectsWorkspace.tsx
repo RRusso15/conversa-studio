@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
+  DeleteOutlined,
   EyeOutlined,
   MessageOutlined,
   PlusOutlined,
 } from "@ant-design/icons";
-import { Alert, Button, Card, Col, Empty, Row, Skeleton, Space, Tag, Typography } from "antd";
+import { Alert, App, Button, Card, Col, Empty, Popconfirm, Row, Skeleton, Space, Tag, Typography } from "antd";
 import { PageHeader } from "./PageHeader";
 import { useStyles } from "./styles";
 import { useBotActions, useBotState } from "@/providers/botProvider";
@@ -15,13 +17,35 @@ import { useBotActions, useBotState } from "@/providers/botProvider";
 const { Paragraph, Text, Title } = Typography;
 
 export function ProjectsWorkspace() {
+  const router = useRouter();
   const { styles } = useStyles();
-  const { bots, isPending, isError, errorMessage } = useBotState();
-  const { getBots } = useBotActions();
+  const { notification } = App.useApp();
+  const { bots, isPending, isError, errorMessage, deleteStatus } = useBotState();
+  const { getBots, deleteBot } = useBotActions();
+  const [deletingBotId, setDeletingBotId] = useState<string>();
 
   useEffect(() => {
     void getBots();
   }, [getBots]);
+
+  const handleDeleteBot = async (botId: string, botName: string): Promise<void> => {
+    setDeletingBotId(botId);
+    const result = await deleteBot(botId);
+    setDeletingBotId(undefined);
+
+    if (result.error) {
+      notification.error({
+        message: "Bot could not be deleted",
+        description: result.error.message,
+      });
+      return;
+    }
+
+    notification.success({
+      message: "Bot deleted",
+      description: `${botName} and its related runtime history were removed.`,
+    });
+  };
 
   return (
     <>
@@ -60,51 +84,95 @@ export function ProjectsWorkspace() {
 
         {bots?.map((bot) => (
           <Col xs={24} md={12} xl={8} key={bot.id}>
-            <Link href={`/developer/builder/${bot.id}`}>
-              <Card className={styles.projectCard}>
+            <Card
+              className={styles.projectCard}
+              onClick={() => {
+                router.push(`/developer/builder/${bot.id}`);
+              }}
+            >
+              <Space
+                direction="vertical"
+                size="large"
+                style={{
+                  width: "100%",
+                  minHeight: 220,
+                  justifyContent: "space-between",
+                }}
+              >
                 <Space
-                  direction="vertical"
-                  size="large"
-                  style={{
-                    width: "100%",
-                    minHeight: 220,
-                    justifyContent: "space-between",
-                  }}
+                  align="start"
+                  style={{ justifyContent: "space-between", width: "100%" }}
                 >
+                  <span className={styles.projectIcon}>
+                    <MessageOutlined />
+                  </span>
+
+                  <Popconfirm
+                    title="Delete this bot?"
+                    description="This removes the bot, its deployments, sessions, and transcript history."
+                    okText="Delete bot"
+                    cancelText="Cancel"
+                    okButtonProps={{ danger: true, loading: deletingBotId === bot.id && deleteStatus === "deleting" }}
+                    onConfirm={(event) => {
+                      event?.stopPropagation();
+                      return handleDeleteBot(bot.id, bot.name);
+                    }}
+                  >
+                    <Button
+                      danger
+                      type="text"
+                      icon={<DeleteOutlined />}
+                      loading={deletingBotId === bot.id && deleteStatus === "deleting"}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </Popconfirm>
+                </Space>
+
+                <div>
+                  <Title level={4} style={{ marginBottom: 8 }}>
+                    {bot.name}
+                  </Title>
+                  <Space wrap size={10}>
+                    <Tag color={bot.status === "published" ? "green" : "default"}>
+                      {bot.status === "published" ? "Published" : "Draft"}
+                    </Tag>
+                    {bot.status === "published" && bot.hasUnpublishedChanges ? (
+                      <Tag color="gold">Unpublished changes</Tag>
+                    ) : null}
+                    <Text type="secondary">
+                      Edited {new Date(bot.updatedAt).toLocaleString()}
+                    </Text>
+                  </Space>
+                </div>
+
+                <div className={styles.projectFooter}>
                   <Space
-                    align="start"
+                    align="center"
                     style={{ justifyContent: "space-between", width: "100%" }}
                   >
-                    <span className={styles.projectIcon}>
-                      <MessageOutlined />
-                    </span>
-                  </Space>
-
-                  <div>
-                    <Title level={4} style={{ marginBottom: 8 }}>
-                      {bot.name}
-                    </Title>
-                    <Space wrap size={10}>
-                      <Tag color={bot.status === "published" ? "green" : "default"}>
-                        {bot.status === "published" ? "Published" : "Draft"}
-                      </Tag>
-                      {bot.status === "published" && bot.hasUnpublishedChanges ? (
-                        <Tag color="gold">Unpublished changes</Tag>
-                      ) : null}
-                      <Text type="secondary">
-                        Edited {new Date(bot.updatedAt).toLocaleString()}
-                      </Text>
-                    </Space>
-                  </div>
-
-                  <div className={styles.projectFooter}>
                     <Text type="secondary">
                       Open the builder to continue editing this bot draft.
                     </Text>
-                  </div>
-                </Space>
-              </Card>
-            </Link>
+                    <Button
+                      type="link"
+                      icon={<EyeOutlined />}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        router.push(`/developer/builder/${bot.id}`);
+                      }}
+                    >
+                      Open builder
+                    </Button>
+                  </Space>
+                </div>
+              </Space>
+            </Card>
           </Col>
         ))}
 

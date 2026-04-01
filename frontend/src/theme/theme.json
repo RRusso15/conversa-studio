@@ -9,6 +9,11 @@
     "colorTextBase": "#111827",
     "colorTextSecondary": "#6B7280",
     "colorTextDescription": "#6B7280",
+    "colorPrimaryBg": "rgba(15, 23, 42, 0.08)",
+    "colorPrimaryBgHover": "rgba(15, 23, 42, 0.12)",
+    "controlItemBgActive": "rgba(15, 23, 42, 0.08)",
+    "controlItemBgActiveHover": "rgba(15, 23, 42, 0.12)",
+    "controlItemBgHover": "rgba(15, 23, 42, 0.04)",
     "colorLink": "#111111",
     "colorLinkHover": "#374151",
     "colorLinkActive": "#111111",
@@ -26,6 +31,29 @@
     },
     "Input": {
       "controlHeight": 46
+    },
+    "Menu": {
+      "itemSelectedBg": "rgba(15, 23, 42, 0.08)",
+      "itemSelectedColor": "#0f172a",
+      "itemHoverColor": "#0f172a",
+      "itemHoverBg": "rgba(15, 23, 42, 0.04)",
+      "itemActiveBg": "rgba(15, 23, 42, 0.12)"
+    },
+    "Segmented": {
+      "trackBg": "#f3f4f6",
+      "itemSelectedBg": "rgba(15, 23, 42, 0.08)",
+      "itemSelectedColor": "#0f172a"
+    },
+    "Select": {
+      "optionSelectedBg": "rgba(15, 23, 42, 0.08)",
+      "optionSelectedColor": "#0f172a",
+      "optionActiveBg": "rgba(15, 23, 42, 0.12)"
+    },
+    "Tabs": {
+      "itemSelectedColor": "#0f172a",
+      "itemActiveColor": "#0f172a",
+      "itemHoverColor": "#0f172a",
+      "inkBarColor": "#0f172a"
     }
   }
 }
