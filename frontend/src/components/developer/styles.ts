@@ -179,6 +179,121 @@ export const useStyles = createStyles(({ css, token }) => ({
     padding-top: 18px;
     border-top: 1px solid ${token.colorBorder};
   `,
+  transcriptLayout: css`
+    display: grid;
+    grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+
+    @media (max-width: 1100px) {
+      grid-template-columns: 1fr;
+    }
+  `,
+  transcriptPane: css`
+    border-radius: 22px;
+    border: 1px solid ${token.colorBorder};
+    background: ${token.colorBgContainer};
+    box-shadow: 0 16px 34px rgba(17, 24, 39, 0.04);
+  `,
+  transcriptPaneHeader: css`
+    padding: 18px 18px 14px;
+    border-bottom: 1px solid ${token.colorBorder};
+  `,
+  transcriptPaneBody: css`
+    padding: 16px 18px 18px;
+  `,
+  transcriptList: css`
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  `,
+  transcriptSessionCard: css`
+    width: 100%;
+    text-align: left;
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid ${token.colorBorder};
+    background: #ffffff;
+    cursor: pointer;
+    transition:
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.18s ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      border-color: rgba(15, 23, 42, 0.14);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    &[data-selected="true"] {
+      background: rgba(15, 23, 42, 0.05);
+      border-color: rgba(15, 23, 42, 0.16);
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+    }
+  `,
+  transcriptSessionPreview: css`
+    display: block;
+    color: ${token.colorTextSecondary};
+    font-size: 12px;
+    line-height: 1.6;
+  `,
+  transcriptMetaGrid: css`
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+
+    @media (max-width: 520px) {
+      grid-template-columns: 1fr;
+    }
+  `,
+  transcriptMetaCard: css`
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid ${token.colorBorder};
+    background: #f9fafb;
+  `,
+  transcriptMessages: css`
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 70vh;
+    overflow: auto;
+    padding-right: 4px;
+  `,
+  transcriptMessageRow: css`
+    display: flex;
+  `,
+  transcriptMessageRowUser: css`
+    justify-content: flex-end;
+  `,
+  transcriptMessageRowBot: css`
+    justify-content: flex-start;
+  `,
+  transcriptMessageBubble: css`
+    max-width: min(80%, 720px);
+    padding: 12px 14px;
+    border-radius: 18px;
+    border: 1px solid ${token.colorBorder};
+    background: #ffffff;
+    box-shadow: 0 10px 18px rgba(15, 23, 42, 0.03);
+  `,
+  transcriptMessageBubbleUser: css`
+    background: #111111;
+    border-color: #111111;
+    color: #ffffff;
+  `,
+  transcriptMessageBubbleBot: css`
+    background: #ffffff;
+    color: ${token.colorTextBase};
+  `,
+  transcriptMessageTime: css`
+    display: block;
+    margin-top: 8px;
+    font-size: 11px;
+    opacity: 0.72;
+  `,
   createCard: css`
     height: 100%;
     min-height: 260px;
