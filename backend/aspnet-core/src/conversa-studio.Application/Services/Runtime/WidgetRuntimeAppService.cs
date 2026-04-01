@@ -2,15 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Abp.Dependency;
 using Abp.Domain.Repositories;
+using Abp.Runtime.Security;
 using Abp.UI;
+using ConversaStudio.Domains.AiKnowledge;
 using ConversaStudio.Domains.Bots;
 using ConversaStudio.Domains.Deployments;
 using ConversaStudio.Domains.Runtime;
+using ConversaStudio.Services.AiKnowledge;
 using ConversaStudio.Domains.Transcripts;
 using ConversaStudio.Services.Runtime.Dto;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,6 +40,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
     private readonly PublishedGraphRuntimeValidator _runtimeValidator;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly RestrictedJavaScriptExecutor _restrictedJavaScriptExecutor;
+    private readonly GeminiAiClient _geminiAiClient;
 
     public WidgetRuntimeAppService(
         IRepository<BotDeployment, Guid> botDeploymentRepository,
@@ -44,7 +49,8 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         IRepository<TranscriptMessage, Guid> transcriptMessageRepository,
         PublishedGraphRuntimeValidator runtimeValidator,
         IHttpClientFactory httpClientFactory,
-        RestrictedJavaScriptExecutor restrictedJavaScriptExecutor)
+        RestrictedJavaScriptExecutor restrictedJavaScriptExecutor,
+        GeminiAiClient geminiAiClient)
     {
         _botDeploymentRepository = botDeploymentRepository;
         _botDefinitionRepository = botDefinitionRepository;
@@ -53,6 +59,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         _runtimeValidator = runtimeValidator;
         _httpClientFactory = httpClientFactory;
         _restrictedJavaScriptExecutor = restrictedJavaScriptExecutor;
+        _geminiAiClient = geminiAiClient;
     }
 
     /// <summary>
@@ -95,7 +102,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
             context.Bot.PublishedVersion ?? 0,
             Guid.NewGuid().ToString("N"));
 
-        var executionResult = await ExecuteGraphAsync(context.Graph, createdSession, null);
+        var executionResult = await ExecuteGraphAsync(context.Graph, context.Bot, createdSession, null);
         createdSession.UpdateState(
             executionResult.CurrentNodeId,
             SerializeVariables(executionResult.Variables),
@@ -125,7 +132,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         var session = await ResolveSessionAsync(context, sessionId)
             ?? throw new UserFriendlyException("The requested session could not be found.");
 
-        var executionResult = await ExecuteGraphAsync(context.Graph, session, input.Message.Trim());
+        var executionResult = await ExecuteGraphAsync(context.Graph, context.Bot, session, input.Message.Trim());
         session.UpdateState(
             executionResult.CurrentNodeId,
             SerializeVariables(executionResult.Variables),
@@ -179,6 +186,12 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         if (blockingIssues.Count > 0)
         {
             throw new UserFriendlyException(string.Join(" ", blockingIssues.Select(issue => issue.Message).Distinct()));
+        }
+
+        var aiReadinessIssues = BuildAiRuntimeIssues(context.Bot, context.Graph);
+        if (aiReadinessIssues.Count > 0)
+        {
+            throw new UserFriendlyException(string.Join(" ", aiReadinessIssues.Select(issue => issue.Message).Distinct()));
         }
 
         return context;
@@ -254,7 +267,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         };
     }
 
-    private async Task<ExecutionState> ExecuteGraphAsync(BotGraphDefinition graph, RuntimeSession session, string userInput)
+    private async Task<ExecutionState> ExecuteGraphAsync(BotGraphDefinition graph, BotDefinition bot, RuntimeSession session, string userInput)
     {
         var state = new ExecutionState
         {
@@ -375,6 +388,28 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
                 continue;
             }
 
+            if (IsNodeType(currentNode, "ai"))
+            {
+                var latestUserMessage = state.Messages
+                    .LastOrDefault(message => string.Equals(message.Role, "user", StringComparison.OrdinalIgnoreCase))
+                    ?.Content ?? string.Empty;
+                var aiResponse = await ExecuteAiNodeAsync(currentNode.Config, bot, state.Variables, latestUserMessage);
+
+                if (!string.IsNullOrWhiteSpace(aiResponse))
+                {
+                    state.Messages.Add(new RuntimeMessage("bot", aiResponse));
+                }
+
+                state.CurrentNodeId = GetOutgoingTarget(graph, currentNode.Id, null);
+
+                if (string.IsNullOrWhiteSpace(state.CurrentNodeId))
+                {
+                    state.IsCompleted = true;
+                }
+
+                continue;
+            }
+
             if (IsNodeType(currentNode, "code"))
             {
                 var nextHandle = await ExecuteCodeNodeAsync(currentNode.Config, state.Variables);
@@ -409,6 +444,83 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         }
 
         return state;
+    }
+
+    private async Task<string> ExecuteAiNodeAsync(
+        JsonElement config,
+        BotDefinition bot,
+        IDictionary<string, string> variables,
+        string latestUserMessage)
+    {
+        var fallbackText = TryGetTrimmedString(config, "fallbackText", out var configuredFallbackText)
+            ? Interpolate(configuredFallbackText, new Dictionary<string, string>(variables))
+            : "I’m not confident enough to answer that yet.";
+        var instructions = TryGetTrimmedString(config, "instructions", out var configuredInstructions)
+            ? Interpolate(configuredInstructions, new Dictionary<string, string>(variables))
+            : string.Empty;
+        var responseMode = TryGetTrimmedString(config, "responseMode", out var configuredResponseMode)
+            ? configuredResponseMode
+            : "strict";
+
+        try
+        {
+            var knowledge = DeserializeAiKnowledge(bot.AiKnowledgeJson);
+            var readyChunks = knowledge.Sources
+                .Where(source => string.Equals(source.Status, BotAiKnowledgeSourceStatus.Ready, StringComparison.OrdinalIgnoreCase))
+                .SelectMany(source => source.Chunks)
+                .Where(chunk => chunk.Embedding.Count > 0 && !string.IsNullOrWhiteSpace(chunk.Content))
+                .ToList();
+            var apiKey = ResolveAiApiKey(bot);
+
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                return fallbackText;
+            }
+
+            using var cancellationSource = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
+            List<string> relevantChunks = [];
+
+            if (readyChunks.Count > 0)
+            {
+                var queryText = $"{instructions}\n\n{latestUserMessage}".Trim();
+                var queryEmbedding = await _geminiAiClient.EmbedAsync(
+                    apiKey,
+                    ResolveAiEmbeddingModel(bot),
+                    string.IsNullOrWhiteSpace(queryText) ? instructions : queryText,
+                    cancellationSource.Token);
+
+                relevantChunks = readyChunks
+                    .Select(chunk => new
+                    {
+                        chunk.Content,
+                        Score = CosineSimilarity(queryEmbedding, chunk.Embedding)
+                    })
+                    .OrderByDescending(item => item.Score)
+                    .Take(5)
+                    .Where(item => item.Score > 0)
+                    .Select(item => item.Content)
+                    .ToList();
+            }
+
+            if (string.Equals(responseMode, "strict", StringComparison.OrdinalIgnoreCase) && relevantChunks.Count == 0)
+            {
+                return fallbackText;
+            }
+
+            var prompt = BuildAiPrompt(instructions, latestUserMessage, relevantChunks, responseMode, fallbackText);
+            var response = await _geminiAiClient.GenerateAsync(
+                apiKey,
+                ResolveAiGenerationModel(bot),
+                prompt,
+                cancellationSource.Token);
+
+            return string.IsNullOrWhiteSpace(response) ? fallbackText : response.Trim();
+        }
+        catch (Exception exception)
+        {
+            Logger.Warn($"AI node execution failed: {exception.Message}", exception);
+            return fallbackText;
+        }
     }
 
     private static string ResolveConditionHandle(JsonElement config, IReadOnlyDictionary<string, string> variables)
@@ -916,6 +1028,131 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
             "concat" => $"vars[{JsonSerializer.Serialize(targetVariable)}] = String(interpolate({JsonSerializer.Serialize(primaryInput)})) + String(interpolate({JsonSerializer.Serialize(secondInput)}));",
             _ => $"vars[{JsonSerializer.Serialize(targetVariable)}] = interpolate({JsonSerializer.Serialize(primaryInput)});"
         };
+    }
+
+    private static List<BotValidationIssue> BuildAiRuntimeIssues(BotDefinition bot, BotGraphDefinition graph)
+    {
+        if (!graph.Nodes.Any(node => string.Equals(node.Type, "ai", StringComparison.OrdinalIgnoreCase)))
+        {
+            return [];
+        }
+
+        var issues = new List<BotValidationIssue>();
+        var knowledge = DeserializeAiKnowledge(bot.AiKnowledgeJson);
+        var readySourceCount = knowledge.Sources.Count(source =>
+            string.Equals(source.Status, BotAiKnowledgeSourceStatus.Ready, StringComparison.OrdinalIgnoreCase) &&
+            source.Chunks.Count > 0);
+
+        if (string.IsNullOrWhiteSpace(bot.AiApiKeyEncrypted))
+        {
+            issues.Add(new BotValidationIssue
+            {
+                Id = "runtime-ai-provider-key-missing",
+                Severity = BotValidationSeverity.Error,
+                Message = "AI nodes require a configured Gemini API key for this bot."
+            });
+        }
+
+        if (readySourceCount == 0)
+        {
+            issues.Add(new BotValidationIssue
+            {
+                Id = "runtime-ai-knowledge-missing",
+                Severity = BotValidationSeverity.Error,
+                Message = "AI nodes require at least one ready knowledge source for this bot."
+            });
+        }
+
+        return issues;
+    }
+
+    private static BotAiKnowledgeSnapshot DeserializeAiKnowledge(string knowledgeJson)
+    {
+        return JsonSerializer.Deserialize<BotAiKnowledgeSnapshot>(knowledgeJson ?? string.Empty, JsonOptions)
+               ?? new BotAiKnowledgeSnapshot();
+    }
+
+    private static string ResolveAiApiKey(BotDefinition bot)
+    {
+        return string.IsNullOrWhiteSpace(bot.AiApiKeyEncrypted)
+            ? string.Empty
+            : SimpleStringCipher.Instance.Decrypt(bot.AiApiKeyEncrypted);
+    }
+
+    private static string ResolveAiGenerationModel(BotDefinition bot)
+    {
+        return string.IsNullOrWhiteSpace(bot.AiGenerationModel) ? "gemini-2.5-flash" : bot.AiGenerationModel.Trim();
+    }
+
+    private static string ResolveAiEmbeddingModel(BotDefinition bot)
+    {
+        return string.IsNullOrWhiteSpace(bot.AiEmbeddingModel) ? "gemini-embedding-001" : bot.AiEmbeddingModel.Trim();
+    }
+
+    private static double CosineSimilarity(IReadOnlyList<float> left, IReadOnlyList<float> right)
+    {
+        if (left.Count == 0 || right.Count == 0 || left.Count != right.Count)
+        {
+            return 0;
+        }
+
+        double dot = 0;
+        double leftMagnitude = 0;
+        double rightMagnitude = 0;
+
+        for (var index = 0; index < left.Count; index += 1)
+        {
+            dot += left[index] * right[index];
+            leftMagnitude += left[index] * left[index];
+            rightMagnitude += right[index] * right[index];
+        }
+
+        if (leftMagnitude <= 0 || rightMagnitude <= 0)
+        {
+            return 0;
+        }
+
+        return dot / (Math.Sqrt(leftMagnitude) * Math.Sqrt(rightMagnitude));
+    }
+
+    private static string BuildAiPrompt(
+        string instructions,
+        string latestUserMessage,
+        IReadOnlyList<string> relevantChunks,
+        string responseMode,
+        string fallbackText)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("You are responding inside a conversational bot flow.");
+        builder.AppendLine($"Response mode: {responseMode}.");
+        builder.AppendLine();
+        builder.AppendLine("Node instructions:");
+        builder.AppendLine(string.IsNullOrWhiteSpace(instructions) ? "No additional instructions were provided." : instructions);
+        builder.AppendLine();
+        builder.AppendLine("Latest user message:");
+        builder.AppendLine(string.IsNullOrWhiteSpace(latestUserMessage) ? "No explicit user message was provided." : latestUserMessage);
+        builder.AppendLine();
+
+        if (relevantChunks.Count > 0)
+        {
+            builder.AppendLine("Knowledge context:");
+            for (var index = 0; index < relevantChunks.Count; index += 1)
+            {
+                builder.AppendLine($"[{index + 1}] {relevantChunks[index]}");
+            }
+
+            builder.AppendLine();
+        }
+
+        builder.AppendLine(
+            string.Equals(responseMode, "strict", StringComparison.OrdinalIgnoreCase)
+                ? $"Answer only from the knowledge context. If the answer is not supported there, respond exactly with: {fallbackText}"
+                : string.Equals(responseMode, "hybrid", StringComparison.OrdinalIgnoreCase)
+                    ? "Prioritize the knowledge context first. If it is partial, provide a helpful answer while staying aligned with the context."
+                    : "Use the knowledge context when helpful, but you may answer broadly.");
+        builder.AppendLine("Keep the response concise and ready to send directly to an end user.");
+
+        return builder.ToString();
     }
 
     private sealed class DeploymentContext

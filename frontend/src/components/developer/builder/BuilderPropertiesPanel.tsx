@@ -2,6 +2,7 @@
 
 import { DeleteOutlined, ExpandOutlined, MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import {
+  App,
   Alert,
   AutoComplete,
   Button,
@@ -15,8 +16,17 @@ import {
   Tag,
   Typography,
 } from "antd";
-import { useRef, useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { useBuilder } from "./builder-context";
+import { useBotActions, useBotState } from "@/providers/botProvider";
+import {
+  addBotAiPdfSource,
+  addBotAiTextSource,
+  addBotAiUrlSource,
+  deleteBotAiSource,
+  reingestBotAiSource,
+  upsertBotAiSettings,
+} from "@/utils/ai-knowledge-api";
 import type { ConditionRule } from "./types";
 import { nodeRegistry } from "./node-registry";
 import { useBuilderStyles } from "./styles";
@@ -38,8 +48,21 @@ export function BuilderPropertiesPanel({
   compact = false,
 }: BuilderPropertiesPanelProps) {
   const { styles } = useBuilderStyles();
+  const { notification } = App.useApp();
   const [isCodeEditorModalOpen, setIsCodeEditorModalOpen] = useState(false);
+  const [isAiKnowledgeModalOpen, setIsAiKnowledgeModalOpen] = useState(false);
+  const [aiApiKeyDraft, setAiApiKeyDraft] = useState("");
+  const [aiGenerationModelDraft, setAiGenerationModelDraft] = useState("gemini-2.5-flash");
+  const [aiEmbeddingModelDraft, setAiEmbeddingModelDraft] = useState("gemini-embedding-001");
+  const [aiTextTitleDraft, setAiTextTitleDraft] = useState("");
+  const [aiTextDraft, setAiTextDraft] = useState("");
+  const [aiUrlTitleDraft, setAiUrlTitleDraft] = useState("");
+  const [aiUrlDraft, setAiUrlDraft] = useState("");
+  const [isAiSaving, setIsAiSaving] = useState(false);
   const expandEditorButtonRef = useRef<HTMLButtonElement | null>(null);
+  const aiFileInputRef = useRef<HTMLInputElement | null>(null);
+  const { activeBot, draftIdentity } = useBotState();
+  const { getBot } = useBotActions();
   const {
     selectedNode,
     selectedEdge,
@@ -103,6 +126,189 @@ export function BuilderPropertiesPanel({
   const handoffConfig =
     selectedNode.config.kind === "handoff" ? selectedNode.config : undefined;
   const endConfig = selectedNode.config.kind === "end" ? selectedNode.config : undefined;
+  const activeAiKnowledge = activeBot?.aiKnowledge;
+  const isPersistedBot = draftIdentity === "persisted" && Boolean(activeBot?.id);
+  const aiReadySources = activeAiKnowledge?.readySourceCount ?? 0;
+  const aiSourceCount = activeAiKnowledge?.sourceCount ?? 0;
+
+  const openAiKnowledgeModal = () => {
+    setAiApiKeyDraft("");
+    setAiGenerationModelDraft(activeAiKnowledge?.generationModel || "gemini-2.5-flash");
+    setAiEmbeddingModelDraft(activeAiKnowledge?.embeddingModel || "gemini-embedding-001");
+    setIsAiKnowledgeModalOpen(true);
+  };
+
+  const refreshActiveBot = async () => {
+    if (!activeBot?.id) {
+      return;
+    }
+
+    await getBot(activeBot.id);
+  };
+
+  const handleSaveAiSettings = async () => {
+    if (!activeBot?.id) {
+      return;
+    }
+
+    setIsAiSaving(true);
+    try {
+      await upsertBotAiSettings({
+        botId: activeBot.id,
+        apiKey: aiApiKeyDraft,
+        generationModel: aiGenerationModelDraft,
+        embeddingModel: aiEmbeddingModelDraft,
+      });
+      await refreshActiveBot();
+      setAiApiKeyDraft("");
+      notification.success({
+        message: "AI settings saved",
+        description: "Gemini settings were updated for this bot.",
+      });
+    } catch (error) {
+      notification.error({
+        message: "AI settings failed",
+        description: error instanceof Error ? error.message : "The AI settings could not be saved.",
+      });
+    } finally {
+      setIsAiSaving(false);
+    }
+  };
+
+  const handleAddAiTextSource = async () => {
+    if (!activeBot?.id) {
+      return;
+    }
+
+    setIsAiSaving(true);
+    try {
+      await addBotAiTextSource({
+        botId: activeBot.id,
+        title: aiTextTitleDraft,
+        text: aiTextDraft,
+      });
+      await refreshActiveBot();
+      setAiTextTitleDraft("");
+      setAiTextDraft("");
+      notification.success({
+        message: "Text knowledge added",
+        description: "The pasted text was ingested for this bot.",
+      });
+    } catch (error) {
+      notification.error({
+        message: "Text knowledge failed",
+        description: error instanceof Error ? error.message : "The text source could not be added.",
+      });
+    } finally {
+      setIsAiSaving(false);
+    }
+  };
+
+  const handleAddAiUrlSource = async () => {
+    if (!activeBot?.id) {
+      return;
+    }
+
+    setIsAiSaving(true);
+    try {
+      await addBotAiUrlSource({
+        botId: activeBot.id,
+        title: aiUrlTitleDraft,
+        url: aiUrlDraft,
+      });
+      await refreshActiveBot();
+      setAiUrlTitleDraft("");
+      setAiUrlDraft("");
+      notification.success({
+        message: "Website knowledge added",
+        description: "The page snapshot was ingested for this bot.",
+      });
+    } catch (error) {
+      notification.error({
+        message: "Website knowledge failed",
+        description: error instanceof Error ? error.message : "The URL source could not be added.",
+      });
+    } finally {
+      setIsAiSaving(false);
+    }
+  };
+
+  const handleAiPdfSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !activeBot?.id) {
+      return;
+    }
+
+    setIsAiSaving(true);
+    try {
+      const base64Content = await readFileAsBase64(file);
+      await addBotAiPdfSource({
+        botId: activeBot.id,
+        title: file.name,
+        fileName: file.name,
+        base64Content,
+      });
+      await refreshActiveBot();
+      notification.success({
+        message: "PDF knowledge added",
+        description: `${file.name} was ingested for this bot.`,
+      });
+    } catch (error) {
+      notification.error({
+        message: "PDF knowledge failed",
+        description: error instanceof Error ? error.message : "The PDF source could not be added.",
+      });
+    } finally {
+      event.target.value = "";
+      setIsAiSaving(false);
+    }
+  };
+
+  const handleReingestAiSource = async (sourceId: string) => {
+    if (!activeBot?.id) {
+      return;
+    }
+
+    setIsAiSaving(true);
+    try {
+      await reingestBotAiSource(activeBot.id, sourceId);
+      await refreshActiveBot();
+      notification.success({
+        message: "Knowledge refreshed",
+        description: "The selected knowledge source was re-ingested.",
+      });
+    } catch (error) {
+      notification.error({
+        message: "Refresh failed",
+        description: error instanceof Error ? error.message : "The knowledge source could not be refreshed.",
+      });
+    } finally {
+      setIsAiSaving(false);
+    }
+  };
+
+  const handleDeleteAiSource = async (sourceId: string) => {
+    if (!activeBot?.id) {
+      return;
+    }
+
+    setIsAiSaving(true);
+    try {
+      await deleteBotAiSource(activeBot.id, sourceId);
+      await refreshActiveBot();
+      notification.success({
+        message: "Knowledge removed",
+        description: "The selected knowledge source was removed.",
+      });
+    } catch (error) {
+      notification.error({
+        message: "Delete failed",
+        description: error instanceof Error ? error.message : "The knowledge source could not be removed.",
+      });
+    } finally {
+      setIsAiSaving(false);
+    }
+  };
 
   const updateRule = (index: number, patch: Partial<ConditionRule>) => {
     if (!conditionConfig) {
@@ -937,11 +1143,56 @@ export function BuilderPropertiesPanel({
 
           {aiConfig ? (
             <>
+              <Form.Item label="Response Mode">
+                <div className={`${styles.compactEditorCard} ${styles.compactEditorCardWarm}`}>
+                  <div className={styles.compactCardHeader}>
+                    <div>
+                      <Text className={styles.compactCardTitle}>Knowledge Behavior</Text>
+                      <Text className={styles.compactCardSubtitle}>
+                        Decide how closely this node should stay grounded in the shared knowledge hub.
+                      </Text>
+                    </div>
+                    <Tag className={styles.polishedPanelTag}>
+                      {(aiConfig.responseMode ?? "strict").toUpperCase()}
+                    </Tag>
+                  </div>
+                  <Select
+                    value={aiConfig.responseMode ?? "strict"}
+                    options={[
+                      {
+                        value: "strict",
+                        label: "Strict",
+                      },
+                      {
+                        value: "hybrid",
+                        label: "Hybrid",
+                      },
+                      {
+                        value: "free",
+                        label: "Free",
+                      },
+                    ]}
+                    onChange={(value) =>
+                      updateNodeConfig(selectedNode.id, {
+                        ...aiConfig,
+                        responseMode: value,
+                      })
+                    }
+                  />
+                  <Text className={styles.compactCardSubtitle} style={{ marginTop: 10 }}>
+                    {aiConfig.responseMode === "free"
+                      ? "Uses the knowledge hub as context, but allows broader model reasoning."
+                      : aiConfig.responseMode === "hybrid"
+                        ? "Prefers the knowledge hub first, then fills gaps with model reasoning."
+                        : "Answers only from indexed knowledge and falls back when grounding is weak."}
+                  </Text>
+                </div>
+              </Form.Item>
               <Form.Item label="Instructions">
                 <div className={styles.composerShell}>
                   <div className={styles.composerHeader}>
                     <Text strong>AI Prompt</Text>
-                    <Tag className={styles.polishedPanelTag}>Flexible Response</Tag>
+                    <Tag className={styles.polishedPanelTag}>Knowledge Grounded</Tag>
                   </div>
                   <div className={styles.composerBody}>
                     <div className={styles.subtleTextarea}>
@@ -956,6 +1207,93 @@ export function BuilderPropertiesPanel({
                         }
                       />
                     </div>
+                  </div>
+                </div>
+              </Form.Item>
+              <Form.Item label="Knowledge Hub">
+                <div className={styles.polishedPanelShell}>
+                  <div className={styles.polishedPanelHeader}>
+                    <div className={styles.polishedPanelTitle}>
+                      <span>Shared Knowledge</span>
+                    </div>
+                    <div className={styles.polishedPanelHeaderTags}>
+                      <Tag className={styles.polishedPanelTag}>
+                        {activeAiKnowledge?.hasApiKey ? "API Key Added" : "API Key Missing"}
+                      </Tag>
+                      <Tag className={styles.polishedPanelTag}>
+                        {aiReadySources}/{aiSourceCount} Ready Sources
+                      </Tag>
+                      <Tag className={styles.polishedPanelTag}>
+                        {activeAiKnowledge?.provider || "Gemini"}
+                      </Tag>
+                    </div>
+                  </div>
+                  <div className={styles.polishedPanelBody}>
+                    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                      <Alert
+                        type={
+                          !isPersistedBot
+                            ? "warning"
+                            : activeAiKnowledge?.isKnowledgeConfigured
+                              ? "success"
+                              : "warning"
+                        }
+                        showIcon
+                        message={
+                          !isPersistedBot
+                            ? "Save this bot first"
+                            : activeAiKnowledge?.isKnowledgeConfigured
+                              ? "Knowledge hub is ready"
+                              : "Knowledge hub needs setup"
+                        }
+                        description={
+                          !isPersistedBot
+                            ? "This bot needs to exist in the backend before you can store shared AI settings and sources."
+                            : activeAiKnowledge?.isKnowledgeConfigured
+                              ? "This bot has a Gemini key and at least one ready knowledge source."
+                              : "Add a Gemini API key and at least one ready knowledge source before publishing AI nodes."
+                        }
+                      />
+                      <div className={styles.compactCardList}>
+                        <div className={`${styles.compactEditorCard} ${styles.compactEditorCardAccent}`}>
+                          <div className={styles.compactCardHeader}>
+                            <div>
+                              <Text className={styles.compactCardTitle}>Runtime Provider</Text>
+                              <Text className={styles.compactCardSubtitle}>
+                                Gemini handles both embeddings and grounded generation for this bot.
+                              </Text>
+                            </div>
+                            <Tag className={styles.polishedPanelTag}>
+                              {activeAiKnowledge?.generationModel || "gemini-2.5-flash"}
+                            </Tag>
+                          </div>
+                          <Text className={styles.sectionNote}>
+                            Embeddings: {activeAiKnowledge?.embeddingModel || "gemini-embedding-001"}
+                          </Text>
+                        </div>
+                        <div className={`${styles.compactEditorCard} ${styles.compactEditorCardPurple}`}>
+                          <div className={styles.compactCardHeader}>
+                            <div>
+                              <Text className={styles.compactCardTitle}>Indexed Sources</Text>
+                              <Text className={styles.compactCardSubtitle}>
+                                Pasted text, PDFs, and single-page website snapshots all feed the same bot-level hub.
+                              </Text>
+                            </div>
+                            <Tag className={styles.polishedPanelTag}>{aiSourceCount} Total</Tag>
+                          </div>
+                          <Text className={styles.sectionNote}>
+                            Ready sources are available to every AI node in this bot.
+                          </Text>
+                        </div>
+                      </div>
+                      <Button
+                        type="primary"
+                        onClick={openAiKnowledgeModal}
+                        disabled={!isPersistedBot}
+                      >
+                        Add Knowledge
+                      </Button>
+                    </Space>
                   </div>
                 </div>
               </Form.Item>
@@ -977,6 +1315,260 @@ export function BuilderPropertiesPanel({
                 </div>
               </Form.Item>
               <VariableHints availableVariables={availableVariables} />
+
+              <Modal
+                centered
+                open={isAiKnowledgeModalOpen}
+                onCancel={() => setIsAiKnowledgeModalOpen(false)}
+                footer={null}
+                width={920}
+                destroyOnHidden={false}
+              >
+                <Space direction="vertical" size="large" style={{ width: "100%" }}>
+                  <div>
+                    <Title level={4} style={{ marginBottom: 4 }}>
+                      Shared AI Knowledge
+                    </Title>
+                    <Text type="secondary">
+                      Configure Gemini and manage the bot-level knowledge hub used by every AI node in this bot.
+                    </Text>
+                  </div>
+
+                  {!isPersistedBot ? (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      message="Save this bot before adding knowledge"
+                      description="The shared AI knowledge hub is stored against a persisted bot record, so this draft needs its first save before the hub can be configured."
+                    />
+                  ) : (
+                    <>
+                      <div className={styles.compactCardList}>
+                        <div className={`${styles.compactEditorCard} ${styles.compactEditorCardAccent}`}>
+                          <div className={styles.compactCardHeader}>
+                            <div>
+                              <Text className={styles.compactCardTitle}>Gemini Settings</Text>
+                              <Text className={styles.compactCardSubtitle}>
+                                Store the bot-level API key and choose the default generation and embedding models.
+                              </Text>
+                            </div>
+                            <Tag className={styles.polishedPanelTag}>Bot Scoped</Tag>
+                          </div>
+                          <div className={styles.inlineFieldGrid}>
+                            <div>
+                              <Text className={styles.fieldLabel}>API Key</Text>
+                              <Input.Password
+                                value={aiApiKeyDraft}
+                                placeholder={activeAiKnowledge?.hasApiKey ? "Leave blank to keep current key" : "AIza..."}
+                                onChange={(event) => setAiApiKeyDraft(event.target.value)}
+                              />
+                            </div>
+                            <div className={styles.inlineFieldGridTwo}>
+                              <div>
+                                <Text className={styles.fieldLabel}>Generation Model</Text>
+                                <Input
+                                  value={aiGenerationModelDraft}
+                                  onChange={(event) => setAiGenerationModelDraft(event.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <Text className={styles.fieldLabel}>Embedding Model</Text>
+                                <Input
+                                  value={aiEmbeddingModelDraft}
+                                  onChange={(event) => setAiEmbeddingModelDraft(event.target.value)}
+                                />
+                              </div>
+                            </div>
+                            <Button type="primary" loading={isAiSaving} onClick={handleSaveAiSettings}>
+                              Save AI Settings
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className={`${styles.compactEditorCard} ${styles.compactEditorCardPurple}`}>
+                          <div className={styles.compactCardHeader}>
+                            <div>
+                              <Text className={styles.compactCardTitle}>Add Text Knowledge</Text>
+                              <Text className={styles.compactCardSubtitle}>
+                                Paste documentation, FAQs, or any plain text you want indexed immediately.
+                              </Text>
+                            </div>
+                            <Tag className={styles.polishedPanelTag}>Text</Tag>
+                          </div>
+                          <div className={styles.inlineFieldGrid}>
+                            <div>
+                              <Text className={styles.fieldLabel}>Title</Text>
+                              <Input
+                                value={aiTextTitleDraft}
+                                placeholder="Customer support FAQ"
+                                onChange={(event) => setAiTextTitleDraft(event.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Text className={styles.fieldLabel}>Content</Text>
+                              <Input.TextArea
+                                rows={5}
+                                value={aiTextDraft}
+                                placeholder="Paste the knowledge text here..."
+                                onChange={(event) => setAiTextDraft(event.target.value)}
+                              />
+                            </div>
+                            <Button
+                              onClick={handleAddAiTextSource}
+                              loading={isAiSaving}
+                              disabled={!aiTextDraft.trim()}
+                            >
+                              Add Text Source
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className={styles.inlineFieldGridTwo}>
+                          <div className={`${styles.compactEditorCard} ${styles.compactEditorCardWarm}`}>
+                            <div className={styles.compactCardHeader}>
+                              <div>
+                                <Text className={styles.compactCardTitle}>Add Web Link</Text>
+                                <Text className={styles.compactCardSubtitle}>
+                                  Capture a single-page snapshot and index the readable text from that page.
+                                </Text>
+                              </div>
+                              <Tag className={styles.polishedPanelTag}>URL</Tag>
+                            </div>
+                            <div className={styles.inlineFieldGrid}>
+                              <div>
+                                <Text className={styles.fieldLabel}>Title</Text>
+                                <Input
+                                  value={aiUrlTitleDraft}
+                                  placeholder="Pricing page"
+                                  onChange={(event) => setAiUrlTitleDraft(event.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <Text className={styles.fieldLabel}>Web Link</Text>
+                                <Input
+                                  value={aiUrlDraft}
+                                  placeholder="https://example.com/pricing"
+                                  onChange={(event) => setAiUrlDraft(event.target.value)}
+                                />
+                              </div>
+                              <Button
+                                onClick={handleAddAiUrlSource}
+                                loading={isAiSaving}
+                                disabled={!aiUrlDraft.trim()}
+                              >
+                                Add URL Source
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className={`${styles.compactEditorCard} ${styles.compactEditorCardAccent}`}>
+                            <div className={styles.compactCardHeader}>
+                              <div>
+                                <Text className={styles.compactCardTitle}>Add PDF</Text>
+                                <Text className={styles.compactCardSubtitle}>
+                                  Upload a PDF, extract its text, and index the extracted content only.
+                                </Text>
+                              </div>
+                              <Tag className={styles.polishedPanelTag}>PDF</Tag>
+                            </div>
+                            <div className={styles.inlineFieldGrid}>
+                              <Text className={styles.sectionNote}>
+                                PDFs are processed server-side and only the extracted text is stored in the knowledge hub.
+                              </Text>
+                              <input
+                                ref={aiFileInputRef}
+                                type="file"
+                                accept="application/pdf"
+                                style={{ display: "none" }}
+                                onChange={handleAiPdfSelected}
+                              />
+                              <Button
+                                onClick={() => aiFileInputRef.current?.click()}
+                                loading={isAiSaving}
+                              >
+                                Upload PDF
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={styles.polishedPanelShell}>
+                        <div className={styles.polishedPanelHeader}>
+                          <div className={styles.polishedPanelTitle}>
+                            <span>Knowledge Sources</span>
+                          </div>
+                          <div className={styles.polishedPanelHeaderTags}>
+                            <Tag className={styles.polishedPanelTag}>
+                              {aiReadySources}/{aiSourceCount} Ready
+                            </Tag>
+                          </div>
+                        </div>
+                        <div className={styles.polishedPanelBody}>
+                          {activeAiKnowledge?.sources?.length ? (
+                            <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                              {activeAiKnowledge.sources.map((source) => (
+                                <div key={source.id} className={styles.compactEditorCard}>
+                                  <div className={styles.compactCardHeader}>
+                                    <div>
+                                      <Text className={styles.compactCardTitle}>{source.title}</Text>
+                                      <Text className={styles.compactCardSubtitle}>
+                                        {formatAiSourceType(source.sourceType)} source with {source.chunkCount} chunks.
+                                      </Text>
+                                    </div>
+                                    <Space wrap size={8}>
+                                      <Tag className={styles.polishedPanelTag}>
+                                        {formatAiSourceStatus(source.status)}
+                                      </Tag>
+                                      {source.sourceUrl ? (
+                                        <Tag className={styles.polishedPanelTag}>{source.sourceUrl}</Tag>
+                                      ) : null}
+                                      {source.sourceFileName ? (
+                                        <Tag className={styles.polishedPanelTag}>{source.sourceFileName}</Tag>
+                                      ) : null}
+                                    </Space>
+                                  </div>
+                                  {source.failureReason ? (
+                                    <Alert
+                                      type="error"
+                                      showIcon
+                                      message="Ingestion failed"
+                                      description={source.failureReason}
+                                      style={{ marginBottom: 12 }}
+                                    />
+                                  ) : null}
+                                  <Space wrap>
+                                    <Button
+                                      onClick={() => handleReingestAiSource(source.id)}
+                                      loading={isAiSaving}
+                                    >
+                                      Re-ingest
+                                    </Button>
+                                    <Button
+                                      danger
+                                      onClick={() => handleDeleteAiSource(source.id)}
+                                      loading={isAiSaving}
+                                    >
+                                      Remove
+                                    </Button>
+                                  </Space>
+                                </div>
+                              ))}
+                            </Space>
+                          ) : (
+                            <Alert
+                              type="info"
+                              showIcon
+                              message="No knowledge sources yet"
+                              description="Add text, a PDF, or a web link above to start building the shared AI hub for this bot."
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </Space>
+              </Modal>
             </>
           ) : null}
 
@@ -1215,4 +1807,57 @@ function VariableHints({ availableVariables }: VariableHintsProps) {
       </Space>
     </Space>
   );
+}
+
+function formatAiSourceType(sourceType: string) {
+  switch (sourceType.toLowerCase()) {
+    case "pdf":
+      return "PDF";
+    case "url":
+      return "Web link";
+    case "text":
+    default:
+      return "Text";
+  }
+}
+
+function formatAiSourceStatus(status: string) {
+  switch (status.toLowerCase()) {
+    case "ready":
+      return "Ready";
+    case "processing":
+      return "Processing";
+    case "failed":
+      return "Failed";
+    default:
+      return status;
+  }
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("The selected file could not be read."));
+        return;
+      }
+
+      const base64Content = result.split(",")[1] ?? "";
+      if (!base64Content) {
+        reject(new Error("The selected file did not produce base64 content."));
+        return;
+      }
+
+      resolve(base64Content);
+    };
+
+    reader.onerror = () => {
+      reject(new Error("The selected file could not be read."));
+    };
+
+    reader.readAsDataURL(file);
+  });
 }

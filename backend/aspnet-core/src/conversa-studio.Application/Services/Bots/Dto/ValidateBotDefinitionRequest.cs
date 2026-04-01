@@ -1,3 +1,5 @@
+using System;
+
 namespace ConversaStudio.Services.Bots.Dto;
 
 /// <summary>
@@ -5,6 +7,11 @@ namespace ConversaStudio.Services.Bots.Dto;
 /// </summary>
 public class ValidateBotDefinitionRequest
 {
+    /// <summary>
+    /// Gets or sets the bot identifier when validating an existing bot draft.
+    /// </summary>
+    public Guid? Id { get; set; }
+
     /// <summary>
     /// Gets or sets the graph to validate.
     /// </summary>

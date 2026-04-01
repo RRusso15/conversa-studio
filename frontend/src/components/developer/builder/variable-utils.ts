@@ -159,6 +159,23 @@ export function normalizeApiConfig(config: ApiNodeConfig): ApiNodeConfig {
     };
 }
 
+/**
+ * Normalizes an AI node config loaded from older graph versions.
+ */
+export function normalizeAiConfig(config: NodeConfig & { kind: "ai"; responseMode?: string }) {
+    const responseMode: "strict" | "hybrid" | "free" =
+        config.responseMode === "hybrid" || config.responseMode === "free"
+            ? config.responseMode
+            : "strict";
+
+    return {
+        kind: "ai" as const,
+        instructions: config.instructions ?? "",
+        fallbackText: config.fallbackText ?? "",
+        responseMode
+    };
+}
+
 function getDefinedVariableName(node: BotNode): string | undefined {
     if (node.config.kind === "question") {
         return normalizeVariableName(node.config.variableName);

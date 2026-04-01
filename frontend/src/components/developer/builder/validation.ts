@@ -1,4 +1,5 @@
 import type { BotGraph, ValidationResult } from "./types";
+import type { IAiKnowledgeStatus } from "@/utils/ai-knowledge-api";
 import {
   conditionOperatorRequiresValue,
   collectGraphVariables,
@@ -39,7 +40,11 @@ function traverseReachableNodes(graph: BotGraph, startNodeId: string) {
   return visited;
 }
 
-export function validateBotGraph(graph: BotGraph): ValidationResult[] {
+export function validateBotGraph(
+  graph: BotGraph,
+  aiKnowledge?: IAiKnowledgeStatus,
+  draftIdentity: "temporary" | "persisted" = "temporary",
+): ValidationResult[] {
   const results: ValidationResult[] = [];
   const nodeIds = new Set(graph.nodes.map((node) => node.id));
   const startNodes = graph.nodes.filter((node) => node.type === "start");
@@ -409,13 +414,42 @@ export function validateBotGraph(graph: BotGraph): ValidationResult[] {
       }
     }
 
-    if (node.type === "ai" && node.config.kind === "ai" && !node.config.instructions.trim()) {
-      results.push({
-        id: `ai-instructions-${node.id}`,
-        severity: "error",
-        message: "AI nodes require instructions.",
-        relatedNodeId: node.id,
-      });
+    if (node.type === "ai" && node.config.kind === "ai") {
+      if (!node.config.instructions.trim()) {
+        results.push({
+          id: `ai-instructions-${node.id}`,
+          severity: "error",
+          message: "AI nodes require instructions.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      if (draftIdentity !== "persisted") {
+        results.push({
+          id: `ai-unsaved-bot-${node.id}`,
+          severity: "warning",
+          message: "Save this bot first, then configure the shared AI knowledge hub for AI nodes.",
+          relatedNodeId: node.id,
+        });
+      } else {
+        if (!aiKnowledge?.hasApiKey) {
+          results.push({
+            id: `ai-api-key-${node.id}`,
+            severity: "error",
+            message: "AI nodes require a configured Gemini API key for this bot.",
+            relatedNodeId: node.id,
+          });
+        }
+
+        if ((aiKnowledge?.readySourceCount ?? 0) <= 0) {
+          results.push({
+            id: `ai-knowledge-${node.id}`,
+            severity: "error",
+            message: "AI nodes require at least one ready knowledge source for this bot.",
+            relatedNodeId: node.id,
+          });
+        }
+      }
     }
 
     if (node.type === "code" && node.config.kind === "code") {

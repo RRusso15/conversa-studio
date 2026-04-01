@@ -38,6 +38,7 @@ import { BotReducer } from "./reducer";
 import { getAxiosInstance, type IAxiosRedirectControlConfig } from "@/utils/axiosInstance";
 import type { BotGraph, ValidationResult } from "@/components/developer/builder/types";
 import { createStarterGraph } from "@/components/developer/builder/mock-data";
+import type { IAiKnowledgeStatus } from "@/utils/ai-knowledge-api";
 
 interface BotProviderProps {
     children: ReactNode;
@@ -75,6 +76,7 @@ interface IApiBotDefinition extends IApiBotSummary {
     draftVersion: number;
     publishedVersion?: number;
     graph: BotGraph;
+    aiKnowledge?: IAiKnowledgeStatus;
 }
 
 const GET_BOTS_URL = "/api/services/app/BotDefinition/GetBots";
@@ -94,6 +96,8 @@ const BOT_REQUEST_CONFIG = {
 export const BotProvider = ({ children }: BotProviderProps) => {
     const [state, rawDispatch] = useReducer(BotReducer, INITIAL_STATE);
     const dispatch = rawDispatch as React.Dispatch<Action<Partial<IBotStateContext>>>;
+    const activeBotId = state.activeBot?.id;
+    const draftIdentity = state.draftIdentity;
 
     const getBots = useCallback(async (): Promise<void> => {
         dispatch(getBotsPending());
@@ -202,7 +206,10 @@ export const BotProvider = ({ children }: BotProviderProps) => {
             const instance = getAxiosInstance();
             const response = await instance.post<IAbpAjaxResponse<IListResultDto<ValidationResult>>>(
                 VALIDATE_DRAFT_URL,
-                { graph },
+                {
+                    id: draftIdentity === "persisted" ? activeBotId : undefined,
+                    graph
+                },
                 BOT_REQUEST_CONFIG
             );
             const payload = unwrapResponse(response.data, "We could not validate this bot.");
@@ -213,7 +220,7 @@ export const BotProvider = ({ children }: BotProviderProps) => {
             dispatch(validateBotDraftError(requestError));
             return { error: requestError };
         }
-    }, []);
+    }, [activeBotId, dispatch, draftIdentity]);
 
     const publishBotDraft = useCallback(async (id: string): Promise<IBotMutationResult> => {
         dispatch(updateBotDraftPending());
@@ -332,7 +339,8 @@ function mapDefinitionFromApi(bot: IApiBotDefinition): IBotDefinition {
                 status: normalizeStatus(bot.status),
                 version: `v${bot.draftVersion}`
             }
-        }
+        },
+        aiKnowledge: bot.aiKnowledge
     };
 }
 
