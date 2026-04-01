@@ -183,24 +183,41 @@ export const useStyles = createStyles(({ css, token }) => ({
     display: grid;
     grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
     gap: 20px;
-    align-items: start;
+    align-items: stretch;
+    min-height: calc(100vh - 220px);
 
     @media (max-width: 1100px) {
       grid-template-columns: 1fr;
+      min-height: auto;
     }
   `,
   transcriptPane: css`
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     border-radius: 22px;
     border: 1px solid ${token.colorBorder};
     background: ${token.colorBgContainer};
     box-shadow: 0 16px 34px rgba(17, 24, 39, 0.04);
+
+    @media (min-width: 1101px) {
+      height: calc(100vh - 220px);
+    }
   `,
   transcriptPaneHeader: css`
+    flex-shrink: 0;
     padding: 18px 18px 14px;
     border-bottom: 1px solid ${token.colorBorder};
   `,
   transcriptPaneBody: css`
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
     padding: 16px 18px 18px;
+
+    @media (max-width: 1100px) {
+      overflow: visible;
+    }
   `,
   transcriptList: css`
     display: flex;
@@ -258,8 +275,6 @@ export const useStyles = createStyles(({ css, token }) => ({
     display: flex;
     flex-direction: column;
     gap: 12px;
-    max-height: 70vh;
-    overflow: auto;
     padding-right: 4px;
   `,
   transcriptMessageRow: css`
