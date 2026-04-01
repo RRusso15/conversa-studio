@@ -310,7 +310,7 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
       description:
         errors > 0
           ? `${errors} blocking issue${errors === 1 ? "" : "s"} found in the current graph.`
-          : "Your current graph is structurally valid for the MVP rules."
+          : "Your current graph is structurally valid for the current builder rules."
     });
   };
 

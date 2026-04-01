@@ -10,7 +10,7 @@ export default function AdminIndexPage() {
     >
       <h2 style={{ marginTop: 0, marginBottom: 12 }}>Admin routes are reserved</h2>
       <p style={{ margin: 0, color: "#6B7280", lineHeight: 1.6 }}>
-        The MVP implements the developer area first. This page exists so the
+        The developer area is available first. This page exists so the
         admin role has a stable top-level route and layout from the start.
       </p>
     </div>

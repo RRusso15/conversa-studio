@@ -1,23 +1,30 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Alert,
   Card,
   Col,
   Empty,
-  List,
   Progress,
   Row,
   Select,
   Skeleton,
   Space,
-  Statistic,
   Tag,
   Typography,
 } from "antd";
-import { BarChartOutlined, ClockCircleOutlined, CommentOutlined, MessageOutlined } from "@ant-design/icons";
+import {
+  ArrowUpOutlined,
+  BarChartOutlined,
+  ClockCircleOutlined,
+  CommentOutlined,
+  FireOutlined,
+  MessageOutlined,
+  ThunderboltOutlined,
+} from "@ant-design/icons";
 import { PageHeader } from "./PageHeader";
+import { InfoNotice } from "./InfoNotice";
 import { useStyles } from "./styles";
 import { useBotActions, useBotState } from "@/providers/botProvider";
 import {
@@ -54,11 +61,75 @@ export function AnalyticsWorkspace() {
 
   const hasConversationData = (overview?.totalConversations ?? 0) > 0;
 
+  const heroHighlights = useMemo(() => {
+    if (!overview || !timeseries || !breakdown) {
+      return [];
+    }
+
+    const busiestDay = [...timeseries.points].sort((left, right) => right.conversationCount - left.conversationCount)[0];
+    const bestPerformer = breakdown.topBots[0];
+    const queuePressure = overview.awaitingInputRate >= 30;
+
+    return [
+      {
+        label: "Peak day",
+        value: busiestDay ? `${busiestDay.label} · ${busiestDay.conversationCount}` : "No peak yet",
+      },
+      {
+        label: "Top bot",
+        value: bestPerformer ? `${bestPerformer.name} · ${bestPerformer.conversationCount}` : "Waiting for data",
+      },
+      {
+        label: "Flow signal",
+        value: queuePressure ? "High awaiting-input share" : "Healthy completion momentum",
+      },
+    ];
+  }, [breakdown, overview, timeseries]);
+
+  const insightCards = useMemo(() => {
+    if (!overview || !breakdown) {
+      return [];
+    }
+
+    return [
+      {
+        title: "Outcome momentum",
+        description:
+          overview.completionRate >= 70
+            ? "Most conversations are finishing cleanly in the selected range."
+            : "A meaningful share of conversations are not finishing yet.",
+        accent: "emerald" as const,
+      },
+      {
+        title: "Reply pressure",
+        description:
+          overview.awaitingInputRate >= 25
+            ? "Many sessions are parked waiting on the next user action."
+            : "Awaiting-input sessions are staying relatively contained.",
+        accent: "amber" as const,
+      },
+      {
+        title: "Live activity",
+        description:
+          breakdown.activeCount > breakdown.awaitingInputCount
+            ? "There is a healthy stream of currently progressing conversations."
+            : "Most non-complete sessions are paused rather than actively moving.",
+        accent: "slate" as const,
+      },
+    ];
+  }, [breakdown, overview]);
+
+  const insightToneClassMap = {
+    emerald: styles.analyticsInsightCardEmerald,
+    amber: styles.analyticsInsightCardAmber,
+    slate: styles.analyticsInsightCardSlate,
+  };
+
   return (
     <>
       <PageHeader
         title="Analytics"
-        description="Track conversation volume, outcomes, and recent runtime trends for the bots you own."
+        description="Track conversation volume, outcome momentum, and live runtime behavior for the bots you own."
         actions={
           <Space wrap>
             <Select
@@ -87,11 +158,9 @@ export function AnalyticsWorkspace() {
         }
       />
 
-      <Alert
-        type="info"
-        showIcon
-        message="Analytics MVP"
-        description="This dashboard uses stored runtime sessions and transcripts. Fallback, node drop-off, and intent analytics are not yet tracked explicitly."
+      <InfoNotice
+        title="Analytics overview"
+        description="This dashboard is powered by stored runtime sessions and transcripts. Fallback, node drop-off, and intent analytics will become richer as deeper event tracking is added."
         style={{ marginBottom: 20 }}
       />
 
@@ -107,26 +176,17 @@ export function AnalyticsWorkspace() {
 
       {status === "loading" && !overview ? (
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          <Card className={styles.analyticsHeroCard}>
+            <Skeleton active paragraph={{ rows: 8 }} />
+          </Card>
           <Row gutter={[20, 20]}>
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Col xs={24} sm={12} xl={8} xxl={4} key={`analytics-stat-skeleton-${index}`}>
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Col xs={24} md={12} xl={6} key={`analytics-skeleton-${index}`}>
                 <Card className={styles.statsCard}>
-                  <Skeleton active paragraph={{ rows: 2 }} />
+                  <Skeleton active paragraph={{ rows: 3 }} />
                 </Card>
               </Col>
             ))}
-          </Row>
-          <Row gutter={[20, 20]}>
-            <Col xs={24} xl={16}>
-              <Card className={styles.placeholderCard}>
-                <Skeleton active paragraph={{ rows: 8 }} />
-              </Card>
-            </Col>
-            <Col xs={24} xl={8}>
-              <Card className={styles.placeholderCard}>
-                <Skeleton active paragraph={{ rows: 8 }} />
-              </Card>
-            </Col>
           </Row>
         </Space>
       ) : null}
@@ -142,76 +202,147 @@ export function AnalyticsWorkspace() {
 
       {overview && breakdown && timeseries && hasConversationData ? (
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          <Card className={styles.analyticsHeroCard}>
+            <div className={styles.analyticsHeroGlow} />
+            <Row gutter={[24, 24]} align="middle">
+              <Col xs={24} xl={14}>
+                <Space direction="vertical" size="large" style={{ width: "100%" }}>
+                  <div>
+                    <Text className={styles.analyticsEyebrow}>Runtime pulse</Text>
+                    <Title className={styles.analyticsHeroTitle}>
+                      Conversations are moving with {overview.completionRate.toFixed(1)}% completion momentum.
+                    </Title>
+                    <Paragraph className={styles.analyticsHeroDescription}>
+                      A lively snapshot of how sessions are starting, pausing, and finishing across your live bots in the current view.
+                    </Paragraph>
+                  </div>
+
+                  <div className={styles.analyticsHeroMetrics}>
+                    <AnimatedMetricCard
+                      title="Total conversations"
+                      value={overview.totalConversations}
+                      icon={<CommentOutlined />}
+                      delayMs={0}
+                      tone="emerald"
+                    />
+                    <AnimatedMetricCard
+                      title="Completion rate"
+                      value={overview.completionRate}
+                      suffix="%"
+                      precision={1}
+                      icon={<BarChartOutlined />}
+                      delayMs={80}
+                      tone="blue"
+                    />
+                    <AnimatedMetricCard
+                      title="Avg messages"
+                      value={overview.averageMessagesPerConversation}
+                      precision={1}
+                      icon={<MessageOutlined />}
+                      delayMs={160}
+                      tone="amber"
+                    />
+                  </div>
+                </Space>
+              </Col>
+
+              <Col xs={24} xl={10}>
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <div className={styles.analyticsLivePanel}>
+                    <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                      <Space align="center">
+                        <span className={styles.analyticsLivePulse} />
+                        <Text className={styles.analyticsLiveLabel}>Live reading</Text>
+                      </Space>
+                      <div className={styles.analyticsLiveStatRow}>
+                        <Text type="secondary">Latest activity</Text>
+                        <Text strong>
+                          {overview.latestConversationAt
+                            ? new Date(overview.latestConversationAt).toLocaleString()
+                            : "No recent activity"}
+                        </Text>
+                      </div>
+                      <div className={styles.analyticsLiveStatRow}>
+                        <Text type="secondary">Messages captured</Text>
+                        <Text strong>{overview.totalMessages}</Text>
+                      </div>
+                      <div className={styles.analyticsLiveStatRow}>
+                        <Text type="secondary">Average duration</Text>
+                        <Text strong>{formatDuration(overview.averageConversationDurationSeconds)}</Text>
+                      </div>
+                    </Space>
+                  </div>
+
+                  <div className={styles.analyticsHighlightGrid}>
+                    {heroHighlights.map((highlight) => (
+                      <div key={highlight.label} className={styles.analyticsHighlightCard}>
+                        <Text className={styles.analyticsHighlightLabel}>{highlight.label}</Text>
+                        <Text className={styles.analyticsHighlightValue}>{highlight.value}</Text>
+                      </div>
+                    ))}
+                  </div>
+                </Space>
+              </Col>
+            </Row>
+          </Card>
+
           <Row gutter={[20, 20]}>
-            <Col xs={24} sm={12} xl={8} xxl={4}>
-              <Card className={styles.statsCard}>
-                <Statistic
-                  title="Total conversations"
-                  value={overview.totalConversations}
-                  prefix={<CommentOutlined />}
+            {[
+              {
+                title: "Awaiting input",
+                value: overview.awaitingInputRate,
+                suffix: "%",
+                precision: 1,
+                icon: <ClockCircleOutlined />,
+                tone: "amber" as const,
+              },
+              {
+                title: "Total messages",
+                value: overview.totalMessages,
+                icon: <FireOutlined />,
+                tone: "pink" as const,
+              },
+              {
+                title: "Active sessions",
+                value: breakdown.activeCount,
+                icon: <ThunderboltOutlined />,
+                tone: "slate" as const,
+              },
+              {
+                title: "Completion lift",
+                value: Math.max(overview.completionRate - overview.awaitingInputRate, 0),
+                suffix: " pts",
+                precision: 1,
+                icon: <ArrowUpOutlined />,
+                tone: "emerald" as const,
+              },
+            ].map((metric, index) => (
+              <Col xs={24} md={12} xl={6} key={metric.title}>
+                <AnimatedMetricCard
+                  title={metric.title}
+                  value={metric.value}
+                  suffix={metric.suffix}
+                  precision={metric.precision}
+                  icon={metric.icon}
+                  delayMs={index * 90}
+                  tone={metric.tone}
+                  compact
                 />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} xl={8} xxl={4}>
-              <Card className={styles.statsCard}>
-                <Statistic
-                  title="Completion rate"
-                  value={overview.completionRate}
-                  suffix="%"
-                  precision={1}
-                  prefix={<BarChartOutlined />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} xl={8} xxl={4}>
-              <Card className={styles.statsCard}>
-                <Statistic
-                  title="Awaiting input rate"
-                  value={overview.awaitingInputRate}
-                  suffix="%"
-                  precision={1}
-                  prefix={<ClockCircleOutlined />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} xl={8} xxl={4}>
-              <Card className={styles.statsCard}>
-                <Statistic
-                  title="Avg messages / conversation"
-                  value={overview.averageMessagesPerConversation}
-                  precision={1}
-                  prefix={<MessageOutlined />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} xl={8} xxl={4}>
-              <Card className={styles.statsCard}>
-                <Statistic
-                  title="Avg duration"
-                  value={formatDuration(overview.averageConversationDurationSeconds)}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} xl={8} xxl={4}>
-              <Card className={styles.statsCard}>
-                <Statistic
-                  title="Total messages"
-                  value={overview.totalMessages}
-                />
-              </Card>
-            </Col>
+              </Col>
+            ))}
           </Row>
 
           <Row gutter={[20, 20]}>
-            <Col xs={24} xl={16}>
-              <Card className={styles.placeholderCard}>
+            <Col xs={24} xl={15}>
+              <Card className={styles.analyticsPanelCard}>
                 <Space direction="vertical" size="large" style={{ width: "100%" }}>
                   <div>
-                    <Title level={4} style={{ marginBottom: 8 }}>
+                    <Text className={styles.analyticsPanelEyebrow}>Trend focus</Text>
+                    <Title level={3} style={{ marginBottom: 8, marginTop: 6 }}>
                       Conversations over time
                     </Title>
                     <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                      Daily conversation starts for the current filter window.
+                      Explore the rhythm of new sessions and spotlight standout days in the selected range.
                     </Paragraph>
                   </div>
                   <TrendBars points={timeseries.points} />
@@ -219,35 +350,38 @@ export function AnalyticsWorkspace() {
               </Card>
             </Col>
 
-            <Col xs={24} xl={8}>
-              <Card className={styles.placeholderCard}>
+            <Col xs={24} xl={9}>
+              <Card className={styles.analyticsPanelCard}>
                 <Space direction="vertical" size="large" style={{ width: "100%" }}>
                   <div>
-                    <Title level={4} style={{ marginBottom: 8 }}>
-                      Status distribution
+                    <Text className={styles.analyticsPanelEyebrow}>Journey insights</Text>
+                    <Title level={3} style={{ marginBottom: 8, marginTop: 6 }}>
+                      Session outcomes
                     </Title>
                     <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                      A quick read on which sessions are done, waiting, or still active.
+                      A flow-style view of how conversations are progressing with the current data we track.
                     </Paragraph>
                   </div>
 
-                  <StatusDistribution
+                  <JourneyRibbon
+                    totalConversations={overview.totalConversations}
                     completedCount={breakdown.completedCount}
                     awaitingInputCount={breakdown.awaitingInputCount}
                     activeCount={breakdown.activeCount}
-                    totalConversations={overview.totalConversations}
                   />
 
-                  <div className={styles.analyticsMetaCard}>
-                    <Text strong>Latest activity</Text>
-                    <Paragraph style={{ marginBottom: 4, marginTop: 8 }}>
-                      {overview.latestConversationAt
-                        ? new Date(overview.latestConversationAt).toLocaleString()
-                        : "No recent activity"}
-                    </Paragraph>
-                    <Text type="secondary">
-                      {overview.totalMessages} total transcript message{overview.totalMessages === 1 ? "" : "s"} in this range
-                    </Text>
+                  <div className={styles.analyticsInsightGrid}>
+                    {insightCards.map((insightCard) => (
+                      <div
+                        key={insightCard.title}
+                        className={`${styles.analyticsInsightCard} ${insightToneClassMap[insightCard.accent]}`}
+                      >
+                        <Text className={styles.analyticsInsightTitle}>{insightCard.title}</Text>
+                        <Paragraph className={styles.analyticsInsightDescription}>
+                          {insightCard.description}
+                        </Paragraph>
+                      </div>
+                    ))}
                   </div>
                 </Space>
               </Card>
@@ -256,22 +390,18 @@ export function AnalyticsWorkspace() {
 
           <Row gutter={[20, 20]}>
             <Col xs={24} xl={12}>
-              <Card className={styles.placeholderCard}>
-                <BreakdownList
-                  title="Top bots"
-                  description="Bots with the most conversations in the selected range."
-                  items={breakdown.topBots}
-                />
-              </Card>
+              <BreakdownBoard
+                title="Bot leaderboard"
+                description="See which bots are driving the strongest conversation volume and where activity is clustering."
+                items={breakdown.topBots}
+              />
             </Col>
             <Col xs={24} xl={12}>
-              <Card className={styles.placeholderCard}>
-                <BreakdownList
-                  title="Top deployments"
-                  description="Deployments generating the most conversation volume."
-                  items={breakdown.topDeployments}
-                />
-              </Card>
+              <BreakdownBoard
+                title="Deployment activity"
+                description="Compare your busiest deployments and inspect how much of the load is active, waiting, or complete."
+                items={breakdown.topDeployments}
+              />
             </Col>
           </Row>
         </Space>
@@ -280,8 +410,55 @@ export function AnalyticsWorkspace() {
   );
 }
 
+function AnimatedMetricCard({
+  title,
+  value,
+  suffix,
+  precision = 0,
+  icon,
+  delayMs,
+  tone,
+  compact = false,
+}: {
+  title: string;
+  value: number;
+  suffix?: string;
+  precision?: number;
+  icon: ReactNode;
+  delayMs: number;
+  tone: "emerald" | "blue" | "amber" | "pink" | "slate";
+  compact?: boolean;
+}) {
+  const { styles } = useStyles();
+  const animatedValue = useAnimatedNumber(value, precision);
+  const metricToneClassMap = {
+    emerald: styles.analyticsMetricCardEmerald,
+    blue: styles.analyticsMetricCardBlue,
+    amber: styles.analyticsMetricCardAmber,
+    pink: styles.analyticsMetricCardPink,
+    slate: styles.analyticsMetricCardSlate,
+  };
+
+  return (
+    <div
+      className={`${compact ? styles.analyticsMetricCardCompact : styles.analyticsMetricCard} ${metricToneClassMap[tone]}`}
+      style={{ animationDelay: `${delayMs}ms` }}
+    >
+      <div className={styles.analyticsMetricHeader}>
+        <span className={styles.analyticsMetricIcon}>{icon}</span>
+        <Text className={styles.analyticsMetricTitle}>{title}</Text>
+      </div>
+      <Text className={styles.analyticsMetricValue}>
+        {formatAnimatedValue(animatedValue, precision)}
+        {suffix ? <span className={styles.analyticsMetricSuffix}>{suffix}</span> : null}
+      </Text>
+    </div>
+  );
+}
+
 function TrendBars({ points }: { points: Array<{ date: string; label: string; conversationCount: number }> }) {
   const { styles } = useStyles();
+  const [activePointIndex, setActivePointIndex] = useState(Math.max(points.length - 1, 0));
 
   if (!points.length) {
     return (
@@ -293,72 +470,161 @@ function TrendBars({ points }: { points: Array<{ date: string; label: string; co
   }
 
   const maxCount = Math.max(...points.map((point) => point.conversationCount), 1);
+  const resolvedActivePointIndex = activePointIndex < points.length ? activePointIndex : Math.max(points.length - 1, 0);
+  const activePoint = points[resolvedActivePointIndex] ?? points[points.length - 1];
+  const previousPoint = points[Math.max(resolvedActivePointIndex - 1, 0)];
+  const delta = activePoint.conversationCount - (previousPoint?.conversationCount ?? 0);
 
   return (
-    <div className={styles.analyticsTrendScroller}>
-      <div className={styles.analyticsTrendBars}>
-        {points.map((point) => {
-          const height = Math.max(12, Math.round((point.conversationCount / maxCount) * 100));
-
-          return (
-            <div key={`${point.date}-${point.label}`} className={styles.analyticsTrendBarColumn}>
-              <Text className={styles.analyticsTrendValue}>{point.conversationCount}</Text>
-              <div className={styles.analyticsTrendBarTrack}>
-                <div
-                  className={styles.analyticsTrendBarFill}
-                  style={{ height: `${height}%` }}
-                  title={`${point.label}: ${point.conversationCount} conversations`}
-                />
-              </div>
-              <Text className={styles.analyticsTrendLabel}>{point.label}</Text>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function StatusDistribution({
-  completedCount,
-  awaitingInputCount,
-  activeCount,
-  totalConversations,
-}: {
-  completedCount: number;
-  awaitingInputCount: number;
-  activeCount: number;
-  totalConversations: number;
-}) {
-  const statusItems = [
-    { label: "Completed", count: completedCount, color: "#16a34a" },
-    { label: "Awaiting input", count: awaitingInputCount, color: "#d97706" },
-    { label: "Active", count: activeCount, color: "#111827" },
-  ];
-
-  return (
-    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-      {statusItems.map((statusItem) => (
-        <div key={statusItem.label}>
-          <Space style={{ justifyContent: "space-between", width: "100%" }}>
-            <Text strong>{statusItem.label}</Text>
-            <Text type="secondary">
-              {statusItem.count} ({formatPercentage(statusItem.count, totalConversations)}%)
-            </Text>
-          </Space>
-          <Progress
-            percent={Number(formatPercentage(statusItem.count, totalConversations))}
-            strokeColor={statusItem.color}
-            showInfo={false}
-            size="small"
-          />
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      <div className={styles.analyticsTrendSpotlight}>
+        <div>
+          <Text className={styles.analyticsSpotlightLabel}>Selected day</Text>
+          <Title level={2} style={{ margin: "6px 0 4px" }}>
+            {activePoint.label}
+          </Title>
+          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            {activePoint.conversationCount} conversation{activePoint.conversationCount === 1 ? "" : "s"} started.
+          </Paragraph>
         </div>
-      ))}
+        <div className={styles.analyticsSpotlightDelta}>
+          <Text className={styles.analyticsSpotlightDeltaLabel}>Change vs previous</Text>
+          <Text className={styles.analyticsSpotlightDeltaValue}>
+            {delta >= 0 ? "+" : ""}
+            {delta}
+          </Text>
+        </div>
+      </div>
+
+      <div className={styles.analyticsTrendScroller}>
+        <div className={styles.analyticsTrendBars}>
+          {points.map((point, index) => {
+            const height = Math.max(12, Math.round((point.conversationCount / maxCount) * 100));
+            const isActive = index === resolvedActivePointIndex;
+
+            return (
+              <button
+                key={`${point.date}-${point.label}`}
+                type="button"
+                className={styles.analyticsTrendBarButton}
+                onMouseEnter={() => setActivePointIndex(index)}
+                onFocus={() => setActivePointIndex(index)}
+                onClick={() => setActivePointIndex(index)}
+                data-active={isActive}
+              >
+                <div className={styles.analyticsTrendBarColumn}>
+                  <Text className={styles.analyticsTrendValue}>{point.conversationCount}</Text>
+                  <div className={styles.analyticsTrendBarTrack}>
+                    <div
+                      className={styles.analyticsTrendBarFill}
+                      style={{ height: `${height}%`, animationDelay: `${index * 60}ms` }}
+                      title={`${point.label}: ${point.conversationCount} conversations`}
+                    />
+                  </div>
+                  <Text className={styles.analyticsTrendLabel}>{point.label}</Text>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </Space>
   );
 }
 
-function BreakdownList({
+function JourneyRibbon({
+  totalConversations,
+  completedCount,
+  awaitingInputCount,
+  activeCount,
+}: {
+  totalConversations: number;
+  completedCount: number;
+  awaitingInputCount: number;
+  activeCount: number;
+}) {
+  const { styles } = useStyles();
+  const [activeStage, setActiveStage] = useState("completed");
+
+  const stageItems = [
+    {
+      key: "started",
+      label: "Started",
+      count: totalConversations,
+      tone: "slate" as const,
+      description: "Every conversation counted in this filtered view.",
+    },
+    {
+      key: "completed",
+      label: "Completed",
+      count: completedCount,
+      tone: "emerald" as const,
+      description: "Sessions that reached a completed runtime state.",
+    },
+    {
+      key: "awaiting",
+      label: "Awaiting input",
+      count: awaitingInputCount,
+      tone: "amber" as const,
+      description: "Sessions parked while waiting for the next user reply.",
+    },
+    {
+      key: "active",
+      label: "Still active",
+      count: activeCount,
+      tone: "blue" as const,
+      description: "Sessions progressing without being complete or paused.",
+    },
+  ];
+
+  const activeItem = stageItems.find((stageItem) => stageItem.key === activeStage) ?? stageItems[0];
+  const journeyToneClassMap = {
+    slate: styles.analyticsJourneyStepSlate,
+    emerald: styles.analyticsJourneyStepEmerald,
+    amber: styles.analyticsJourneyStepAmber,
+    blue: styles.analyticsJourneyStepBlue,
+  };
+
+  return (
+    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <div className={styles.analyticsJourneyRibbon}>
+        {stageItems.map((stageItem) => (
+          <button
+            key={stageItem.key}
+            type="button"
+            className={`${styles.analyticsJourneyStep} ${journeyToneClassMap[stageItem.tone]}`}
+            data-active={activeStage === stageItem.key}
+            onMouseEnter={() => setActiveStage(stageItem.key)}
+            onFocus={() => setActiveStage(stageItem.key)}
+            onClick={() => setActiveStage(stageItem.key)}
+          >
+            <Text className={styles.analyticsJourneyStepLabel}>{stageItem.label}</Text>
+            <Text className={styles.analyticsJourneyStepValue}>{stageItem.count}</Text>
+            <Progress
+              percent={Number(formatPercentage(stageItem.count, totalConversations))}
+              showInfo={false}
+              size="small"
+              strokeColor="currentColor"
+              trailColor="rgba(255,255,255,0.18)"
+            />
+          </button>
+        ))}
+      </div>
+
+      <div className={styles.analyticsJourneyCallout}>
+        <Text className={styles.analyticsJourneyCalloutEyebrow}>Current focus</Text>
+        <Text className={styles.analyticsJourneyCalloutTitle}>
+          {activeItem.label} accounts for {formatPercentage(activeItem.count, totalConversations)}% of observed sessions.
+        </Text>
+        <Paragraph className={styles.analyticsJourneyCalloutDescription}>
+          {activeItem.description}
+        </Paragraph>
+      </div>
+    </Space>
+  );
+}
+
+function BreakdownBoard({
   title,
   description,
   items,
@@ -375,43 +641,116 @@ function BreakdownList({
     totalMessageCount: number;
   }>;
 }) {
-  return (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
-      <div>
-        <Title level={4} style={{ marginBottom: 8 }}>
-          {title}
-        </Title>
-        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          {description}
-        </Paragraph>
-      </div>
+  const { styles } = useStyles();
+  const [activeItemId, setActiveItemId] = useState(items[0]?.id);
 
-      <List
-        dataSource={items}
-        locale={{ emptyText: "No analytics data is available here yet." }}
-        renderItem={(item) => (
-          <List.Item key={item.id}>
-            <List.Item.Meta
-              title={
-                <Space wrap>
+  const activeItem = items.find((item) => item.id === activeItemId) ?? items[0];
+
+  return (
+    <Card className={styles.analyticsPanelCard}>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <div>
+          <Text className={styles.analyticsPanelEyebrow}>Leaderboard</Text>
+          <Title level={3} style={{ marginBottom: 8, marginTop: 6 }}>
+            {title}
+          </Title>
+          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            {description}
+          </Paragraph>
+        </div>
+
+        <div className={styles.analyticsBoardList}>
+          {items.map((item, index) => (
+            <button
+              key={item.id}
+              type="button"
+              className={styles.analyticsBoardItem}
+              data-active={item.id === activeItem?.id}
+              onMouseEnter={() => setActiveItemId(item.id)}
+              onFocus={() => setActiveItemId(item.id)}
+              onClick={() => setActiveItemId(item.id)}
+              style={{ animationDelay: `${index * 70}ms` }}
+            >
+              <div className={styles.analyticsBoardItemRank}>{index + 1}</div>
+              <div className={styles.analyticsBoardItemContent}>
+                <Space style={{ justifyContent: "space-between", width: "100%" }}>
                   <Text strong>{item.name}</Text>
-                  <Tag>{item.conversationCount} conversations</Tag>
+                  <Text className={styles.analyticsBoardItemValue}>
+                    {item.conversationCount}
+                  </Text>
                 </Space>
-              }
-              description={
-                <Space wrap size={8}>
-                  <Text type="secondary">{item.totalMessageCount} messages</Text>
-                  <Text type="secondary">{item.completedConversationCount} completed</Text>
-                  <Text type="secondary">{item.awaitingInputConversationCount} awaiting</Text>
-                  <Text type="secondary">{item.activeConversationCount} active</Text>
-                </Space>
-              }
-            />
-          </List.Item>
-        )}
-      />
-    </Space>
+                <Progress
+                  percent={Number(formatPercentage(item.conversationCount, activeItem?.conversationCount ?? item.conversationCount))}
+                  showInfo={false}
+                  size="small"
+                  strokeColor="#0f766e"
+                />
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {activeItem ? (
+          <div className={styles.analyticsBoardDetail}>
+            <Text className={styles.analyticsBoardDetailTitle}>{activeItem.name}</Text>
+            <Space wrap size={10}>
+              <Tag>{activeItem.totalMessageCount} messages</Tag>
+              <Tag color="green">{activeItem.completedConversationCount} completed</Tag>
+              <Tag color="gold">{activeItem.awaitingInputConversationCount} awaiting</Tag>
+              <Tag color="blue">{activeItem.activeConversationCount} active</Tag>
+            </Space>
+          </div>
+        ) : null}
+      </Space>
+    </Card>
   );
+}
+
+function useAnimatedNumber(target: number, precision: number) {
+  const [animatedValue, setAnimatedValue] = useState(target);
+  const valueRef = useRef(target);
+
+  useEffect(() => {
+    valueRef.current = animatedValue;
+  }, [animatedValue]);
+
+  useEffect(() => {
+    let animationFrame = 0;
+    let startTime = 0;
+    const durationMs = 800;
+    const startingValue = valueRef.current;
+
+    const animate = (timestamp: number) => {
+      if (!startTime) {
+        startTime = timestamp;
+      }
+
+      const progress = Math.min((timestamp - startTime) / durationMs, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      const nextValue = startingValue + (target - startingValue) * easedProgress;
+      setAnimatedValue(Number(nextValue.toFixed(precision + 1)));
+
+      if (progress < 1) {
+        animationFrame = window.requestAnimationFrame(animate);
+      }
+    };
+
+    animationFrame = window.requestAnimationFrame(animate);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+    };
+  }, [precision, target]);
+
+  return animatedValue;
+}
+
+function formatAnimatedValue(value: number, precision: number): string {
+  if (precision > 0) {
+    return value.toFixed(precision);
+  }
+
+  return Math.round(value).toString();
 }
 
 function formatDuration(totalSeconds: number): string {

@@ -1,7 +1,6 @@
 "use client";
 
-"use client";
-
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRightOutlined,
@@ -11,27 +10,72 @@ import {
   RocketOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Col, List, Row, Space, Statistic, Tag, Typography } from "antd";
+import { Alert, Button, Card, Col, List, Row, Skeleton, Space, Statistic, Tag, Typography } from "antd";
 import { PageHeader } from "./PageHeader";
 import { useStyles } from "./styles";
+import { useBotActions, useBotState } from "@/providers/botProvider";
+import { getAnalyticsOverview, type IAnalyticsOverview } from "@/utils/analytics-api";
+import { getDeployments, toDeploymentRequestError, type IDeploymentDefinition } from "@/utils/deployment-api";
 
 const { Paragraph, Text, Title } = Typography;
 
-const metrics = [
-  { title: "Bots in workspace", value: 12, prefix: <ThunderboltOutlined /> },
-  { title: "Active deployments", value: 4, prefix: <RocketOutlined /> },
-  { title: "Monthly conversations", value: 18542, prefix: <MessageOutlined /> },
-  { title: "Fallback rate", value: 12.4, suffix: "%", prefix: <BarChartOutlined /> },
-];
-
-const recentProjects = [
-  { name: "Customer Support Bot", status: "Active", updated: "2 hours ago" },
-  { name: "Lead Qualification Bot", status: "Draft", updated: "Yesterday" },
-  { name: "Internal IT Helpdesk", status: "Active", updated: "3 days ago" },
-];
-
 export function DashboardOverview() {
   const { styles } = useStyles();
+  const { bots, isPending: botsPending, isError: botsError, errorMessage: botsErrorMessage } = useBotState();
+  const { getBots } = useBotActions();
+  const [analyticsOverview, setAnalyticsOverview] = useState<IAnalyticsOverview>();
+  const [deployments, setDeployments] = useState<IDeploymentDefinition[]>([]);
+  const [isLoadingWorkspaceStats, setIsLoadingWorkspaceStats] = useState(true);
+  const [workspaceErrorMessage, setWorkspaceErrorMessage] = useState<string>();
+
+  useEffect(() => {
+    void getBots();
+  }, [getBots]);
+
+  useEffect(() => {
+    void loadWorkspaceStats();
+  }, []);
+
+  const activeDeploymentCount = useMemo(
+    () => deployments.filter((deployment) => deployment.status.toLowerCase() === "active").length,
+    [deployments]
+  );
+
+  const recentBots = useMemo(
+    () =>
+      [...(bots ?? [])]
+        .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+        .slice(0, 4),
+    [bots]
+  );
+
+  const metrics = useMemo(
+    () => [
+      {
+        title: "Bots in workspace",
+        value: bots?.length ?? 0,
+        prefix: <ThunderboltOutlined />
+      },
+      {
+        title: "Active deployments",
+        value: activeDeploymentCount,
+        prefix: <RocketOutlined />
+      },
+      {
+        title: "Monthly conversations",
+        value: analyticsOverview?.totalConversations ?? 0,
+        prefix: <MessageOutlined />
+      },
+      {
+        title: "Completion rate",
+        value: analyticsOverview?.completionRate ?? 0,
+        suffix: "%",
+        precision: 1,
+        prefix: <BarChartOutlined />
+      },
+    ],
+    [activeDeploymentCount, analyticsOverview?.completionRate, analyticsOverview?.totalConversations, bots?.length]
+  );
 
   return (
     <>
@@ -47,14 +91,42 @@ export function DashboardOverview() {
         }
       />
 
+      {botsError ? (
+        <Alert
+          type="error"
+          showIcon
+          message="Bots could not be loaded"
+          description={botsErrorMessage ?? "Please refresh and try again."}
+          style={{ marginBottom: 20 }}
+        />
+      ) : null}
+
+      {workspaceErrorMessage ? (
+        <Alert
+          type="error"
+          showIcon
+          message="Workspace metrics could not be loaded"
+          description={workspaceErrorMessage}
+          style={{ marginBottom: 20 }}
+        />
+      ) : null}
+
       <Row gutter={[20, 20]}>
-        {metrics.map((metric) => (
-          <Col xs={24} sm={12} xl={6} key={metric.title}>
-            <Card className={styles.statsCard}>
-              <Statistic {...metric} />
-            </Card>
-          </Col>
-        ))}
+        {isLoadingWorkspaceStats && !analyticsOverview && !(bots?.length ?? 0)
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <Col xs={24} sm={12} xl={6} key={`dashboard-metric-skeleton-${index}`}>
+                <Card className={styles.statsCard}>
+                  <Skeleton active paragraph={{ rows: 2 }} />
+                </Card>
+              </Col>
+            ))
+          : metrics.map((metric) => (
+              <Col xs={24} sm={12} xl={6} key={metric.title}>
+                <Card className={styles.statsCard}>
+                  <Statistic {...metric} />
+                </Card>
+              </Col>
+            ))}
       </Row>
 
       <Row gutter={[20, 20]} style={{ marginTop: 8 }}>
@@ -67,9 +139,8 @@ export function DashboardOverview() {
                   Strong builder support comes first
                 </Title>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  The MVP is anchored around bot definitions, builder flow, and
-                  deployable runtime behavior. This dashboard exists to orient
-                  the developer, not to distract from the core build loop.
+                  Your workspace currently has {bots?.length ?? 0} bot{(bots?.length ?? 0) === 1 ? "" : "s"}, {activeDeploymentCount} active deployment{activeDeploymentCount === 1 ? "" : "s"}, and{" "}
+                  {analyticsOverview?.totalConversations ?? 0} tracked conversation{(analyticsOverview?.totalConversations ?? 0) === 1 ? "" : "s"} in the last 30 days.
                 </Paragraph>
               </div>
 
@@ -77,8 +148,8 @@ export function DashboardOverview() {
                 <Link href="/developer/projects">
                   <Button type="primary">View Projects</Button>
                 </Link>
-                <Link href="/developer/templates">
-                  <Button>Browse Templates</Button>
+                <Link href="/developer/analytics">
+                  <Button>Open Analytics</Button>
                 </Link>
               </Space>
             </Space>
@@ -91,33 +162,38 @@ export function DashboardOverview() {
               <Title level={4} style={{ margin: 0 }}>
                 Recent bots
               </Title>
-              <List
-                dataSource={recentProjects}
-                renderItem={(item) => (
-                  <List.Item
-                    actions={[
-                      <Link
-                        href={`/developer/builder/${encodeURIComponent(item.name.toLowerCase().replace(/\s+/g, "-"))}`}
-                        key={`${item.name}-open`}
-                      >
-                        Open
-                      </Link>,
-                    ]}
-                  >
-                    <List.Item.Meta
-                      title={
-                        <Space>
-                          <Text strong>{item.name}</Text>
-                          <Tag color={item.status === "Active" ? "green" : "default"}>
-                            {item.status}
-                          </Tag>
-                        </Space>
-                      }
-                      description={`Updated ${item.updated}`}
-                    />
-                  </List.Item>
-                )}
-              />
+              {botsPending && !recentBots.length ? (
+                <Skeleton active paragraph={{ rows: 4 }} />
+              ) : (
+                <List
+                  dataSource={recentBots}
+                  locale={{ emptyText: "No bots have been created yet." }}
+                  renderItem={(item) => (
+                    <List.Item
+                      actions={[
+                        <Link
+                          href={`/developer/builder/${encodeURIComponent(item.id)}`}
+                          key={`${item.id}-open`}
+                        >
+                          Open
+                        </Link>,
+                      ]}
+                    >
+                      <List.Item.Meta
+                        title={
+                          <Space>
+                            <Text strong>{item.name}</Text>
+                            <Tag color={item.status === "published" ? "green" : "default"}>
+                              {item.status === "published" ? "Published" : "Draft"}
+                            </Tag>
+                          </Space>
+                        }
+                        description={`Updated ${formatRelativeDate(item.updatedAt)}`}
+                      />
+                    </List.Item>
+                  )}
+                />
+              )}
 
               <Link href="/developer/projects">
                 <Button type="link" icon={<ArrowRightOutlined />} style={{ paddingInline: 0 }}>
@@ -130,4 +206,58 @@ export function DashboardOverview() {
       </Row>
     </>
   );
+
+  async function loadWorkspaceStats() {
+    setIsLoadingWorkspaceStats(true);
+    setWorkspaceErrorMessage(undefined);
+
+    try {
+      const [overview, deploymentItems] = await Promise.all([
+        getAnalyticsOverview({ dateRange: "30d" }),
+        getDeployments()
+      ]);
+
+      setAnalyticsOverview(overview);
+      setDeployments(deploymentItems);
+    } catch (error) {
+      const requestError = toDeploymentRequestError(error, "We could not load workspace metrics.");
+      setWorkspaceErrorMessage(requestError.message);
+    } finally {
+      setIsLoadingWorkspaceStats(false);
+    }
+  }
+}
+
+function formatRelativeDate(value: string): string {
+  const timestamp = new Date(value).getTime();
+
+  if (!Number.isFinite(timestamp)) {
+    return "recently";
+  }
+
+  const deltaMs = Date.now() - timestamp;
+  const minuteMs = 60 * 1000;
+  const hourMs = 60 * minuteMs;
+  const dayMs = 24 * hourMs;
+
+  if (deltaMs < minuteMs) {
+    return "just now";
+  }
+
+  if (deltaMs < hourMs) {
+    const minutes = Math.max(1, Math.round(deltaMs / minuteMs));
+    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  }
+
+  if (deltaMs < dayMs) {
+    const hours = Math.max(1, Math.round(deltaMs / hourMs));
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+
+  if (deltaMs < 7 * dayMs) {
+    const days = Math.max(1, Math.round(deltaMs / dayMs));
+    return `${days} day${days === 1 ? "" : "s"} ago`;
+  }
+
+  return new Date(value).toLocaleDateString();
 }

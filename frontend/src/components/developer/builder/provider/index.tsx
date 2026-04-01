@@ -650,7 +650,7 @@ export function advanceSimulator(
         }
 
         nextState.messages.push(
-            createBotMessage(`${currentNode.label} is configured as a placeholder node in this MVP.`)
+            createBotMessage(`${currentNode.label} is currently configured as a placeholder node in preview mode.`)
         );
         nextState.currentNodeId = outgoing[0]?.target;
     }
