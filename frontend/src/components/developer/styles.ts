@@ -309,6 +309,63 @@ export const useStyles = createStyles(({ css, token }) => ({
     font-size: 11px;
     opacity: 0.72;
   `,
+  analyticsMetaCard: css`
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid ${token.colorBorder};
+    background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  `,
+  analyticsTrendScroller: css`
+    overflow-x: auto;
+    padding-bottom: 6px;
+  `,
+  analyticsTrendBars: css`
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(48px, 1fr);
+    gap: 10px;
+    align-items: end;
+    min-width: min-content;
+    min-height: 260px;
+  `,
+  analyticsTrendBarColumn: css`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-width: 48px;
+  `,
+  analyticsTrendBarTrack: css`
+    position: relative;
+    width: 100%;
+    height: 180px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 16px;
+    background:
+      linear-gradient(180deg, rgba(15, 23, 42, 0.04) 0%, rgba(15, 23, 42, 0.08) 100%);
+    border: 1px solid ${token.colorBorder};
+  `,
+  analyticsTrendBarFill: css`
+    width: 100%;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #34d399 0%, #047857 100%);
+    box-shadow: 0 12px 20px rgba(4, 120, 87, 0.2);
+    transition: height 0.2s ease;
+  `,
+  analyticsTrendValue: css`
+    font-size: 12px;
+    font-weight: 700;
+    color: ${token.colorTextBase};
+  `,
+  analyticsTrendLabel: css`
+    font-size: 11px;
+    line-height: 1.4;
+    color: ${token.colorTextSecondary};
+    text-align: center;
+  `,
   createCard: css`
     height: 100%;
     min-height: 260px;
