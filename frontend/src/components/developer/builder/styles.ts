@@ -31,13 +31,13 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
   `,
   builderMain: css`
     display: grid;
-    grid-template-columns: 280px minmax(0, 1fr) 360px;
+    grid-template-columns: 280px minmax(0, 1fr) 10px var(--builder-right-panel-width, 360px);
     min-height: 0;
     min-width: 0;
     overflow: hidden;
 
     @media (max-width: 1320px) {
-      grid-template-columns: 260px minmax(0, 1fr) 340px;
+      grid-template-columns: 260px minmax(0, 1fr) 10px var(--builder-right-panel-width, 360px);
     }
 
     @media (max-width: 1100px) {
@@ -72,6 +72,35 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
       grid-column: 1 / -1;
       border-inline-start: none;
       border-top: 1px solid ${token.colorBorder};
+    }
+  `,
+  builderResizeHandle: css`
+    position: relative;
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 0.98) 100%);
+    border-inline-start: 1px solid rgba(226, 232, 240, 0.9);
+    border-inline-end: 1px solid rgba(226, 232, 240, 0.9);
+    cursor: col-resize;
+    transition: background 0.18s ease;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 4px;
+      height: 72px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.8);
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.92);
+    }
+
+    &:hover {
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.96) 0%, rgba(224, 242, 254, 0.96) 100%);
+    }
+
+    @media (max-width: 1100px) {
+      display: none;
     }
   `,
   builderSideSection: css`
@@ -533,6 +562,9 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
   codeEditorBody: css`
     padding: 14px;
   `,
+  codeEditorBodyExpanded: css`
+    padding: 18px;
+  `,
   codeEditorTextarea: css`
     .ant-input {
       min-height: 280px !important;
@@ -567,6 +599,11 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
 
     .ant-input::selection {
       background: rgba(56, 189, 248, 0.3);
+    }
+  `,
+  codeEditorTextareaExpanded: css`
+    .ant-input {
+      min-height: min(60vh, 640px) !important;
     }
   `,
   codeEditorHelp: css`
@@ -606,6 +643,34 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
     font-size: 12px;
     line-height: 1.6;
     white-space: pre-wrap;
+  `,
+  codeEditorExpandButton: css`
+    padding-inline: 10px !important;
+    border-color: rgba(148, 163, 184, 0.2) !important;
+    background: rgba(15, 23, 42, 0.28) !important;
+    color: #cbd5e1 !important;
+
+    &:hover,
+    &:focus {
+      color: #e2e8f0 !important;
+      border-color: rgba(125, 211, 252, 0.34) !important;
+      background: rgba(15, 23, 42, 0.4) !important;
+    }
+  `,
+  codeEditorModal: css`
+    .ant-modal-content {
+      overflow: hidden;
+      border-radius: 28px;
+      padding: 0;
+      background: transparent;
+      box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28);
+    }
+
+    .ant-modal-close {
+      top: 18px;
+      right: 18px;
+      color: #cbd5e1;
+    }
   `,
   simulatorMessages: css`
     min-height: 320px;
