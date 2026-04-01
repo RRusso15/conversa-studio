@@ -1,6 +1,12 @@
 "use client";
 
 import { createStyles } from "antd-style";
+import {
+  SELECTED_SURFACE_BACKGROUND,
+  SELECTED_SURFACE_BACKGROUND_HOVER,
+  SELECTED_SURFACE_BORDER,
+  SELECTED_SURFACE_TEXT,
+} from "@/theme/semantic-surfaces";
 
 export const useStyles = createStyles(({ css, token }) => ({
   shell: css`
@@ -62,6 +68,28 @@ export const useStyles = createStyles(({ css, token }) => ({
     flex: 1;
     overflow: auto;
     padding-top: 8px;
+
+    .ant-menu-item-selected,
+    .ant-menu-submenu-selected > .ant-menu-submenu-title {
+      background: ${SELECTED_SURFACE_BACKGROUND} !important;
+      color: ${SELECTED_SURFACE_TEXT} !important;
+      box-shadow: inset 0 0 0 1px ${SELECTED_SURFACE_BORDER};
+    }
+
+    .ant-menu-item-selected:hover,
+    .ant-menu-submenu-selected > .ant-menu-submenu-title:hover {
+      background: ${SELECTED_SURFACE_BACKGROUND_HOVER} !important;
+      color: ${SELECTED_SURFACE_TEXT} !important;
+    }
+
+    .ant-menu-item-selected a,
+    .ant-menu-item-selected .ant-menu-title-content,
+    .ant-menu-item-selected .anticon,
+    .ant-menu-submenu-selected > .ant-menu-submenu-title,
+    .ant-menu-submenu-selected > .ant-menu-submenu-title .ant-menu-title-content,
+    .ant-menu-submenu-selected > .ant-menu-submenu-title .anticon {
+      color: ${SELECTED_SURFACE_TEXT} !important;
+    }
   `,
   profileCard: css`
     margin-top: 16px;

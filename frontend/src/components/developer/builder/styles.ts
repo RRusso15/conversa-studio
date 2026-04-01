@@ -1,6 +1,12 @@
 "use client";
 
 import { createStyles } from "antd-style";
+import {
+  INVERSE_INLINE_CODE_BACKGROUND,
+  INVERSE_INLINE_CODE_BORDER,
+  INVERSE_INLINE_CODE_TEXT,
+  INVERSE_SURFACE_TEXT,
+} from "@/theme/semantic-surfaces";
 
 export const useBuilderStyles = createStyles(({ css, token }) => ({
   builderShell: css`
@@ -618,6 +624,19 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
   `,
   codeEditorHelpText: css`
     color: #cbd5e1 !important;
+
+    &.ant-typography,
+    .ant-typography {
+      color: ${INVERSE_SURFACE_TEXT} !important;
+    }
+
+    code,
+    .ant-typography code {
+      background: ${INVERSE_INLINE_CODE_BACKGROUND} !important;
+      border: 1px solid ${INVERSE_INLINE_CODE_BORDER} !important;
+      color: ${INVERSE_INLINE_CODE_TEXT} !important;
+      box-shadow: none !important;
+    }
   `,
   codeEditorExamples: css`
     display: grid;
