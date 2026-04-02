@@ -5,7 +5,6 @@ import {
   HomeOutlined,
   RocketOutlined,
   SettingOutlined,
-  SnippetsOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
 
@@ -28,12 +27,6 @@ export const developerNavItems: DeveloperNavItem[] = [
     label: "Projects",
     href: "/developer/projects",
     icon: <FolderOpenOutlined />,
-  },
-  {
-    key: "templates",
-    label: "Templates",
-    href: "/developer/templates",
-    icon: <SnippetsOutlined />,
   },
   {
     key: "deployments",

@@ -44,7 +44,7 @@ export function AuthLayoutShell({ children }: AuthLayoutShellProps) {
                 />
                 <Text style={{ color: "rgba(255,255,255,0.8)" }}>
                   Secure account access keeps your bots, collaborators, and
-                  future deployments connected in one workflow.
+                  deployments connected in one workflow.
                 </Text>
               </Space>
             </Space>

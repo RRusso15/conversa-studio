@@ -35,7 +35,7 @@ const features = [
     icon: <DeploymentUnitOutlined />,
     title: "Multi-Channel Deploy",
     description:
-      "Design once, then roll the same bot definition out to web and future messaging channels.",
+      "Design once, then roll the same bot definition out across web chat and connected channels.",
   },
   {
     icon: <SafetyOutlined />,
@@ -73,7 +73,7 @@ const launchCapabilities = [
   "Visual builder with reusable nodes and validation-aware editing",
   "Draft bots, publish flows, and open deployments from one workspace",
   "Grounded AI responses with knowledge sources and runtime-ready contracts",
-  "Shared workspace tools for transcripts, analytics, and launch operations",
+  "Shared workspace tools for transcripts, analytics, and deployments",
 ];
 
 export function LandingPage() {
@@ -114,7 +114,7 @@ export function LandingPage() {
         <section className={styles.heroSection}>
           <span className={styles.heroBadge}>
             <ThunderboltOutlined />
-            Introducing Conversa Studio 1.0
+            Conversa Studio
           </span>
 
           <Title className={styles.heroTitle}>
@@ -224,8 +224,8 @@ export function LandingPage() {
           <div className={styles.sectionHeader}>
             <Title level={2}>Built for developers shipping real bots</Title>
             <Paragraph type="secondary">
-              Launch with one account, one workspace, and the core product
-              surfaces needed to design, test, and deploy production-ready bot flows.
+              Create an account, open your workspace, and use the tools you
+              need to design, test, and deploy production-ready bot flows.
             </Paragraph>
           </div>
 
@@ -247,7 +247,7 @@ export function LandingPage() {
                   </Title>
                   <Paragraph type="secondary" style={{ marginBottom: 0 }}>
                     Sign up, enter the workspace, and build your first bot flow
-                    immediately with the core launch product.
+                    right away.
                   </Paragraph>
                   <Link href="/signup">
                     <Button type="primary" size="large">
