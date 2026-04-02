@@ -341,14 +341,28 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     const remoteResults = validationOutcome.results;
     const mergedResults = mergeValidationResults(localResults, remoteResults);
     setValidationResults(mergedResults);
-    const errors = mergedResults.filter((result) => result.severity === "error").length;
+    const errorCount = mergedResults.filter((result) => result.severity === "error").length;
+    const warningCount = mergedResults.filter((result) => result.severity === "warning").length;
 
-    notification[errors > 0 ? "warning" : "success"]({
-      message: errors > 0 ? "Validation found issues" : "Validation passed",
-      description:
-        errors > 0
-          ? `${errors} blocking issue${errors === 1 ? "" : "s"} found in the current graph.`
-          : "Your current graph is structurally valid for the current builder rules."
+    if (errorCount > 0) {
+      notification.warning({
+        message: "Validation found issues",
+        description: `${errorCount} blocking issue${errorCount === 1 ? "" : "s"} found in the current graph.`
+      });
+      return;
+    }
+
+    if (warningCount > 0) {
+      notification.info({
+        message: "Validation completed with warnings",
+        description: `${warningCount} non-blocking warning${warningCount === 1 ? "" : "s"} found in the current graph.`
+      });
+      return;
+    }
+
+    notification.success({
+      message: "Validation passed",
+      description: "Your current graph is structurally valid for the current builder rules."
     });
   };
 
