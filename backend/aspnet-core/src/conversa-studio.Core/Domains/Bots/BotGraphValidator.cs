@@ -171,6 +171,20 @@ public class BotGraphValidator : ITransientDependency
                 ValidateQuestionOptions(node, issues);
                 break;
             case "condition":
+                RequireStringProperty(node, "variableName", "Condition nodes require a source variable.", issues);
+                if (TryGetTrimmedString(node.Config, "variableName", out var conditionVariableName) &&
+                    !string.IsNullOrWhiteSpace(conditionVariableName) &&
+                    !definedVariables.Contains(conditionVariableName))
+                {
+                    issues.Add(new BotValidationIssue
+                    {
+                        Id = $"condition-variable-unknown-{node.Id}",
+                        Severity = BotValidationSeverity.Error,
+                        Message = $"Condition source variable '{conditionVariableName}' does not exist in this graph.",
+                        RelatedNodeId = node.Id
+                    });
+                }
+
                 var hasRules = TryGetArrayLength(node.Config, "rules", out var ruleCount) && ruleCount > 0;
                 var hasFallback = TryGetTrimmedString(node.Config, "fallbackLabel", out var fallbackLabel) && !string.IsNullOrWhiteSpace(fallbackLabel);
                 if (!hasRules && !hasFallback)
@@ -183,9 +197,12 @@ public class BotGraphValidator : ITransientDependency
                         RelatedNodeId = node.Id
                     });
                 }
+
+                ValidateConditionRules(node, issues);
                 break;
             case "variable":
                 RequireStringProperty(node, "variableName", "Variable nodes require a variable name.", issues);
+                ValidateVariableNode(node, definedVariables, issues);
                 break;
             case "api":
                 RequireStringProperty(node, "endpoint", "API nodes require an endpoint.", issues);
@@ -223,6 +240,8 @@ public class BotGraphValidator : ITransientDependency
                         mappingIndex += 1;
                     }
                 }
+
+                ValidateBranchHandles(node, graph, "success", "error", "API nodes should expose both success and error branches.", issues);
                 break;
             case "ai":
                 RequireStringProperty(node, "instructions", "AI nodes require instructions.", issues);
@@ -257,9 +276,14 @@ public class BotGraphValidator : ITransientDependency
                         RelatedNodeId = node.Id
                     });
                 }
+
+                ValidateBranchHandles(node, graph, "success", "error", "Code nodes should expose both success and error branches.", issues);
                 break;
             case "handoff":
                 ValidateHandoffNode(graph, node, definedVariables, issues);
+                break;
+            case "end":
+                RequireStringProperty(node, "closingText", "End nodes require closing text.", issues);
                 break;
         }
     }
@@ -543,6 +567,121 @@ public class BotGraphValidator : ITransientDependency
             }
 
             optionIndex += 1;
+        }
+    }
+
+    private static void ValidateConditionRules(BotNodeDefinition node, List<BotValidationIssue> issues)
+    {
+        if (!node.Config.TryGetProperty("rules", out var rules) || rules.ValueKind != JsonValueKind.Array)
+        {
+            return;
+        }
+
+        var seenRules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var index = 0;
+
+        foreach (var rule in rules.EnumerateArray())
+        {
+            var operatorValue = TryGetTrimmedString(rule, "operator", out var normalizedOperator)
+                ? normalizedOperator
+                : "equals";
+            var normalizedRuleValue = TryGetTrimmedString(rule, "value", out var rawValue)
+                ? rawValue
+                : string.Empty;
+
+            if ((operatorValue is "equals" or "contains" or "startsWith" or "endsWith") &&
+                string.IsNullOrWhiteSpace(normalizedRuleValue))
+            {
+                issues.Add(new BotValidationIssue
+                {
+                    Id = $"condition-rule-value-{node.Id}-{index}",
+                    Severity = BotValidationSeverity.Error,
+                    Message = $"Condition rule {index + 1} requires a value.",
+                    RelatedNodeId = node.Id
+                });
+            }
+
+            var ruleSignature = $"{operatorValue}:{normalizedRuleValue}".ToLowerInvariant();
+            if (!seenRules.Add(ruleSignature))
+            {
+                issues.Add(new BotValidationIssue
+                {
+                    Id = $"condition-rule-duplicate-{node.Id}-{index}",
+                    Severity = BotValidationSeverity.Warning,
+                    Message = $"Condition rule {index + 1} duplicates an earlier rule.",
+                    RelatedNodeId = node.Id
+                });
+            }
+
+            index += 1;
+        }
+    }
+
+    private static void ValidateVariableNode(BotNodeDefinition node, HashSet<string> definedVariables, List<BotValidationIssue> issues)
+    {
+        var operation = TryGetTrimmedString(node.Config, "operation", out var configuredOperation)
+            ? configuredOperation
+            : "set";
+
+        if (!string.Equals(operation, "copy", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (!TryGetTrimmedString(node.Config, "sourceVariableName", out var sourceVariableName) || string.IsNullOrWhiteSpace(sourceVariableName))
+        {
+            issues.Add(new BotValidationIssue
+            {
+                Id = $"variable-copy-source-{node.Id}",
+                Severity = BotValidationSeverity.Error,
+                Message = "Copy variable nodes require a source variable.",
+                RelatedNodeId = node.Id
+            });
+            return;
+        }
+
+        if (!definedVariables.Contains(sourceVariableName))
+        {
+            issues.Add(new BotValidationIssue
+            {
+                Id = $"variable-copy-source-unknown-{node.Id}",
+                Severity = BotValidationSeverity.Error,
+                Message = $"Copy source variable '{sourceVariableName}' does not exist in this graph.",
+                RelatedNodeId = node.Id
+            });
+        }
+    }
+
+    private static void ValidateBranchHandles(
+        BotNodeDefinition node,
+        BotGraphDefinition graph,
+        string primaryHandle,
+        string secondaryHandle,
+        string baseMessage,
+        List<BotValidationIssue> issues)
+    {
+        var outgoingEdges = graph.Edges.Where(edge => string.Equals(edge.Source, node.Id, StringComparison.Ordinal)).ToList();
+
+        if (!outgoingEdges.Any(edge => string.Equals(edge.SourceHandle, primaryHandle, StringComparison.Ordinal)))
+        {
+            issues.Add(new BotValidationIssue
+            {
+                Id = $"{primaryHandle}-edge-{node.Id}",
+                Severity = BotValidationSeverity.Warning,
+                Message = $"{baseMessage} Missing '{primaryHandle}' branch.",
+                RelatedNodeId = node.Id
+            });
+        }
+
+        if (!outgoingEdges.Any(edge => string.Equals(edge.SourceHandle, secondaryHandle, StringComparison.Ordinal)))
+        {
+            issues.Add(new BotValidationIssue
+            {
+                Id = $"{secondaryHandle}-edge-{node.Id}",
+                Severity = BotValidationSeverity.Warning,
+                Message = $"{baseMessage} Missing '{secondaryHandle}' branch.",
+                RelatedNodeId = node.Id
+            });
         }
     }
 }
