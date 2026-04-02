@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import {
   BarChartOutlined,
-  CreditCardOutlined,
   FolderOpenOutlined,
   HomeOutlined,
   RocketOutlined,
@@ -60,12 +59,6 @@ export const developerNavItems: DeveloperNavItem[] = [
     label: "Integrations",
     href: "/developer/integrations",
     icon: <ToolOutlined />,
-  },
-  {
-    key: "billing",
-    label: "Billing",
-    href: "/developer/billing",
-    icon: <CreditCardOutlined />,
   },
   {
     key: "settings",

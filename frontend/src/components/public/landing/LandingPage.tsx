@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   ArrowRightOutlined,
   BarChartOutlined,
-  CheckOutlined,
   DeploymentUnitOutlined,
   LoginOutlined,
   PlayCircleOutlined,
@@ -70,47 +69,11 @@ const features = [
   },
 ];
 
-const pricing = [
-  {
-    title: "Free",
-    price: "$0",
-    period: "/mo",
-    description: "Perfect for prototyping your first bot.",
-    items: ["1 bot", "Web widget", "Core builder", "Basic transcripts"],
-    cta: "Get started",
-    variant: "default" as const,
-  },
-  {
-    title: "Pro",
-    price: "$49",
-    period: "/mo",
-    description: "For teams shipping bots in production.",
-    items: [
-      "Unlimited bot drafts",
-      "AI nodes",
-      "Deployments",
-      "Analytics",
-      "Priority support",
-    ],
-    cta: "Start free trial",
-    featured: true,
-    variant: "primary" as const,
-  },
-  {
-    title: "Business",
-    price: "$199",
-    period: "/mo",
-    description: "For scaling usage, collaboration, and integrations.",
-    items: [
-      "Everything in Pro",
-      "More usage limits",
-      "Advanced analytics",
-      "Collaboration",
-      "Custom integrations",
-    ],
-    cta: "Contact sales",
-    variant: "default" as const,
-  },
+const launchCapabilities = [
+  "Visual builder with reusable nodes and validation-aware editing",
+  "Draft bots, publish flows, and open deployments from one workspace",
+  "Grounded AI responses with knowledge sources and runtime-ready contracts",
+  "Shared workspace tools for transcripts, analytics, and launch operations",
 ];
 
 export function LandingPage() {
@@ -169,7 +132,7 @@ export function LandingPage() {
           <div className={styles.heroActions}>
             <Link href="/signup">
               <Button type="primary" size="large" icon={<ArrowRightOutlined />}>
-                Start Free Trial
+                Start Building
               </Button>
             </Link>
             <Button size="large" icon={<PlayCircleOutlined />}>
@@ -259,60 +222,42 @@ export function LandingPage() {
 
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
-            <Title level={2}>Simple, transparent pricing</Title>
+            <Title level={2}>Built for developers shipping real bots</Title>
             <Paragraph type="secondary">
-              Start free, validate your use case, and scale when deployments and
-              analytics become core to the business.
+              Launch with one account, one workspace, and the core product
+              surfaces needed to design, test, and deploy production-ready bot flows.
             </Paragraph>
           </div>
 
-          <Row gutter={[24, 24]}>
-            {pricing.map((tier) => (
-              <Col xs={24} lg={8} key={tier.title}>
-                <Card
-                  className={`${styles.pricingCard} ${
-                    tier.featured ? styles.pricingFeatured : ""
-                  }`}
-                >
-                  {tier.featured ? (
-                    <Tag color="green" className={styles.pricingRibbon}>
-                      Most Popular
+          <Card className={styles.launchCard}>
+            <Row gutter={[24, 24]} align="middle">
+              <Col xs={24} lg={15}>
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  {launchCapabilities.map((item) => (
+                    <Tag key={item} color="default" className={styles.launchTag}>
+                      {item}
                     </Tag>
-                  ) : null}
-
-                  <Title level={3}>{tier.title}</Title>
-                  <div className={styles.price}>
-                    <Title level={1} style={{ margin: 0 }}>
-                      {tier.price}
-                    </Title>
-                    <Text type="secondary">{tier.period}</Text>
-                  </div>
-                  <Paragraph type="secondary">{tier.description}</Paragraph>
-
-                  <Space
-                    direction="vertical"
-                    size="middle"
-                    style={{ width: "100%", marginBottom: 28 }}
-                  >
-                    {tier.items.map((item) => (
-                      <Space key={item} align="start">
-                        <CheckOutlined
-                          style={{ color: "#16a34a", marginTop: 4 }}
-                        />
-                        <Text>{item}</Text>
-                      </Space>
-                    ))}
-                  </Space>
-
+                  ))}
+                </Space>
+              </Col>
+              <Col xs={24} lg={9}>
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <Title level={3} style={{ margin: 0 }}>
+                    Create an account and start building
+                  </Title>
+                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                    Sign up, enter the workspace, and build your first bot flow
+                    immediately with the core launch product.
+                  </Paragraph>
                   <Link href="/signup">
-                    <Button block type={tier.variant} size="large">
-                      {tier.cta}
+                    <Button type="primary" size="large">
+                      Create account
                     </Button>
                   </Link>
-                </Card>
+                </Space>
               </Col>
-            ))}
-          </Row>
+            </Row>
+          </Card>
         </section>
 
         <section className={styles.footerCta}>

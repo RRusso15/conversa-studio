@@ -92,7 +92,6 @@ Examples of what belongs here:
 - `Analytics`: summary aggregates, usage counters, drop-off and fallback metrics
 - `Templates`: reusable starter bot definitions and template metadata
 - `Integrations`: integration definitions and integration domain rules
-- `Billing`: plan limits, quotas, subscription-related domain rules
 - `Collaboration`: memberships, roles, workspace collaboration rules
 
 Rules:

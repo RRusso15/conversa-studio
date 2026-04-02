@@ -213,28 +213,23 @@ export const useStyles = createStyles(({ css, token }) => ({
     color: #047857;
     margin-bottom: 18px;
   `,
-  pricingCard: css`
-    height: 100%;
+  launchCard: css`
     border-radius: 26px;
     border: 1px solid rgba(229, 231, 235, 0.94);
     box-shadow: 0 22px 40px rgba(17, 24, 39, 0.06);
+    background:
+      radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 30%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 250, 251, 0.94));
   `,
-  pricingFeatured: css`
-    position: relative;
-    overflow: hidden;
-    border-color: rgba(16, 185, 129, 0.28);
-    box-shadow: 0 24px 44px rgba(16, 185, 129, 0.12);
-  `,
-  pricingRibbon: css`
-    position: absolute;
-    top: 18px;
-    right: 18px;
-  `,
-  price: css`
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    margin: 12px 0 24px;
+  launchTag: css`
+    width: 100%;
+    margin-inline-end: 0 !important;
+    padding: 14px 16px;
+    border-radius: 16px;
+    white-space: normal;
+    color: ${token.colorTextBase};
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid rgba(229, 231, 235, 0.94);
   `,
   footerCta: css`
     max-width: 1180px;

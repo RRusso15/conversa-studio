@@ -9,7 +9,6 @@ import {
   MessageSquareIcon,
   BarChartIcon,
   PlugIcon,
-  CreditCardIcon,
   SettingsIcon } from
 'lucide-react';
 import { cn } from '../utils/cn';
@@ -55,12 +54,6 @@ const navItems = [
   label: 'Integrations',
   icon: PlugIcon,
   path: '/integrations'
-},
-{
-  id: 'billing',
-  label: 'Billing',
-  icon: CreditCardIcon,
-  path: '/billing'
 },
 {
   id: 'settings',

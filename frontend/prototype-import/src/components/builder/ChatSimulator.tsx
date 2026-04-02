@@ -55,7 +55,7 @@ export function ChatSimulator() {
         {/* User Message */}
         <div className="flex items-end justify-end gap-2">
           <div className="bg-gray-900 text-white rounded-2xl rounded-tr-sm p-3 text-sm shadow-sm max-w-[80%]">
-            I have a question about pricing.
+            I need help getting this chatbot live.
           </div>
         </div>
 
