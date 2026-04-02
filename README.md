@@ -93,11 +93,11 @@ Backend architecture guidance is documented in [backend/aspnet-core/BACKEND_STRU
 
 ## Figma Designs
 
-`https://www.figma.com/design/pREYUI4vN79hEvbsA5Qfia/Russell-Masimba-s-team-library?node-id=0-1&t=nfUMmQTS7u6CAmdh-1`
+[View Figma Designs](https://www.figma.com/design/pREYUI4vN79hEvbsA5Qfia/Russell-Masimba-s-team-library?node-id=0-1&t=nfUMmQTS7u6CAmdh-1)
 
 ## Domain Model
 
-The current conceptual domain model is captured in [https://drive.google.com/file/d/1Io1lajHuU34lxRi8Yb7Ist1P6C_uscke/view?usp=sharing](conversa_domain_model.drawio).
+The current conceptual domain model is captured in [View Domain Model](https://drive.google.com/file/d/1Io1lajHuU34lxRi8Yb7Ist1P6C_uscke/view?usp=sharing).
 
 ## Notes
 
@@ -119,7 +119,7 @@ From `frontend/`:
 npm install
 ```
 
-Create a local `.env` file when needed:
+Create a local `.env` file:
 
 ```env
 NEXT_PUBLIC_DEFAULT_TENANCY_NAME=developer
