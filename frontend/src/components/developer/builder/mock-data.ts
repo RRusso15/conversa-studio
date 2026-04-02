@@ -32,6 +32,7 @@ export function createStarterGraph(id: string, name: string): BotGraph {
       name,
       status: "draft",
       version: "v1",
+      handoffInboxes: [],
     },
     nodes: [startNode, messageNode],
     edges: [

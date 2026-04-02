@@ -18,6 +18,13 @@ export interface BotMetadata {
   name: string;
   status: "draft" | "published";
   version: string;
+  handoffInboxes?: HandoffInboxConfig[];
+}
+
+export interface HandoffInboxConfig {
+  key: string;
+  label: string;
+  email: string;
 }
 
 export interface StartNodeConfig {
@@ -117,7 +124,10 @@ export interface CodeNodeConfig {
 
 export interface HandoffNodeConfig {
   kind: "handoff";
-  queueName: string;
+  inboxKey: string;
+  confirmationMessage: string;
+  contactEmailVariable: string;
+  queueName?: string;
 }
 
 export interface EndNodeConfig {

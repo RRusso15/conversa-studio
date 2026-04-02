@@ -91,7 +91,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         if (!string.IsNullOrWhiteSpace(input.SessionId) && session != null)
         {
             var transcript = await GetSessionTranscriptAsync(session.Id);
-            return CreateSessionResponse(context.Graph, session, context.Bot.Name, transcript);
+            return CreateSessionResponse(context.Graph, session, context.Bot.Name, transcript, null);
         }
 
         var createdSession = new RuntimeSession(
@@ -115,7 +115,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         await PersistMessagesAsync(createdSession, executionResult.Messages);
         await CurrentUnitOfWork.SaveChangesAsync();
 
-        return CreateSessionResponse(context.Graph, createdSession, context.Bot.Name, ToDtoMessages(executionResult.Messages));
+        return CreateSessionResponse(context.Graph, createdSession, context.Bot.Name, ToDtoMessages(executionResult.Messages), executionResult.Handoff);
     }
 
     /// <summary>
@@ -145,7 +145,7 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         await PersistMessagesAsync(session, executionResult.Messages);
         await CurrentUnitOfWork.SaveChangesAsync();
 
-        return CreateSessionResponse(context.Graph, session, context.Bot.Name, ToDtoMessages(executionResult.Messages));
+        return CreateSessionResponse(context.Graph, session, context.Bot.Name, ToDtoMessages(executionResult.Messages), executionResult.Handoff);
     }
 
     private async Task<DeploymentContext> GetDeploymentContextAsync(string deploymentKey, string embedOrigin, bool requireActive)
@@ -253,7 +253,8 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         BotGraphDefinition graph,
         RuntimeSession session,
         string botName,
-        List<WidgetChatMessageDto> messages)
+        List<WidgetChatMessageDto> messages,
+        WidgetHandoffDto handoff)
     {
         return new WidgetSessionResponseDto
         {
@@ -263,7 +264,8 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
             AwaitingInput = session.AwaitingInput,
             AwaitingInputMode = ResolveAwaitingInputMode(graph, session),
             SuggestedReplies = ResolveSuggestedReplies(graph, session),
-            IsCompleted = session.IsCompleted
+            IsCompleted = session.IsCompleted,
+            Handoff = handoff
         };
     }
 
@@ -423,6 +425,33 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
                 continue;
             }
 
+            if (IsNodeType(currentNode, "handoff"))
+            {
+                var resolvedHandoff = ResolveHandoff(graph, currentNode, state.Variables);
+
+                if (resolvedHandoff.Handoff == null)
+                {
+                    state.Messages.Add(new RuntimeMessage("bot", resolvedHandoff.FailureMessage));
+                    state.IsCompleted = true;
+                    state.CurrentNodeId = string.Empty;
+                    state.AwaitingInput = false;
+                    state.PendingQuestionVariable = string.Empty;
+                    break;
+                }
+
+                if (!string.IsNullOrWhiteSpace(resolvedHandoff.ConfirmationMessage))
+                {
+                    state.Messages.Add(new RuntimeMessage("bot", resolvedHandoff.ConfirmationMessage));
+                }
+
+                state.Handoff = resolvedHandoff.Handoff;
+                state.IsCompleted = true;
+                state.CurrentNodeId = string.Empty;
+                state.AwaitingInput = false;
+                state.PendingQuestionVariable = string.Empty;
+                break;
+            }
+
             if (IsNodeType(currentNode, "end"))
             {
                 if (TryGetTrimmedString(currentNode.Config, "closingText", out var closingText) && !string.IsNullOrWhiteSpace(closingText))
@@ -444,6 +473,51 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         }
 
         return state;
+    }
+
+    private static ResolvedHandoff ResolveHandoff(
+        BotGraphDefinition graph,
+        BotNodeDefinition currentNode,
+        IReadOnlyDictionary<string, string> variables)
+    {
+        var inboxKey = TryGetTrimmedString(currentNode.Config, "inboxKey", out var configuredInboxKey)
+            ? configuredInboxKey
+            : TryGetTrimmedString(currentNode.Config, "queueName", out var legacyQueueName)
+                ? legacyQueueName
+                : string.Empty;
+        var confirmationMessage = TryGetTrimmedString(currentNode.Config, "confirmationMessage", out var configuredConfirmationMessage)
+            ? Interpolate(configuredConfirmationMessage, variables)
+            : "Thanks. Our team will review your message and follow up by email.";
+        var contactEmailVariable = TryGetTrimmedString(currentNode.Config, "contactEmailVariable", out var configuredContactVariable)
+            ? configuredContactVariable
+            : string.Empty;
+        var inbox = graph.Metadata.HandoffInboxes.FirstOrDefault(candidate =>
+            string.Equals(candidate.Key?.Trim(), inboxKey, StringComparison.OrdinalIgnoreCase));
+
+        if (string.IsNullOrWhiteSpace(inboxKey) || inbox == null || string.IsNullOrWhiteSpace(inbox.Email))
+        {
+            return new ResolvedHandoff(null, confirmationMessage, "We could not route your request right now. Please try again later.");
+        }
+
+        if (string.IsNullOrWhiteSpace(contactEmailVariable) ||
+            !variables.TryGetValue(contactEmailVariable, out var contactEmail) ||
+            !IsValidEmail(contactEmail))
+        {
+            return new ResolvedHandoff(null, confirmationMessage, "We need a valid email address before we can hand this conversation to the team.");
+        }
+
+        return new ResolvedHandoff(
+            new WidgetHandoffDto
+            {
+                NodeId = currentNode.Id,
+                InboxKey = inbox.Key?.Trim() ?? string.Empty,
+                InboxLabel = string.IsNullOrWhiteSpace(inbox.Label) ? inbox.Key?.Trim() ?? string.Empty : inbox.Label.Trim(),
+                RecipientEmail = inbox.Email.Trim(),
+                ContactEmail = contactEmail.Trim(),
+                Variables = new Dictionary<string, string>(variables, StringComparer.OrdinalIgnoreCase)
+            },
+            confirmationMessage,
+            string.Empty);
     }
 
     private async Task<string> ExecuteAiNodeAsync(
@@ -832,6 +906,12 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         return true;
     }
 
+    private static bool IsValidEmail(string value)
+    {
+        var normalizedValue = value?.Trim() ?? string.Empty;
+        return normalizedValue.Contains("@") && normalizedValue.Contains(".");
+    }
+
     private static BotGraphDefinition DeserializeGraph(string graphJson)
     {
         return JsonSerializer.Deserialize<BotGraphDefinition>(graphJson, JsonOptions) ?? new BotGraphDefinition();
@@ -1177,6 +1257,8 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
         public Dictionary<string, string> Variables { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
         public List<RuntimeMessage> Messages { get; set; } = [];
+
+        public WidgetHandoffDto Handoff { get; set; }
     }
 
     private sealed class RuntimeMessage
@@ -1198,4 +1280,6 @@ public class WidgetRuntimeAppService : ConversaStudioAppServiceBase, IWidgetRunt
     private sealed record QuestionOption(string HandleId, string Label, string Value);
 
     private sealed record ResolvedQuestionChoice(string HandleId, string StoredValue);
+
+    private sealed record ResolvedHandoff(WidgetHandoffDto Handoff, string ConfirmationMessage, string FailureMessage);
 }

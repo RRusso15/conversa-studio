@@ -26,6 +26,7 @@ export interface IBuilderActionContext {
     updateNodeConfig: (nodeId: string, config: NodeConfig) => void;
     updateNodeLabel: (nodeId: string, label: string) => void;
     updateBotName: (name: string) => void;
+    updateBotMetadata: (metadata: Partial<BotGraph["metadata"]>) => void;
     undo: () => void;
     redo: () => void;
     canUndo: boolean;
@@ -53,6 +54,7 @@ export const INITIAL_ACTION_STATE: IBuilderActionContext = {
     updateNodeConfig: () => undefined,
     updateNodeLabel: () => undefined,
     updateBotName: () => undefined,
+    updateBotMetadata: () => undefined,
     undo: () => undefined,
     redo: () => undefined,
     canUndo: false,

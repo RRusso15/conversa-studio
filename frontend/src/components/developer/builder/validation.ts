@@ -50,6 +50,51 @@ export function validateBotGraph(
   const startNodes = graph.nodes.filter((node) => node.type === "start");
   const endNodes = graph.nodes.filter((node) => node.type === "end");
   const definedVariables = new Set(collectGraphVariables(graph));
+  const handoffInboxes = graph.metadata.handoffInboxes ?? [];
+  const seenHandoffInboxKeys = new Set<string>();
+
+  handoffInboxes.forEach((inbox, index) => {
+    const normalizedKey = inbox.key.trim();
+    const normalizedEmail = inbox.email.trim();
+
+    if (!normalizedKey) {
+      results.push({
+        id: `handoff-inbox-key-${index}`,
+        severity: "error",
+        message: `Handoff inbox ${index + 1} requires a key.`,
+      });
+    } else if (seenHandoffInboxKeys.has(normalizedKey.toLowerCase())) {
+      results.push({
+        id: `handoff-inbox-key-duplicate-${normalizedKey}`,
+        severity: "error",
+        message: `Handoff inbox key "${normalizedKey}" is duplicated.`,
+      });
+    } else {
+      seenHandoffInboxKeys.add(normalizedKey.toLowerCase());
+    }
+
+    if (!inbox.label.trim()) {
+      results.push({
+        id: `handoff-inbox-label-${index}`,
+        severity: "error",
+        message: `Handoff inbox ${index + 1} requires a label.`,
+      });
+    }
+
+    if (!normalizedEmail) {
+      results.push({
+        id: `handoff-inbox-email-${index}`,
+        severity: "error",
+        message: `Handoff inbox ${index + 1} requires a recipient email address.`,
+      });
+    } else if (!isValidEmail(normalizedEmail)) {
+      results.push({
+        id: `handoff-inbox-email-format-${index}`,
+        severity: "error",
+        message: `Handoff inbox "${inbox.label.trim() || normalizedKey || `#${index + 1}`}" must use a valid email address.`,
+      });
+    }
+  });
 
   if (startNodes.length !== 1) {
     results.push({
@@ -492,6 +537,51 @@ export function validateBotGraph(
       }
     }
 
+    if (node.type === "handoff" && node.config.kind === "handoff") {
+      const handoffNodeConfig = node.config;
+
+      if (!handoffNodeConfig.inboxKey.trim()) {
+        results.push({
+          id: `handoff-inbox-${node.id}`,
+          severity: "error",
+          message: "Handoff nodes require a selected inbox.",
+          relatedNodeId: node.id,
+        });
+      } else if (!handoffInboxes.some((inbox) => inbox.key.trim() === handoffNodeConfig.inboxKey.trim())) {
+        results.push({
+          id: `handoff-inbox-missing-${node.id}`,
+          severity: "error",
+          message: `Handoff inbox "${handoffNodeConfig.inboxKey}" does not exist in this bot.`,
+          relatedNodeId: node.id,
+        });
+      }
+
+      if (!handoffNodeConfig.confirmationMessage.trim()) {
+        results.push({
+          id: `handoff-confirmation-${node.id}`,
+          severity: "error",
+          message: "Handoff nodes require a confirmation message.",
+          relatedNodeId: node.id,
+        });
+      }
+
+      if (!handoffNodeConfig.contactEmailVariable.trim()) {
+        results.push({
+          id: `handoff-contact-variable-${node.id}`,
+          severity: "error",
+          message: "Handoff nodes require a contact email variable.",
+          relatedNodeId: node.id,
+        });
+      } else if (!definedVariables.has(handoffNodeConfig.contactEmailVariable.trim())) {
+        results.push({
+          id: `handoff-contact-variable-unknown-${node.id}`,
+          severity: "error",
+          message: `Contact email variable "${handoffNodeConfig.contactEmailVariable}" does not exist in this graph yet.`,
+          relatedNodeId: node.id,
+        });
+      }
+    }
+
     getNodeTextTemplates(node.config).forEach((template, index) => {
       extractVariableReferences(template).forEach((variableName) => {
         if (!definedVariables.has(variableName)) {
@@ -515,4 +605,8 @@ export function validateBotGraph(
   }
 
   return results;
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }

@@ -8,6 +8,7 @@ import type {
     CodeOperation,
     ConditionNodeConfig,
     ConditionOperator,
+    HandoffNodeConfig,
     NodeConfig,
     QuestionChoiceOption,
     QuestionNodeConfig,
@@ -176,6 +177,31 @@ export function normalizeAiConfig(config: NodeConfig & { kind: "ai"; responseMod
     };
 }
 
+/**
+ * Normalizes a handoff node config loaded from older graph versions.
+ */
+export function normalizeHandoffConfig(
+    config: HandoffNodeConfig & {
+        queueName?: string;
+        confirmationText?: string;
+        contactVariable?: string;
+    }
+): HandoffNodeConfig {
+    return {
+        kind: "handoff",
+        inboxKey: config.inboxKey?.trim() || config.queueName?.trim() || "",
+        confirmationMessage:
+            config.confirmationMessage?.trim() ||
+            config.confirmationText?.trim() ||
+            "Thanks. Our team will review your message and follow up by email.",
+        contactEmailVariable:
+            normalizeVariableName(config.contactEmailVariable) ??
+            normalizeVariableName(config.contactVariable) ??
+            "email",
+        queueName: config.queueName?.trim() || undefined,
+    };
+}
+
 function getDefinedVariableName(node: BotNode): string | undefined {
     if (node.config.kind === "question") {
         return normalizeVariableName(node.config.variableName);
@@ -268,6 +294,8 @@ export function getNodeTextTemplates(config: NodeConfig): string[] {
             return [config.instructions, config.fallbackText];
         case "code":
             return [];
+        case "handoff":
+            return [config.confirmationMessage];
         case "end":
             return [config.closingText];
         default:

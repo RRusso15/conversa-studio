@@ -320,7 +320,13 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
                 Id = graph.Metadata.Id,
                 Name = graph.Metadata.Name,
                 Status = graph.Metadata.Status,
-                Version = graph.Metadata.Version
+                Version = graph.Metadata.Version,
+                HandoffInboxes = graph.Metadata.HandoffInboxes.Select(inbox => new BotHandoffInboxDefinition
+                {
+                    Key = inbox.Key,
+                    Label = inbox.Label,
+                    Email = inbox.Email
+                }).ToList()
             },
             Nodes = graph.Nodes.Select(node => new BotNodeDefinition
             {
@@ -354,7 +360,13 @@ public class BotDefinitionAppService : ConversaStudioAppServiceBase, IBotDefinit
                 Id = graph.Metadata.Id,
                 Name = graph.Metadata.Name,
                 Status = graph.Metadata.Status,
-                Version = graph.Metadata.Version
+                Version = graph.Metadata.Version,
+                HandoffInboxes = graph.Metadata.HandoffInboxes.Select(inbox => new BotHandoffInboxDto
+                {
+                    Key = inbox.Key,
+                    Label = inbox.Label,
+                    Email = inbox.Email
+                }).ToList()
             },
             Nodes = graph.Nodes.Select(node => new BotNodeDto
             {

@@ -139,7 +139,9 @@ export const nodeRegistry: Record<NodeType, NodeDefinition> = {
     accentColor: "#DC2626",
     defaultConfig: () => ({
       kind: "handoff",
-      queueName: "support-team",
+      inboxKey: "support",
+      confirmationMessage: "Thanks. Our team will review your message and follow up by email.",
+      contactEmailVariable: "email",
     }),
   },
   end: {
