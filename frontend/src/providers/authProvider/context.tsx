@@ -39,7 +39,6 @@ export interface ICurrentLoginInformations {
 export interface ISignInInput {
     userNameOrEmailAddress: string;
     password: string;
-    rememberClient: boolean;
 }
 
 export interface ISignUpInput {
