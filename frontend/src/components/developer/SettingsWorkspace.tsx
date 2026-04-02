@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { LogoutOutlined, LockOutlined, SafetyCertificateOutlined, UserOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Card, Col, Descriptions, Form, Input, Row, Skeleton, Space, Tag, Typography } from "antd";
 import { PageHeader } from "./PageHeader";
-import { InfoNotice } from "./InfoNotice";
 import { useStyles } from "./styles";
 import { useAuthActions, useAuthState } from "@/providers/authProvider";
 import { changePassword } from "@/utils/settings-api";
@@ -119,12 +118,6 @@ export function SettingsWorkspace() {
         description="Review your account and workspace details, update your password, and manage your current session."
       />
 
-      <InfoNotice
-        title="Launch-ready account settings"
-        description="This page focuses on real controls available today: account identity, workspace reference details, password updates, and session actions."
-        style={{ marginBottom: 20 }}
-      />
-
       {isLoading ? (
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <Card className={styles.placeholderCard}>
@@ -150,7 +143,7 @@ export function SettingsWorkspace() {
                       <Title level={4} style={{ margin: 0 }}>
                         Account
                       </Title>
-                      <Text type="secondary">Your current login information is shown here as read-only reference.</Text>
+                      <Text type="secondary">View the account details for your current sign-in.</Text>
                     </div>
                   </Space>
 
@@ -161,7 +154,7 @@ export function SettingsWorkspace() {
                   />
 
                   <Tag color="default" style={{ width: "fit-content" }}>
-                    Read-only in v1
+                    Read-only
                   </Tag>
                 </Space>
               </Card>
@@ -178,7 +171,7 @@ export function SettingsWorkspace() {
                       <Title level={4} style={{ margin: 0 }}>
                         Workspace
                       </Title>
-                      <Text type="secondary">Reference details for the tenant and application currently backing this workspace.</Text>
+                      <Text type="secondary">View the workspace and application details for this account.</Text>
                     </div>
                   </Space>
 
@@ -281,7 +274,7 @@ export function SettingsWorkspace() {
                   type="info"
                   showIcon
                   message="Need workspace help?"
-                  description="If your workspace information looks wrong or access stops working, contact your workspace administrator or support team instead of relying on hidden launch-only settings."
+                  description="If your workspace information looks wrong or access stops working, contact your workspace administrator or support team."
                 />
               </Space>
             </Col>
