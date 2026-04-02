@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { RedoOutlined, UndoOutlined } from "@ant-design/icons";
 import {
   Background,
   BackgroundVariant,
@@ -10,7 +11,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
 } from "reactflow";
-import { Empty } from "antd";
+import { Button, Empty, Space } from "antd";
 import { BuilderNodeCard } from "./BuilderNodeCard";
 import { useBuilder } from "./builder-context";
 import type { NodeType } from "./types";
@@ -20,7 +21,14 @@ const nodeTypes = {
   botNode: BuilderNodeCard,
 };
 
-function BuilderCanvasInner() {
+interface BuilderCanvasInnerProps {
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+}
+
+function BuilderCanvasInner({ onUndo, onRedo, canUndo, canRedo }: BuilderCanvasInnerProps) {
   const reactFlow = useReactFlow();
   const { styles } = useBuilderStyles();
   const {
@@ -65,6 +73,17 @@ function BuilderCanvasInner() {
 
   return (
     <div className={styles.builderCanvas}>
+      <div className={styles.builderCanvasControls}>
+        <Space.Compact>
+          <Button icon={<UndoOutlined />} onClick={onUndo} disabled={!canUndo} aria-label="Undo" title="Undo">
+            Undo
+          </Button>
+          <Button icon={<RedoOutlined />} onClick={onRedo} disabled={!canRedo} aria-label="Redo" title="Redo">
+            Redo
+          </Button>
+        </Space.Compact>
+      </div>
+
       <ReactFlow
         nodes={reactFlowNodes}
         edges={reactFlowEdges}
@@ -144,10 +163,17 @@ function BuilderCanvasInner() {
   );
 }
 
-export function BuilderCanvas() {
+interface BuilderCanvasProps {
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+}
+
+export function BuilderCanvas({ onUndo, onRedo, canUndo, canRedo }: BuilderCanvasProps) {
   return (
     <ReactFlowProvider>
-      <BuilderCanvasInner />
+      <BuilderCanvasInner onUndo={onUndo} onRedo={onRedo} canUndo={canUndo} canRedo={canRedo} />
     </ReactFlowProvider>
   );
 }

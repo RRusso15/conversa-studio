@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { App, Button, Grid, Result, Spin } from "antd";
+import { App, Button, Card, Grid, Result, Spin } from "antd";
 import { BuilderProvider, useBuilder } from "./builder/builder-context";
 import { BuilderCanvas } from "./builder/BuilderCanvas";
 import { BuilderPropertiesPanel } from "./builder/BuilderPropertiesPanel";
@@ -28,6 +28,7 @@ const BUILDER_RIGHT_PANEL_WIDTH_KEY = "builder:right-panel-width";
 const DEFAULT_RIGHT_PANEL_WIDTH = 360;
 const MIN_RIGHT_PANEL_WIDTH = 320;
 const MAX_RIGHT_PANEL_WIDTH = 640;
+const MIN_BUILDER_WIDTH = 1100;
 
 function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
   const screens = Grid.useBreakpoint();
@@ -383,16 +384,12 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
         saveStatus={saveStatus}
         deployLabel={activeBot?.publishedVersion && !activeBot.hasUnpublishedChanges ? "Manage Deployments" : "Publish & Deploy"}
         onBotNameChange={updateBotName}
-        onUndo={undo}
-        onRedo={redo}
         onSave={handleSave}
         onExport={handleExport}
         onImport={handleImport}
         onValidate={handleValidate}
         onTest={() => setSimulatorOpen(true)}
         onDeploy={handleDeploy}
-        canUndo={canUndo}
-        canRedo={canRedo}
       />
 
       <input
@@ -409,7 +406,7 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
         </aside>
 
         <main className={styles.builderCanvasRegion}>
-          <BuilderCanvas />
+          <BuilderCanvas onUndo={undo} onRedo={redo} canUndo={canUndo} canRedo={canRedo} />
         </main>
 
         <div
@@ -437,9 +434,11 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
 
 export function BuilderWorkspace({ botId }: BuilderWorkspaceProps) {
   const router = useRouter();
+  const { styles } = useBuilderStyles();
   const { activeBot, isPending, isError, errorMessage } = useBotState();
   const { clearActiveBot, getBot, initializeNewBotDraft } = useBotActions();
   const initialGraph = useMemo(() => activeBot?.graph, [activeBot]);
+  const [viewportWidth, setViewportWidth] = useState<number | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -453,6 +452,25 @@ export function BuilderWorkspace({ botId }: BuilderWorkspaceProps) {
       await initializeNewBotDraft();
     })();
   }, [botId, clearActiveBot, getBot, initializeNewBotDraft]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const syncViewportWidth = () => {
+      setViewportWidth(window.innerWidth);
+    };
+
+    syncViewportWidth();
+    window.addEventListener("resize", syncViewportWidth);
+
+    return () => {
+      window.removeEventListener("resize", syncViewportWidth);
+    };
+  }, []);
+
+  const isBuilderWidthBlocked = viewportWidth !== null && viewportWidth < MIN_BUILDER_WIDTH;
 
   if (isPending && !initialGraph) {
     return <Spin size="large" />;
@@ -475,6 +493,25 @@ export function BuilderWorkspace({ botId }: BuilderWorkspaceProps) {
 
   if (!initialGraph) {
     return <Spin size="large" />;
+  }
+
+  if (isBuilderWidthBlocked) {
+    return (
+      <div className={styles.builderBlockedShell}>
+        <Card className={styles.builderBlockedCard}>
+          <Result
+            status="warning"
+            title="Builder requires a wider screen"
+            subTitle={`Open the builder on a screen at least ${MIN_BUILDER_WIDTH}px wide to edit bot flows.`}
+            extra={[
+              <Button key="projects" type="primary" onClick={() => router.push("/developer/projects")}>
+                Back to Projects
+              </Button>
+            ]}
+          />
+        </Card>
+      </div>
+    );
   }
 
   return (

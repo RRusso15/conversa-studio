@@ -3,7 +3,6 @@
 import Link from "next/link";
 import {
   ArrowLeftOutlined,
-  RedoOutlined,
   DownloadOutlined,
   ExclamationCircleOutlined,
   ImportOutlined,
@@ -11,7 +10,6 @@ import {
   RocketOutlined,
   SaveOutlined,
   CheckCircleOutlined,
-  UndoOutlined,
 } from "@ant-design/icons";
 import { Button, Flex, Input, Space, Tag, Typography } from "antd";
 import { useBuilderStyles } from "./styles";
@@ -25,16 +23,12 @@ interface BuilderToolbarProps {
   saveStatus: "idle" | "saving" | "saved" | "error" | "validation_blocked" | "permission_denied" | "api_mismatch";
   deployLabel?: string;
   onBotNameChange: (name: string) => void;
-  onUndo: () => void;
-  onRedo: () => void;
   onSave: () => void;
   onExport: () => void;
   onImport: () => void;
   onValidate: () => void;
   onTest: () => void;
   onDeploy: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
 }
 
 export function BuilderToolbar({
@@ -44,16 +38,12 @@ export function BuilderToolbar({
   saveStatus,
   deployLabel,
   onBotNameChange,
-  onUndo,
-  onRedo,
   onSave,
   onExport,
   onImport,
   onValidate,
   onTest,
   onDeploy,
-  canUndo,
-  canRedo,
 }: BuilderToolbarProps) {
   const { styles } = useBuilderStyles();
   const statusTag = (() => {
@@ -116,12 +106,6 @@ export function BuilderToolbar({
       </Flex>
 
       <Space wrap>
-        <Button icon={<UndoOutlined />} onClick={onUndo} disabled={!canUndo}>
-          Undo
-        </Button>
-        <Button icon={<RedoOutlined />} onClick={onRedo} disabled={!canRedo}>
-          Redo
-        </Button>
         <Button icon={<SaveOutlined />} onClick={onSave} loading={saveStatus === "saving"}>
           Save
         </Button>

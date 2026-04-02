@@ -159,6 +159,22 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
       color: ${token.colorTextBase};
     }
   `,
+  builderCanvasControls: css`
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    z-index: 6;
+    padding: 8px;
+    border: 1px solid rgba(226, 232, 240, 0.96);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+
+    .ant-btn {
+      min-width: 0;
+    }
+  `,
   builderEmptyOverlay: css`
     position: absolute;
     inset: 0;
@@ -166,6 +182,28 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
     align-items: center;
     justify-content: center;
     pointer-events: none;
+  `,
+  builderBlockedShell: css`
+    min-height: min(78vh, 720px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  `,
+  builderBlockedCard: css`
+    width: min(100%, 720px);
+    border-radius: 24px;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    background:
+      radial-gradient(circle at top left, rgba(14, 165, 233, 0.08), transparent 30%),
+      linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      0 24px 56px rgba(15, 23, 42, 0.08);
+
+    .ant-result {
+      padding: 48px 32px;
+    }
   `,
   panelCard: css`
     min-height: auto;
