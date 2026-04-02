@@ -1437,7 +1437,7 @@ export function BuilderPropertiesPanel({
                                 <Text className={styles.fieldLabel}>Title</Text>
                                 <Input
                                   value={aiUrlTitleDraft}
-                                  placeholder="Pricing page"
+                                  placeholder="Help center article"
                                   onChange={(event) => setAiUrlTitleDraft(event.target.value)}
                                 />
                               </div>
@@ -1445,7 +1445,7 @@ export function BuilderPropertiesPanel({
                                 <Text className={styles.fieldLabel}>Web Link</Text>
                                 <Input
                                   value={aiUrlDraft}
-                                  placeholder="https://example.com/pricing"
+                                  placeholder="https://example.com/help-center"
                                   onChange={(event) => setAiUrlDraft(event.target.value)}
                                 />
                               </div>

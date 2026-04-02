@@ -180,6 +180,8 @@ export interface NodeDefinition {
 
 export interface BuilderState {
   graph: BotGraph;
+  past: BotGraph[];
+  future: BotGraph[];
   selectedNodeId?: string;
   selectedEdgeId?: string;
   validationResults: ValidationResult[];

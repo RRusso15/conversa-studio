@@ -41,7 +41,11 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     setSimulatorOpen,
     updateBotName,
     setValidationResults,
-    markSaved
+    markSaved,
+    undo,
+    redo,
+    canUndo,
+    canRedo
   } = useBuilder();
   const { activeBot, saveStatus, errorMessage, draftIdentity } = useBotState();
   const { createBotDraft, updateBotDraft, publishBotDraft, validateBotDraft, setSaveStatus } = useBotActions();
@@ -85,6 +89,38 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
 
     window.localStorage.setItem(BUILDER_RIGHT_PANEL_WIDTH_KEY, String(rightPanelWidth));
   }, [rightPanelWidth]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || isTypingTarget(event.target)) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      const wantsUndo = key === "z" && !event.shiftKey;
+      const wantsRedo = key === "y" || (key === "z" && event.shiftKey);
+
+      if (wantsUndo && canUndo) {
+        event.preventDefault();
+        undo();
+      }
+
+      if (wantsRedo && canRedo) {
+        event.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [canRedo, canUndo, redo, undo]);
 
   const persistGraph = async (
     origin: "autosave" | "manual",
@@ -347,12 +383,16 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
         saveStatus={saveStatus}
         deployLabel={activeBot?.publishedVersion && !activeBot.hasUnpublishedChanges ? "Manage Deployments" : "Publish & Deploy"}
         onBotNameChange={updateBotName}
+        onUndo={undo}
+        onRedo={redo}
         onSave={handleSave}
         onExport={handleExport}
         onImport={handleImport}
         onValidate={handleValidate}
         onTest={() => setSimulatorOpen(true)}
         onDeploy={handleDeploy}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
 
       <input
@@ -477,4 +517,14 @@ function mergeValidationResults(
 
 function clampRightPanelWidth(value: number): number {
   return Math.min(MAX_RIGHT_PANEL_WIDTH, Math.max(MIN_RIGHT_PANEL_WIDTH, Math.round(value)));
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName.toLowerCase();
+
+  return target.isContentEditable || tagName === "input" || tagName === "textarea" || tagName === "select";
 }

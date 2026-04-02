@@ -23,7 +23,7 @@ export function createStarterGraph(id: string, name: string): BotGraph {
 
   if (messageNode.config.kind === "message") {
     messageNode.config.message =
-      "Welcome to Conversa Studio. Ask me about support, pricing, or getting started.";
+      "Welcome to Conversa Studio. Ask me about support, getting started, or how to build your first bot.";
   }
 
   return {

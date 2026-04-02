@@ -10,8 +10,7 @@ import {
   BarChartIcon,
   PlugIcon,
   UsersIcon,
-  ArrowRightIcon,
-  CheckIcon } from
+  ArrowRightIcon } from
 'lucide-react';
 export function Landing() {
   const features = [
@@ -46,9 +45,9 @@ export function Landing() {
     desc: 'Track drop-offs, user intents, and conversation success rates in real-time.'
   },
   {
-    icon: PlugIcon,
-    title: 'Integrations',
-    desc: 'Connect to Salesforce, Zendesk, Google Sheets, and custom APIs.'
+    icon: BotIcon,
+    title: 'Runtime Ready',
+    desc: 'Ship validated bot flows with a clean path from builder to live widget.'
   },
   {
     icon: UsersIcon,
@@ -94,8 +93,8 @@ export function Landing() {
           </span>
         </h1>
         <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
-          The premium platform for product teams to design, test, and deploy
-          intelligent conversational agents across any channel.
+          A visual workspace for teams to design, test, and deploy intelligent
+          conversational agents across their customer channels.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link to="/signup">
@@ -104,7 +103,7 @@ export function Landing() {
               icon={<ArrowRightIcon className="w-5 h-5" />}
               className="flex-row-reverse">
               
-              Start Free Trial
+              Start Building
             </Button>
           </Link>
           <Button size="lg" variant="outline">
@@ -163,124 +162,48 @@ export function Landing() {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* Launch */}
       <section className="py-24 px-4 max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-slate-900 mb-4">
-            Simple, transparent pricing
+            Built for developers shipping real bots
           </h2>
           <p className="text-lg text-slate-600">
-            Start for free, upgrade when you need more power.
+            Create an account and get straight into the workspace with the core
+            tools needed to build and deploy.
           </p>
         </div>
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {/* Free */}
-          <Card className="flex flex-col">
-            <div className="mb-6">
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Free</h3>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-slate-900">$0</span>
-                <span className="text-slate-500">/mo</span>
+        <div className="max-w-5xl mx-auto">
+          <Card className="border-slate-200 shadow-sm">
+            <div className="grid md:grid-cols-2 gap-8 items-start">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 mb-4">
+                  What you can do at launch
+                </h3>
+                <ul className="space-y-3 text-sm text-slate-600">
+                  {[
+                    'Create an account and enter the developer workspace',
+                    'Build conversation flows visually with reusable nodes',
+                    'Validate, test, and deploy web chat experiences',
+                    'Review transcripts and analytics from one place'
+                  ].map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
               </div>
-              <p className="text-sm text-slate-500 mt-2">
-                Perfect for prototyping
-              </p>
-            </div>
-            <ul className="space-y-3 mb-8 flex-1">
-              {[
-              '1 Project',
-              '100 AI Messages/mo',
-              'Web Chat Widget',
-              'Community Support'].
-              map((item, i) =>
-              <li
-                key={i}
-                className="flex items-center gap-3 text-sm text-slate-600">
-                
-                  <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />{' '}
-                  {item}
-                </li>
-              )}
-            </ul>
-            <Link to="/signup">
-              <Button fullWidth variant="outline">
-                Get Started
-              </Button>
-            </Link>
-          </Card>
-
-          {/* Pro */}
-          <Card className="flex flex-col border-highlight-500 shadow-elevated relative">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-highlight-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-              Most Popular
-            </div>
-            <div className="mb-6">
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Pro</h3>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-slate-900">$49</span>
-                <span className="text-slate-500">/mo</span>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 mb-4">
+                  Start building immediately
+                </h3>
+                <p className="text-slate-600 mb-6">
+                  Sign up, create your workspace, and build your first bot
+                  with the core launch product.
+                </p>
+                <Link to="/signup">
+                  <Button fullWidth>Get Started</Button>
+                </Link>
               </div>
-              <p className="text-sm text-slate-500 mt-2">
-                For growing businesses
-              </p>
             </div>
-            <ul className="space-y-3 mb-8 flex-1">
-              {[
-              'Unlimited Projects',
-              '5,000 AI Messages/mo',
-              'All Channels',
-              'Analytics Dashboard',
-              'Email Support'].
-              map((item, i) =>
-              <li
-                key={i}
-                className="flex items-center gap-3 text-sm text-slate-600">
-                
-                  <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />{' '}
-                  {item}
-                </li>
-              )}
-            </ul>
-            <Link to="/signup">
-              <Button fullWidth>Start Free Trial</Button>
-            </Link>
-          </Card>
-
-          {/* Business */}
-          <Card className="flex flex-col">
-            <div className="mb-6">
-              <h3 className="text-xl font-bold text-slate-900 mb-2">
-                Business
-              </h3>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-slate-900">$199</span>
-                <span className="text-slate-500">/mo</span>
-              </div>
-              <p className="text-sm text-slate-500 mt-2">For advanced teams</p>
-            </div>
-            <ul className="space-y-3 mb-8 flex-1">
-              {[
-              'Everything in Pro',
-              'Unlimited AI Messages',
-              'Custom Integrations',
-              'Remove Branding',
-              'Priority Support',
-              'Team Collaboration'].
-              map((item, i) =>
-              <li
-                key={i}
-                className="flex items-center gap-3 text-sm text-slate-600">
-                
-                  <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />{' '}
-                  {item}
-                </li>
-              )}
-            </ul>
-            <Link to="/signup">
-              <Button fullWidth variant="outline">
-                Contact Sales
-              </Button>
-            </Link>
           </Card>
         </div>
       </section>

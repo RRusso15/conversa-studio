@@ -9,6 +9,8 @@ export enum BuilderActionEnums {
     addNode = "ADD_NODE",
     updateNode = "UPDATE_NODE",
     updateMetadata = "UPDATE_METADATA",
+    undo = "UNDO",
+    redo = "REDO",
     deleteNode = "DELETE_NODE",
     setNodes = "SET_NODES",
     setEdges = "SET_EDGES",
@@ -71,6 +73,16 @@ export const updateMetadata = createAction<Partial<BuilderState>, Partial<BotGra
     type: string;
     payload: Partial<BuilderState> & { metadata: Partial<BotGraph["metadata"]> };
 };
+
+export const undo = createAction<Partial<BuilderState>>(
+    BuilderActionEnums.undo,
+    () => ({})
+);
+
+export const redo = createAction<Partial<BuilderState>>(
+    BuilderActionEnums.redo,
+    () => ({})
+);
 
 export const deleteNode = createAction<Partial<BuilderState>, { id: string }>(
     BuilderActionEnums.deleteNode,

@@ -53,8 +53,7 @@ export function SignupForm() {
           Create an account
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Create your workspace and start building AI chat experiences for
-          support, sales, and operations.
+          Create your workspace and start building AI chat experiences right away.
         </Typography.Paragraph>
       </div>
 

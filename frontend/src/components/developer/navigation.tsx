@@ -1,14 +1,12 @@
 import type { ReactNode } from "react";
 import {
   BarChartOutlined,
-  CreditCardOutlined,
   FolderOpenOutlined,
   HomeOutlined,
   RocketOutlined,
   SettingOutlined,
   SnippetsOutlined,
   TeamOutlined,
-  ToolOutlined,
 } from "@ant-design/icons";
 
 export interface DeveloperNavItem {
@@ -54,18 +52,6 @@ export const developerNavItems: DeveloperNavItem[] = [
     label: "Analytics",
     href: "/developer/analytics",
     icon: <BarChartOutlined />,
-  },
-  {
-    key: "integrations",
-    label: "Integrations",
-    href: "/developer/integrations",
-    icon: <ToolOutlined />,
-  },
-  {
-    key: "billing",
-    label: "Billing",
-    href: "/developer/billing",
-    icon: <CreditCardOutlined />,
   },
   {
     key: "settings",

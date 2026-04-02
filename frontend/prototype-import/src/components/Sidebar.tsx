@@ -8,8 +8,6 @@ import {
   RocketIcon,
   MessageSquareIcon,
   BarChartIcon,
-  PlugIcon,
-  CreditCardIcon,
   SettingsIcon } from
 'lucide-react';
 import { cn } from '../utils/cn';
@@ -49,18 +47,6 @@ const navItems = [
   label: 'Analytics',
   icon: BarChartIcon,
   path: '/analytics'
-},
-{
-  id: 'integrations',
-  label: 'Integrations',
-  icon: PlugIcon,
-  path: '/integrations'
-},
-{
-  id: 'billing',
-  label: 'Billing',
-  icon: CreditCardIcon,
-  path: '/billing'
 },
 {
   id: 'settings',

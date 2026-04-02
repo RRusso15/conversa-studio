@@ -10,8 +10,6 @@ import { Generate } from './pages/Generate';
 import { Deployments } from './pages/Deployments';
 import { Transcripts } from './pages/Transcripts';
 import { Analytics } from './pages/Analytics';
-import { Integrations } from './pages/Integrations';
-import { Billing } from './pages/Billing';
 import { Settings } from './pages/Settings';
 import { Builder } from './pages/Builder';
 export function App() {
@@ -30,8 +28,6 @@ export function App() {
         <Route path="/deployments" element={<Deployments />} />
         <Route path="/transcripts" element={<Transcripts />} />
         <Route path="/analytics" element={<Analytics />} />
-        <Route path="/integrations" element={<Integrations />} />
-        <Route path="/billing" element={<Billing />} />
         <Route path="/settings" element={<Settings />} />
 
         {/* Core Builder Route */}

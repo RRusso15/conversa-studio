@@ -9,6 +9,7 @@ import {
     deleteNode as deleteNodeAction,
     deleteSelectedEdge as deleteSelectedEdgeAction,
     markSaved as markSavedAction,
+    redo as redoAction,
     resetGraph as resetGraphAction,
     selectEdge as selectEdgeAction,
     selectNode as selectNodeAction,
@@ -16,6 +17,7 @@ import {
     setNodes as setNodesAction,
     setSimulatorOpen as setSimulatorOpenAction,
     setValidationResults as setValidationResultsAction,
+    undo as undoAction,
     updateMetadata as updateMetadataAction,
     updateNode as updateNodeAction
 } from "./actions";
@@ -121,6 +123,14 @@ export function BuilderProvider({ graph, children }: BuilderProviderProps) {
         updateBotName: (name: string) => {
             dispatch(updateMetadataAction({ name }));
         },
+        undo: () => {
+            dispatch(undoAction());
+        },
+        redo: () => {
+            dispatch(redoAction());
+        },
+        canUndo: state.past.length > 0,
+        canRedo: state.future.length > 0,
         duplicateNode: (nodeId: string) => {
             const nodeToDuplicate = state.graph.nodes.find((node) => node.id === nodeId);
 
@@ -248,7 +258,7 @@ export function BuilderProvider({ graph, children }: BuilderProviderProps) {
         resetGraph: (nextGraph: BotGraph) => {
             dispatch(resetGraphAction(normalizeGraph(nextGraph)));
         }
-    }), [activeBot?.aiKnowledge, draftIdentity, reactFlowEdges, selectedNode, state.graph, state.graph.nodes]);
+    }), [activeBot?.aiKnowledge, draftIdentity, reactFlowEdges, selectedNode, state.future.length, state.graph, state.past.length]);
 
     const value = useMemo<IBuilderStateContext>(() => ({
         state,
