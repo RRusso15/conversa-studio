@@ -53,10 +53,11 @@ public class BotGenerationAppService : ConversaStudioAppServiceBase, IBotGenerat
             }
 
             var requestedName = string.IsNullOrWhiteSpace(input.BotName) ? "Generated Bot" : input.BotName.Trim();
-            var firstAttemptGraph = await GenerateGraphAsync(input.ApiKey, BuildGenerationPrompt(input.Prompt, requestedName));
-            var firstAttemptIssues = GetBlockingIssues(firstAttemptGraph);
+            var firstAttemptGraph = await GenerateGraphAsync(input.ApiKey, BotGenerationPromptBuilder.BuildGenerationPrompt(input.Prompt, requestedName));
+            var firstAttemptIssues = _botGraphValidator.Validate(firstAttemptGraph).ToList();
+            var firstAttemptBlockingIssues = GetBlockingIssues(firstAttemptIssues);
 
-            if (firstAttemptIssues.Count == 0)
+            if (firstAttemptBlockingIssues.Count == 0)
             {
                 return new GeneratedBotGraphDto
                 {
@@ -68,9 +69,10 @@ public class BotGenerationAppService : ConversaStudioAppServiceBase, IBotGenerat
             var repairedGraph = await GenerateGraphAsync(
                 input.ApiKey,
                 BuildRepairPrompt(input.Prompt, requestedName, firstAttemptGraph, firstAttemptIssues));
-            var repairedIssues = GetBlockingIssues(repairedGraph);
+            var repairedIssues = _botGraphValidator.Validate(repairedGraph).ToList();
+            var repairedBlockingIssues = GetBlockingIssues(repairedIssues);
 
-            if (repairedIssues.Count > 0)
+            if (repairedBlockingIssues.Count > 0)
             {
                 throw new UserFriendlyException(
                     "The generated bot could not be made valid yet. Try a simpler prompt or be more specific about the flow you want.");
@@ -111,77 +113,11 @@ public class BotGenerationAppService : ConversaStudioAppServiceBase, IBotGenerat
         return NormalizeGeneratedGraph(BotGraphMapper.MapToDomainGraph(graphDto));
     }
 
-    private List<BotValidationIssue> GetBlockingIssues(BotGraphDefinition graph)
+    private static List<BotValidationIssue> GetBlockingIssues(IEnumerable<BotValidationIssue> issues)
     {
-        return _botGraphValidator.Validate(graph)
+        return issues
             .Where(issue => issue.Severity == BotValidationSeverity.Error)
             .ToList();
-    }
-
-    private static string BuildGenerationPrompt(string userPrompt, string requestedName)
-    {
-        return $@"You generate JSON for a visual chatbot builder.
-
-Return JSON only. Do not wrap it in markdown. Do not explain anything.
-
-Create a valid BotGraph object with this exact top-level shape:
-{{
-  ""metadata"": {{
-    ""id"": ""generated-bot"",
-    ""name"": ""{requestedName}"",
-    ""status"": ""draft"",
-    ""version"": ""v1"",
-    ""handoffInboxes"": []
-  }},
-  ""nodes"": [],
-  ""edges"": []
-}}
-
-Use only these node types:
-- start
-- message
-- question
-- condition
-- variable
-- handoff
-- end
-
-Rules:
-- Include exactly 1 start node.
-- Every node must have a unique id.
-- Every non-start node should be reachable from the start node.
-- Include at least 1 end node unless a handoff node is the intended terminal step.
-- Keep the graph simple and practical.
-- Prefer start -> message -> question/message -> end patterns unless branching is clearly needed.
-- For question nodes, always include:
-  {{
-    ""kind"": ""question"",
-    ""question"": ""..."",
-    ""variableName"": ""camelCaseName"",
-    ""inputMode"": ""text"",
-    ""options"": [],
-    ""invalidInputMessage"": ""...""
-  }}
-- For condition nodes:
-  - use config.rules as an array
-  - each rule must have id, operator, value
-  - use edge sourceHandle values ""rule-0"", ""rule-1"", etc for rule branches
-  - use edge sourceHandle ""fallback"" for the fallback branch when present
-- For handoff nodes:
-  - only use if the prompt clearly asks for human escalation
-  - config must include kind, inboxKey, confirmationMessage, contactEmailVariable
-  - if you use handoff, add metadata.handoffInboxes with at least one inbox:
-    {{
-      ""key"": ""support"",
-      ""label"": ""Support Team"",
-      ""email"": ""support@example.com""
-    }}
-  - make sure contactEmailVariable matches a variable captured by a prior question node
-- Use realistic message text.
-- Position nodes with increasing y values so the graph is readable.
-
-User request:
-{userPrompt}";
     }
 
     private static string BuildRepairPrompt(
@@ -192,25 +128,7 @@ User request:
     {
         var sanitizedGraph = NormalizeGeneratedGraph(CloneGraph(invalidGraph));
         var serializedGraph = JsonSerializer.Serialize(BotGraphMapper.MapToDto(sanitizedGraph), BotGraphMapper.SerializerOptions);
-        var issueText = string.Join(Environment.NewLine, issues.Select(issue => $"- {issue.Message}"));
-
-        return $@"Repair this bot graph JSON so it becomes valid for the builder.
-
-Return JSON only.
-
-Original user request:
-{originalPrompt}
-
-Desired bot name:
-{requestedName}
-
-Validation errors:
-{issueText}
-
-Current invalid JSON:
-{serializedGraph}
-
-Keep the same overall intent, but fix the structure so it becomes a valid BotGraph.";
+        return BotGenerationPromptBuilder.BuildRepairPrompt(originalPrompt, requestedName, serializedGraph, issues);
     }
 
     private static BotGraphDefinition NormalizeGeneratedGraph(BotGraphDefinition graph)
@@ -227,7 +145,7 @@ Keep the same overall intent, but fix the structure so it becomes a valid BotGra
         {
             node.Type = (node.Type ?? string.Empty).Trim().ToLowerInvariant();
             node.Label = string.IsNullOrWhiteSpace(node.Label) ? ResolveDefaultLabel(node.Type) : node.Label.Trim();
-            node.Config = NormalizeJsonElement(node.Config);
+            node.Config = NormalizeConfig(node.Type, node.Id, node.Config);
         }
 
         return graph;
@@ -263,7 +181,7 @@ Keep the same overall intent, but fix the structure so it becomes a valid BotGra
                         X = node.Position.X,
                         Y = node.Position.Y
                     },
-                    Config = NormalizeJsonElement(node.Config)
+                    Config = NormalizeConfig(node.Type, node.Id, node.Config)
                 })
                 .ToList(),
             Edges = graph.Edges
@@ -276,6 +194,37 @@ Keep the same overall intent, but fix the structure so it becomes a valid BotGra
                     Label = edge.Label
                 })
                 .ToList()
+        };
+    }
+
+    private static JsonElement NormalizeConfig(string nodeType, string nodeId, JsonElement element)
+    {
+        var normalizedElement = NormalizeJsonElement(element);
+
+        return nodeType switch
+        {
+            "start" => CreateJsonElement(new
+            {
+                kind = "start"
+            }),
+            "message" => CreateJsonElement(new
+            {
+                kind = "message",
+                message = ReadString(normalizedElement, "message", "Hi there. How can I help today?")
+            }),
+            "question" => NormalizeQuestionConfig(nodeId, normalizedElement),
+            "condition" => NormalizeConditionConfig(normalizedElement),
+            "variable" => NormalizeVariableConfig(nodeId, normalizedElement),
+            "api" => NormalizeApiConfig(normalizedElement),
+            "ai" => NormalizeAiConfig(normalizedElement),
+            "code" => NormalizeCodeConfig(normalizedElement),
+            "handoff" => NormalizeHandoffConfig(normalizedElement),
+            "end" => CreateJsonElement(new
+            {
+                kind = "end",
+                closingText = ReadString(normalizedElement, "closingText", "Thanks for chatting with us.")
+            }),
+            _ => normalizedElement
         };
     }
 
@@ -292,6 +241,304 @@ Keep the same overall intent, but fix the structure so it becomes a valid BotGra
     private static JsonElement CreateEmptyJsonObject()
     {
         return JsonDocument.Parse("{}").RootElement.Clone();
+    }
+
+    private static JsonElement NormalizeQuestionConfig(string nodeId, JsonElement config)
+    {
+        var inputMode = ReadString(config, "inputMode", "text");
+        var normalizedInputMode = string.Equals(inputMode, "choice", StringComparison.OrdinalIgnoreCase) ? "choice" : "text";
+
+        return CreateJsonElement(new
+        {
+            kind = "question",
+            question = ReadString(config, "question", "What can I help you with today?"),
+            variableName = ReadString(config, "variableName", BuildVariableName(nodeId, "userInput")),
+            inputMode = normalizedInputMode,
+            options = NormalizeQuestionOptions(config, normalizedInputMode),
+            invalidInputMessage = ReadString(config, "invalidInputMessage", "Please choose one of the available options.")
+        });
+    }
+
+    private static JsonElement NormalizeConditionConfig(JsonElement config)
+    {
+        return CreateJsonElement(new
+        {
+            kind = "condition",
+            variableName = ReadString(config, "variableName", "userIntent"),
+            rules = NormalizeConditionRules(config),
+            fallbackLabel = ReadString(config, "fallbackLabel", "Fallback")
+        });
+    }
+
+    private static JsonElement NormalizeVariableConfig(string nodeId, JsonElement config)
+    {
+        var operation = ReadString(config, "operation", "set");
+        var normalizedOperation = operation switch
+        {
+            "append" => "append",
+            "clear" => "clear",
+            "copy" => "copy",
+            _ => "set"
+        };
+
+        return CreateJsonElement(new
+        {
+            kind = "variable",
+            variableName = ReadString(config, "variableName", BuildVariableName(nodeId, "sessionValue")),
+            operation = normalizedOperation,
+            value = normalizedOperation == "clear" ? string.Empty : ReadString(config, "value", string.Empty),
+            sourceVariableName = normalizedOperation == "copy"
+                ? ReadString(config, "sourceVariableName", "userIntent")
+                : ReadString(config, "sourceVariableName", string.Empty)
+        });
+    }
+
+    private static JsonElement NormalizeApiConfig(JsonElement config)
+    {
+        var method = ReadString(config, "method", "GET");
+        var normalizedMethod = string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase) ? "POST" : "GET";
+
+        return CreateJsonElement(new
+        {
+            kind = "api",
+            endpoint = ReadString(config, "endpoint", "https://api.example.com/orders"),
+            method = normalizedMethod,
+            headers = NormalizeApiHeaders(config),
+            body = ReadString(config, "body", string.Empty),
+            timeoutMs = ReadPositiveInt(config, "timeoutMs", 10000),
+            responseMappings = NormalizeApiMappings(config),
+            successLabel = ReadString(config, "successLabel", "Success"),
+            errorLabel = ReadString(config, "errorLabel", "Error")
+        });
+    }
+
+    private static JsonElement NormalizeAiConfig(JsonElement config)
+    {
+        var responseMode = ReadString(config, "responseMode", "strict");
+        var normalizedResponseMode = responseMode switch
+        {
+            "hybrid" => "hybrid",
+            "free" => "free",
+            _ => "strict"
+        };
+
+        return CreateJsonElement(new
+        {
+            kind = "ai",
+            instructions = ReadString(config, "instructions", "Answer the question using the attached knowledge base."),
+            fallbackText = ReadString(config, "fallbackText", "I'm not confident enough to answer that yet."),
+            responseMode = normalizedResponseMode
+        });
+    }
+
+    private static JsonElement NormalizeCodeConfig(JsonElement config)
+    {
+        return CreateJsonElement(new
+        {
+            kind = "code",
+            script = ReadString(config, "script", "vars.result = vars.userIntent ?? \"\";"),
+            timeoutMs = ReadPositiveInt(config, "timeoutMs", 1000)
+        });
+    }
+
+    private static JsonElement NormalizeHandoffConfig(JsonElement config)
+    {
+        var inboxKey = ReadString(config, "inboxKey", ReadString(config, "queueName", "support"));
+
+        return CreateJsonElement(new
+        {
+            kind = "handoff",
+            inboxKey,
+            confirmationMessage = ReadString(config, "confirmationMessage", "Thanks. Our team will review your message and follow up by email."),
+            contactEmailVariable = ReadString(config, "contactEmailVariable", "email"),
+            queueName = string.IsNullOrWhiteSpace(ReadString(config, "queueName", string.Empty))
+                ? null
+                : ReadString(config, "queueName", string.Empty)
+        });
+    }
+
+    private static List<object> NormalizeQuestionOptions(JsonElement config, string inputMode)
+    {
+        if (!string.Equals(inputMode, "choice", StringComparison.OrdinalIgnoreCase))
+        {
+            return [];
+        }
+
+        var options = new List<object>();
+
+        if (!config.TryGetProperty("options", out var rawOptions) || rawOptions.ValueKind != JsonValueKind.Array)
+        {
+            return options;
+        }
+
+        var optionIndex = 0;
+        foreach (var option in rawOptions.EnumerateArray())
+        {
+            if (option.ValueKind == JsonValueKind.String)
+            {
+                var optionLabel = option.GetString()?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(optionLabel))
+                {
+                    optionIndex += 1;
+                    continue;
+                }
+
+                options.Add(new
+                {
+                    id = $"option-{optionIndex + 1}",
+                    label = optionLabel,
+                    value = optionLabel
+                });
+                optionIndex += 1;
+                continue;
+            }
+
+            var label = ReadString(option, "label", string.Empty);
+            if (string.IsNullOrWhiteSpace(label))
+            {
+                optionIndex += 1;
+                continue;
+            }
+
+            options.Add(new
+            {
+                id = ReadString(option, "id", $"option-{optionIndex + 1}"),
+                label,
+                value = ReadString(option, "value", label)
+            });
+            optionIndex += 1;
+        }
+
+        return options;
+    }
+
+    private static List<object> NormalizeConditionRules(JsonElement config)
+    {
+        var rules = new List<object>();
+
+        if (config.TryGetProperty("rules", out var rawRules) && rawRules.ValueKind == JsonValueKind.Array)
+        {
+            var ruleIndex = 0;
+            foreach (var rule in rawRules.EnumerateArray())
+            {
+                var normalizedOperator = ReadString(rule, "operator", "equals");
+                normalizedOperator = normalizedOperator switch
+                {
+                    "contains" => "contains",
+                    "startsWith" => "startsWith",
+                    "endsWith" => "endsWith",
+                    "isEmpty" => "isEmpty",
+                    "isNotEmpty" => "isNotEmpty",
+                    _ => "equals"
+                };
+
+                rules.Add(new
+                {
+                    id = ReadString(rule, "id", $"condition-rule-{ruleIndex + 1}"),
+                    @operator = normalizedOperator,
+                    value = ReadString(rule, "value", normalizedOperator is "isEmpty" or "isNotEmpty" ? string.Empty : "value")
+                });
+                ruleIndex += 1;
+            }
+        }
+
+        return rules;
+    }
+
+    private static List<object> NormalizeApiHeaders(JsonElement config)
+    {
+        var headers = new List<object>();
+
+        if (config.TryGetProperty("headers", out var rawHeaders) && rawHeaders.ValueKind == JsonValueKind.Array)
+        {
+            var headerIndex = 0;
+            foreach (var header in rawHeaders.EnumerateArray())
+            {
+                headers.Add(new
+                {
+                    id = ReadString(header, "id", $"header-{headerIndex + 1}"),
+                    key = ReadString(header, "key", string.Empty),
+                    value = ReadString(header, "value", string.Empty)
+                });
+                headerIndex += 1;
+            }
+        }
+
+        return headers;
+    }
+
+    private static List<object> NormalizeApiMappings(JsonElement config)
+    {
+        var mappings = new List<object>();
+
+        if (config.TryGetProperty("responseMappings", out var rawMappings) && rawMappings.ValueKind == JsonValueKind.Array)
+        {
+            var mappingIndex = 0;
+            foreach (var mapping in rawMappings.EnumerateArray())
+            {
+                mappings.Add(new
+                {
+                    id = ReadString(mapping, "id", $"mapping-{mappingIndex + 1}"),
+                    variableName = ReadString(mapping, "variableName", "apiResult"),
+                    path = ReadString(mapping, "path", "body")
+                });
+                mappingIndex += 1;
+            }
+        }
+
+        return mappings;
+    }
+
+    private static string ReadString(JsonElement element, string propertyName, string fallback)
+    {
+        if (!element.TryGetProperty(propertyName, out var property))
+        {
+            return fallback;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.String => string.IsNullOrWhiteSpace(property.GetString()) ? fallback : property.GetString()!.Trim(),
+            JsonValueKind.Number => property.ToString(),
+            JsonValueKind.True => bool.TrueString.ToLowerInvariant(),
+            JsonValueKind.False => bool.FalseString.ToLowerInvariant(),
+            _ => fallback
+        };
+    }
+
+    private static int ReadPositiveInt(JsonElement element, string propertyName, int fallback)
+    {
+        if (element.TryGetProperty(propertyName, out var property) &&
+            property.ValueKind == JsonValueKind.Number &&
+            property.TryGetInt32(out var value) &&
+            value > 0)
+        {
+            return value;
+        }
+
+        return fallback;
+    }
+
+    private static JsonElement CreateJsonElement<T>(T value)
+    {
+        return JsonSerializer.SerializeToElement(value, BotGraphMapper.SerializerOptions);
+    }
+
+    private static string BuildVariableName(string nodeId, string fallbackPrefix)
+    {
+        var normalizedNodeId = (nodeId ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(normalizedNodeId))
+        {
+            return fallbackPrefix;
+        }
+
+        var cleanedNodeId = normalizedNodeId
+            .Replace("question-", string.Empty, StringComparison.Ordinal)
+            .Replace("variable-", string.Empty, StringComparison.Ordinal)
+            .Replace("node-", string.Empty, StringComparison.Ordinal)
+            .Replace("-", string.Empty, StringComparison.Ordinal);
+
+        return string.IsNullOrWhiteSpace(cleanedNodeId) ? fallbackPrefix : $"{fallbackPrefix}{cleanedNodeId}";
     }
 
     private static string ExtractJsonPayload(string rawResponse)
@@ -327,6 +574,9 @@ Keep the same overall intent, but fix the structure so it becomes a valid BotGra
             "message" => "Message",
             "question" => "Question",
             "condition" => "Condition",
+            "api" => "API Call",
+            "ai" => "AI Node",
+            "code" => "Code",
             "variable" => "Variable",
             "handoff" => "Handoff",
             "end" => "End",
