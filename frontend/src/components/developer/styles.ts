@@ -933,6 +933,25 @@ export const useStyles = createStyles(({ css, token }) => ({
     border: 1px solid ${token.colorBorder};
     box-shadow: 0 18px 36px rgba(17, 24, 39, 0.04);
   `,
+  settingsCard: css`
+    height: 100%;
+    border-radius: 24px;
+    border: 1px solid ${token.colorBorder};
+    box-shadow: 0 18px 36px rgba(17, 24, 39, 0.04);
+    background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  `,
+  settingsIcon: css`
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.08);
+    color: ${SELECTED_SURFACE_TEXT};
+    font-size: 18px;
+    flex-shrink: 0;
+  `,
   builderShell: css`
     min-height: 100vh;
     display: flex;

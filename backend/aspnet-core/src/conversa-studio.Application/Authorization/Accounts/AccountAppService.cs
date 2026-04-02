@@ -1,7 +1,10 @@
+using Abp.Authorization;
 using Abp.Configuration;
 using Abp.Zero.Configuration;
 using ConversaStudio.Authorization.Accounts.Dto;
 using ConversaStudio.Authorization.Users;
+using ConversaStudio.Users.Dto;
+using Microsoft.AspNetCore.Identity;
 using System.Threading.Tasks;
 
 namespace ConversaStudio.Authorization.Accounts;
@@ -52,5 +55,28 @@ public class AccountAppService : ConversaStudioAppServiceBase, IAccountAppServic
         {
             CanLogin = user.IsActive && (user.IsEmailConfirmed || !isEmailConfirmationRequiredForLogin)
         };
+    }
+
+    /// <summary>
+    /// Changes the current authenticated user's password.
+    /// </summary>
+    [AbpAuthorize]
+    public async Task<bool> ChangePassword(ChangePasswordDto input)
+    {
+        await UserManager.InitializeOptionsAsync(AbpSession.TenantId);
+
+        var user = await GetCurrentUserAsync();
+        if (await UserManager.CheckPasswordAsync(user, input.CurrentPassword))
+        {
+            CheckErrors(await UserManager.ChangePasswordAsync(user, input.NewPassword));
+            return true;
+        }
+
+        CheckErrors(IdentityResult.Failed(new IdentityError
+        {
+            Description = "Incorrect password."
+        }));
+
+        return false;
     }
 }
