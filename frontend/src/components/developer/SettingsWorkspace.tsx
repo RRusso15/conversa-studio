@@ -152,10 +152,6 @@ export function SettingsWorkspace() {
                     items={accountItems}
                     labelStyle={{ width: "36%", fontWeight: 600 }}
                   />
-
-                  <Tag color="default" style={{ width: "fit-content" }}>
-                    Read-only
-                  </Tag>
                 </Space>
               </Card>
             </Col>
@@ -269,13 +265,6 @@ export function SettingsWorkspace() {
                     </Button>
                   </Space>
                 </Card>
-
-                <Alert
-                  type="info"
-                  showIcon
-                  message="Need workspace help?"
-                  description="If your workspace information looks wrong or access stops working, contact your workspace administrator or support team."
-                />
               </Space>
             </Col>
           </Row>

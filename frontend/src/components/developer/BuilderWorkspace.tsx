@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { App, Button, Card, Grid, Result, Spin } from "antd";
+import { App, Button, Card, Grid, Result } from "antd";
 import { BuilderProvider, useBuilder } from "./builder/builder-context";
 import { BuilderCanvas } from "./builder/BuilderCanvas";
 import { BuilderPropertiesPanel } from "./builder/BuilderPropertiesPanel";
@@ -15,6 +15,7 @@ import { downloadBotExport, parseImportedBotFile } from "./builder/bot-portabili
 import { useBotActions, useBotState } from "@/providers/botProvider";
 import { validateBotGraph } from "./builder/validation";
 import type { BotGraph, ValidationResult } from "./builder/types";
+import { AppLoader } from "@/components/shared/AppLoader";
 
 interface BuilderWorkspaceProps {
   botId?: string;
@@ -475,7 +476,7 @@ export function BuilderWorkspace({ botId }: BuilderWorkspaceProps) {
   const isBuilderWidthBlocked = viewportWidth !== null && viewportWidth < MIN_BUILDER_WIDTH;
 
   if (isPending && !initialGraph) {
-    return <Spin size="large" />;
+    return <AppLoader label="Loading builder" />;
   }
 
   if (isError && !initialGraph) {
@@ -494,7 +495,7 @@ export function BuilderWorkspace({ botId }: BuilderWorkspaceProps) {
   }
 
   if (!initialGraph) {
-    return <Spin size="large" />;
+    return <AppLoader label="Preparing builder" />;
   }
 
   if (isBuilderWidthBlocked) {

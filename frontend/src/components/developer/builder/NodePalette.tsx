@@ -27,7 +27,7 @@ export function NodePalette() {
           <div className={styles.paletteContent}>
             <Title level={5}>Nodes</Title>
             <Paragraph type="secondary">
-              Click to add a node instantly, or drag it into a specific spot on the canvas.
+              Click/Drag to add a node.
             </Paragraph>
 
             <Space direction="vertical" size="small" style={{ width: "100%" }}>

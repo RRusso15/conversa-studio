@@ -3,10 +3,10 @@
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Flex, Spin } from "antd";
 import { useAuthActions, useAuthState } from "@/providers/authProvider";
 import type { IUserLoginInfo } from "@/providers/authProvider/context";
 import { hasRole } from "@/utils/auth-roles";
+import { AppLoader } from "@/components/shared/AppLoader";
 
 interface AuthRouteGuardProps {
   children: ReactNode;
@@ -40,19 +40,11 @@ export function AuthRouteGuard({ children, allowedRoles }: AuthRouteGuardProps) 
   }, [allowedRoles, fetchCurrentUser, isAuthenticated, isBootstrapped, router, user]);
 
   if (!isBootstrapped || isPending || !isAuthenticated || !user) {
-    return (
-      <Flex align="center" justify="center" style={{ minHeight: "100vh" }}>
-        <Spin size="large" />
-      </Flex>
-    );
+    return <AppLoader label="Loading workspace" />;
   }
 
   if (allowedRoles?.length && !userHasAnyRole(user, allowedRoles)) {
-    return (
-      <Flex align="center" justify="center" style={{ minHeight: "100vh" }}>
-        <Spin size="large" />
-      </Flex>
-    );
+    return <AppLoader label="Checking access" />;
   }
 
   return <>{children}</>;

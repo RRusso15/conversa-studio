@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { App, Button, Card, Grid, Result, Spin } from "antd";
+import { App, Button, Card, Grid, Result } from "antd";
 import { BuilderProvider, useBuilder } from "@/components/developer/builder/builder-context";
 import { BuilderCanvas } from "@/components/developer/builder/BuilderCanvas";
 import { BuilderPropertiesPanel } from "@/components/developer/builder/BuilderPropertiesPanel";
@@ -22,6 +22,7 @@ import {
   validateTemplateDraft,
   type ITemplateDefinition,
 } from "@/utils/template-api";
+import { AppLoader } from "@/components/shared/AppLoader";
 
 const BUILDER_RIGHT_PANEL_WIDTH_KEY = "template-builder:right-panel-width";
 const DEFAULT_RIGHT_PANEL_WIDTH = 360;
@@ -394,7 +395,7 @@ export function AdminTemplateBuilderWorkspace({ templateId }: AdminTemplateBuild
   const initialGraph = useMemo(() => template?.graph, [template]);
 
   if (isPending && !initialGraph) {
-    return <Spin size="large" />;
+    return <AppLoader label="Loading template editor" />;
   }
 
   if (errorMessage && !initialGraph) {
@@ -413,7 +414,7 @@ export function AdminTemplateBuilderWorkspace({ templateId }: AdminTemplateBuild
   }
 
   if (!initialGraph) {
-    return <Spin size="large" />;
+    return <AppLoader label="Preparing template editor" />;
   }
 
   if (viewportWidth !== null && viewportWidth < MIN_BUILDER_WIDTH) {

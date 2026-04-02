@@ -73,7 +73,12 @@ function AdminSidebar({ onNavigate }: AdminSidebarProps) {
   const user = currentLoginInformations?.user;
   const tenant = currentLoginInformations?.tenant;
 
-  const selectedKey = adminNavItems.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))?.key ?? "dashboard";
+  const selectedKey =
+    adminNavItems.find((item) =>
+      item.href === "/admin"
+        ? pathname === item.href
+        : pathname === item.href || pathname.startsWith(`${item.href}/`)
+    )?.key ?? "dashboard";
   const items: MenuProps["items"] = adminNavItems.map((item) => ({
     key: item.key,
     icon: item.icon,
@@ -129,16 +134,14 @@ function AdminSidebar({ onNavigate }: AdminSidebarProps) {
 
 function BrandLink({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <Link href="/" onClick={onNavigate} style={{ display: "inline-flex", alignItems: "center", gap: 12, color: "#111827", fontWeight: 700 }}>
+    <Link href="/admin" onClick={onNavigate} style={{ display: "inline-flex", alignItems: "center", gap: 12, color: "#111827", fontWeight: 700 }}>
       <span
         style={{
           width: 40,
           height: 40,
-          borderRadius: 14,
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#111827",
         }}
       >
         <Image src="/images/logo.png" alt="Conversa Studio logo" width={24} height={24} />
