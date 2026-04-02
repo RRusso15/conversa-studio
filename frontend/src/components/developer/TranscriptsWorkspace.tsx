@@ -3,8 +3,10 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Button,
   Card,
   Empty,
+  Grid,
   Input,
   Select,
   Skeleton,
@@ -12,7 +14,7 @@ import {
   Tag,
   Typography,
 } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, SearchOutlined } from "@ant-design/icons";
 import { PageHeader } from "./PageHeader";
 import { useStyles } from "./styles";
 import { useBotActions, useBotState } from "@/providers/botProvider";
@@ -25,6 +27,7 @@ const { Paragraph, Text, Title } = Typography;
 
 export function TranscriptsWorkspace() {
   const { styles } = useStyles();
+  const screens = Grid.useBreakpoint();
   const { bots } = useBotState();
   const { getBots } = useBotActions();
   const {
@@ -46,6 +49,8 @@ export function TranscriptsWorkspace() {
   } = useTranscriptActions();
   const [searchDraft, setSearchDraft] = useState(filters.searchText);
   const deferredSearch = useDeferredValue(searchDraft);
+  const [isMobileConversationOpen, setIsMobileConversationOpen] = useState(false);
+  const isMobile = !screens.lg;
 
   useEffect(() => {
     void getBots();
@@ -80,8 +85,12 @@ export function TranscriptsWorkspace() {
       return;
     }
 
+    if (isMobile) {
+      return;
+    }
+
     void getTranscript(sessions[0].id);
-  }, [clearSelectedTranscript, getTranscript, listStatus, selectedTranscriptId, sessions]);
+  }, [clearSelectedTranscript, getTranscript, isMobile, listStatus, selectedTranscriptId, sessions]);
 
   const botOptions = useMemo(
     () =>
@@ -91,6 +100,10 @@ export function TranscriptsWorkspace() {
       })) ?? [],
     [bots]
   );
+
+  const hasSessions = Boolean(sessions?.length);
+  const shouldShowSessionList = !isMobile || !isMobileConversationOpen || !hasSessions;
+  const shouldShowConversation = (!isMobile || isMobileConversationOpen) && hasSessions;
 
   return (
     <>
@@ -150,6 +163,7 @@ export function TranscriptsWorkspace() {
       ) : null}
 
       <div className={styles.transcriptLayout}>
+        {shouldShowSessionList ? (
         <div className={styles.transcriptPane}>
           <div className={styles.transcriptPaneHeader}>
             <Space direction="vertical" size={4}>
@@ -194,6 +208,9 @@ export function TranscriptsWorkspace() {
                     className={styles.transcriptSessionCard}
                     data-selected={selectedTranscriptId === session.id}
                     onClick={() => {
+                      if (isMobile) {
+                        setIsMobileConversationOpen(true);
+                      }
                       void getTranscript(session.id);
                     }}
                   >
@@ -244,16 +261,30 @@ export function TranscriptsWorkspace() {
             ) : null}
           </div>
         </div>
+        ) : null}
 
+        {shouldShowConversation ? (
         <div className={styles.transcriptPane}>
           <div className={styles.transcriptPaneHeader}>
-            <Space direction="vertical" size={4}>
-              <Title level={4} style={{ margin: 0 }}>
-                Conversation
-              </Title>
-              <Text type="secondary">
-                Review the full message history and runtime state for one session.
-              </Text>
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {isMobile ? (
+                <Button
+                  type="text"
+                  icon={<ArrowLeftOutlined />}
+                  onClick={() => setIsMobileConversationOpen(false)}
+                  style={{ alignSelf: "flex-start", paddingInline: 0 }}
+                >
+                  Back to sessions
+                </Button>
+              ) : null}
+              <Space direction="vertical" size={4}>
+                <Title level={4} style={{ margin: 0 }}>
+                  Conversation
+                </Title>
+                <Text type="secondary">
+                  Review the full message history and runtime state for one session.
+                </Text>
+              </Space>
             </Space>
           </div>
           <div className={styles.transcriptPaneBody}>
@@ -362,6 +393,7 @@ export function TranscriptsWorkspace() {
             ) : null}
           </div>
         </div>
+        ) : null}
       </div>
     </>
   );
