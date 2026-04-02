@@ -74,7 +74,6 @@ conversa-studio.Core/
 │   ├── Channels/
 │   ├── Collaboration/
 │   ├── Deployments/
-│   ├── Integrations/
 │   ├── Knowledge/
 │   ├── Runtime/
 │   ├── Templates/
@@ -91,7 +90,6 @@ Examples of what belongs here:
 - `Transcripts`: conversation records, message events, retention rules
 - `Analytics`: summary aggregates, usage counters, drop-off and fallback metrics
 - `Templates`: reusable starter bot definitions and template metadata
-- `Integrations`: integration definitions and integration domain rules
 - `Collaboration`: memberships, roles, workspace collaboration rules
 
 Rules:
@@ -129,7 +127,6 @@ conversa-studio.Application/
 │   ├── Channels/
 │   ├── Collaboration/
 │   ├── Deployments/
-│   ├── Integrations/
 │   ├── Knowledge/
 │   ├── Runtime/
 │   ├── Templates/
@@ -271,7 +268,6 @@ Conversa Studio is not modeled as a traditional line-of-business system. New bac
 - `Transcripts`
 - `Analytics`
 - `Templates`
-- `Integrations`
 - `Billing`
 - `Collaboration`
 
@@ -339,7 +335,7 @@ When choosing where to invest design effort first, align backend work to the cur
 5. AI knowledge node support
 6. Templates and prompt-to-bot generation
 7. Admin transcripts and analytics
-8. Billing, integrations, and collaboration after core flow works
+8. Collaboration and later expansion areas after core flow works
 
 The first major backend-centered business domains should usually be `Bots` and `Runtime`.
 

@@ -7,7 +7,6 @@ import {
   SettingOutlined,
   SnippetsOutlined,
   TeamOutlined,
-  ToolOutlined,
 } from "@ant-design/icons";
 
 export interface DeveloperNavItem {
@@ -53,12 +52,6 @@ export const developerNavItems: DeveloperNavItem[] = [
     label: "Analytics",
     href: "/developer/analytics",
     icon: <BarChartOutlined />,
-  },
-  {
-    key: "integrations",
-    label: "Integrations",
-    href: "/developer/integrations",
-    icon: <ToolOutlined />,
   },
   {
     key: "settings",

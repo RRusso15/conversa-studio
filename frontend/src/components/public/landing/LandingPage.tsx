@@ -57,9 +57,9 @@ const features = [
   },
   {
     icon: <DeploymentUnitOutlined />,
-    title: "Integrations",
+    title: "Runtime Ready",
     description:
-      "Connect workflows to APIs, sheets, CRMs, and future operational systems without losing control.",
+      "Ship validated bot flows with deployment-oriented contracts and a clear path from builder to live widget.",
   },
   {
     icon: <TeamOutlined />,

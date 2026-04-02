@@ -45,9 +45,9 @@ export function Landing() {
     desc: 'Track drop-offs, user intents, and conversation success rates in real-time.'
   },
   {
-    icon: PlugIcon,
-    title: 'Integrations',
-    desc: 'Connect to Salesforce, Zendesk, Google Sheets, and custom APIs.'
+    icon: BotIcon,
+    title: 'Runtime Ready',
+    desc: 'Ship validated bot flows with a clean path from builder to live widget.'
   },
   {
     icon: UsersIcon,
