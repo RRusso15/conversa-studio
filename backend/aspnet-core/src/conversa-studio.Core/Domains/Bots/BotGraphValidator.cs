@@ -17,11 +17,14 @@ public class BotGraphValidator : ITransientDependency
     public IReadOnlyList<BotValidationIssue> Validate(BotGraphDefinition graph)
     {
         var issues = new List<BotValidationIssue>();
+        var definedVariables = CollectDefinedVariables(graph);
         var nodeIds = graph.Nodes
             .Where(node => !string.IsNullOrWhiteSpace(node.Id))
             .Select(node => node.Id)
             .ToList();
         var startNodes = graph.Nodes.Where(node => string.Equals(node.Type, "start", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        ValidateHandoffInboxes(graph, issues);
 
         if (startNodes.Count != 1)
         {
@@ -48,7 +51,7 @@ public class BotGraphValidator : ITransientDependency
 
         foreach (var node in graph.Nodes)
         {
-            ValidateNode(node, issues);
+            ValidateNode(graph, node, definedVariables, issues);
         }
 
         var knownNodeIds = new HashSet<string>(nodeIds, StringComparer.Ordinal);
@@ -128,7 +131,11 @@ public class BotGraphValidator : ITransientDependency
         return visited;
     }
 
-    private static void ValidateNode(BotNodeDefinition node, List<BotValidationIssue> issues)
+    private static void ValidateNode(
+        BotGraphDefinition graph,
+        BotNodeDefinition node,
+        HashSet<string> definedVariables,
+        List<BotValidationIssue> issues)
     {
         if (string.IsNullOrWhiteSpace(node.Id))
         {
@@ -252,9 +259,153 @@ public class BotGraphValidator : ITransientDependency
                 }
                 break;
             case "handoff":
-                RequireStringProperty(node, "queueName", "Handoff nodes require a queue name.", issues);
+                ValidateHandoffNode(graph, node, definedVariables, issues);
                 break;
         }
+    }
+
+    private static void ValidateHandoffNode(
+        BotGraphDefinition graph,
+        BotNodeDefinition node,
+        HashSet<string> definedVariables,
+        List<BotValidationIssue> issues)
+    {
+        var inboxKey = TryGetTrimmedString(node.Config, "inboxKey", out var configuredInboxKey)
+            ? configuredInboxKey
+            : TryGetTrimmedString(node.Config, "queueName", out var legacyQueueName)
+                ? legacyQueueName
+                : string.Empty;
+
+        if (string.IsNullOrWhiteSpace(inboxKey))
+        {
+            issues.Add(new BotValidationIssue
+            {
+                Id = $"handoff-inbox-{node.Id}",
+                Severity = BotValidationSeverity.Error,
+                Message = "Handoff nodes require a selected inbox.",
+                RelatedNodeId = node.Id
+            });
+        }
+        else if (!graph.Metadata.HandoffInboxes.Any(inbox =>
+                     string.Equals((inbox.Key ?? string.Empty).Trim(), inboxKey, StringComparison.OrdinalIgnoreCase)))
+        {
+            issues.Add(new BotValidationIssue
+            {
+                Id = $"handoff-inbox-missing-{node.Id}",
+                Severity = BotValidationSeverity.Error,
+                Message = $"Handoff inbox '{inboxKey}' does not exist in this bot.",
+                RelatedNodeId = node.Id
+            });
+        }
+
+        RequireStringProperty(node, "confirmationMessage", "Handoff nodes require a confirmation message.", issues);
+        RequireStringProperty(node, "contactEmailVariable", "Handoff nodes require a contact email variable.", issues);
+
+        if (TryGetTrimmedString(node.Config, "contactEmailVariable", out var contactEmailVariable) &&
+            !string.IsNullOrWhiteSpace(contactEmailVariable) &&
+            !definedVariables.Contains(contactEmailVariable))
+        {
+            issues.Add(new BotValidationIssue
+            {
+                Id = $"handoff-contact-variable-{node.Id}",
+                Severity = BotValidationSeverity.Error,
+                Message = $"Contact email variable '{contactEmailVariable}' does not exist in this graph.",
+                RelatedNodeId = node.Id
+            });
+        }
+    }
+
+    private static void ValidateHandoffInboxes(BotGraphDefinition graph, List<BotValidationIssue> issues)
+    {
+        var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        for (var index = 0; index < graph.Metadata.HandoffInboxes.Count; index += 1)
+        {
+            var inbox = graph.Metadata.HandoffInboxes[index];
+            var normalizedKey = (inbox.Key ?? string.Empty).Trim();
+            var normalizedLabel = (inbox.Label ?? string.Empty).Trim();
+            var normalizedEmail = (inbox.Email ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(normalizedKey))
+            {
+                issues.Add(new BotValidationIssue
+                {
+                    Id = $"handoff-inbox-key-{index}",
+                    Severity = BotValidationSeverity.Error,
+                    Message = $"Handoff inbox {index + 1} requires a key."
+                });
+            }
+            else if (!seenKeys.Add(normalizedKey))
+            {
+                issues.Add(new BotValidationIssue
+                {
+                    Id = $"handoff-inbox-key-duplicate-{normalizedKey}",
+                    Severity = BotValidationSeverity.Error,
+                    Message = $"Handoff inbox key '{normalizedKey}' is duplicated."
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(normalizedLabel))
+            {
+                issues.Add(new BotValidationIssue
+                {
+                    Id = $"handoff-inbox-label-{index}",
+                    Severity = BotValidationSeverity.Error,
+                    Message = $"Handoff inbox {index + 1} requires a label."
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(normalizedEmail))
+            {
+                issues.Add(new BotValidationIssue
+                {
+                    Id = $"handoff-inbox-email-{index}",
+                    Severity = BotValidationSeverity.Error,
+                    Message = $"Handoff inbox {index + 1} requires a recipient email address."
+                });
+            }
+            else if (!IsValidEmail(normalizedEmail))
+            {
+                var inboxName = string.IsNullOrWhiteSpace(normalizedLabel) ? normalizedKey : normalizedLabel;
+
+                issues.Add(new BotValidationIssue
+                {
+                    Id = $"handoff-inbox-email-format-{index}",
+                    Severity = BotValidationSeverity.Error,
+                    Message = $"Handoff inbox '{inboxName}' must use a valid email address."
+                });
+            }
+        }
+    }
+
+    private static HashSet<string> CollectDefinedVariables(BotGraphDefinition graph)
+    {
+        var variables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var node in graph.Nodes)
+        {
+            if (string.Equals(node.Type, "question", StringComparison.OrdinalIgnoreCase) &&
+                TryGetTrimmedString(node.Config, "variableName", out var questionVariable) &&
+                !string.IsNullOrWhiteSpace(questionVariable))
+            {
+                variables.Add(questionVariable);
+            }
+
+            if (string.Equals(node.Type, "variable", StringComparison.OrdinalIgnoreCase) &&
+                TryGetTrimmedString(node.Config, "variableName", out var variableNodeVariable) &&
+                !string.IsNullOrWhiteSpace(variableNodeVariable))
+            {
+                variables.Add(variableNodeVariable);
+            }
+        }
+
+        return variables;
+    }
+
+    private static bool IsValidEmail(string value)
+    {
+        return value.Contains('@', StringComparison.Ordinal) &&
+               value.Contains('.', StringComparison.Ordinal);
     }
 
     private static void RequireStringProperty(BotNodeDefinition node, string propertyName, string message, List<BotValidationIssue> issues)

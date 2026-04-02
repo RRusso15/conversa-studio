@@ -21,6 +21,7 @@ public class PublishedGraphRuntimeValidator : ITransientDependency
         "api",
         "ai",
         "code",
+        "handoff",
         "end"
     };
 

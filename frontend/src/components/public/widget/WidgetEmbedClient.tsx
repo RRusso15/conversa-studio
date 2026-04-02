@@ -3,6 +3,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Button, Input, Spin, Typography } from "antd";
+import { sendHandoffEmail } from "@/utils/handoff-email";
 
 const { Text, Title } = Typography;
 
@@ -35,6 +36,16 @@ interface IWidgetSessionResponse {
     awaitingInputMode: "question" | "choice" | "";
     suggestedReplies: string[];
     isCompleted: boolean;
+    handoff?: IWidgetHandoff;
+}
+
+interface IWidgetHandoff {
+    nodeId: string;
+    inboxKey: string;
+    inboxLabel: string;
+    recipientEmail: string;
+    contactEmail: string;
+    variables: Record<string, string>;
 }
 
 interface IWidgetErrorResponse {
@@ -51,6 +62,7 @@ interface IAbpWidgetResponse<T> {
 }
 
 const SESSION_STORAGE_PREFIX = "conversa-widget-session";
+const HANDOFF_STORAGE_PREFIX = "conversa-widget-handoff";
 const MIN_TYPING_DISPLAY_MS = 700;
 const POWERED_BY_LABEL = "Powered by Conversa Studio";
 
@@ -69,7 +81,11 @@ export function WidgetEmbedClient({
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const [error, setError] = useState<string>();
+    const [handoffError, setHandoffError] = useState<string>();
+    const [handoffStatus, setHandoffStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+    const [pendingHandoff, setPendingHandoff] = useState<IWidgetHandoff>();
     const transcriptEndRef = useRef<HTMLDivElement | null>(null);
+    const messagesRef = useRef<IWidgetMessage[]>([]);
 
     const sessionStorageKey = useMemo(
         () => `${SESSION_STORAGE_PREFIX}:${deploymentKey}`,
@@ -122,8 +138,53 @@ export function WidgetEmbedClient({
     }, [deploymentKey, parentOrigin]);
 
     useEffect(() => {
+        messagesRef.current = messages;
         transcriptEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }, [messages, isSending, error]);
+
+    useEffect(() => {
+        if (!pendingHandoff || !bootstrap) {
+            return;
+        }
+
+        const handoffStorageKey = `${HANDOFF_STORAGE_PREFIX}:${pendingHandoff.nodeId}:${sessionId ?? ""}`;
+        const hasAlreadySent = typeof window !== "undefined" && window.localStorage.getItem(handoffStorageKey) === "sent";
+
+        if (hasAlreadySent) {
+            setPendingHandoff(undefined);
+            setHandoffStatus("sent");
+            return;
+        }
+
+        void (async () => {
+            setHandoffStatus("sending");
+            setHandoffError(undefined);
+
+            try {
+                await sendHandoffEmail({
+                    recipientEmail: pendingHandoff.recipientEmail,
+                    recipientLabel: pendingHandoff.inboxLabel,
+                    contactEmail: pendingHandoff.contactEmail,
+                    botName: bootstrap.botName,
+                    deploymentKey: bootstrap.deploymentKey,
+                    sessionId: sessionId ?? "",
+                    transcript: buildTranscriptText(messagesRef.current),
+                    variables: pendingHandoff.variables,
+                });
+
+                if (typeof window !== "undefined") {
+                    window.localStorage.setItem(handoffStorageKey, "sent");
+                }
+
+                setHandoffStatus("sent");
+            } catch (caughtError) {
+                setHandoffStatus("error");
+                setHandoffError(caughtError instanceof Error ? caughtError.message : "The handoff email could not be sent.");
+            } finally {
+                setPendingHandoff(undefined);
+            }
+        })();
+    }, [bootstrap, pendingHandoff, sessionId]);
 
     const handleSend = async () => {
         const trimmedDraft = draft.trim();
@@ -151,6 +212,9 @@ export function WidgetEmbedClient({
 
     const handleNewConversation = async () => {
         setError(undefined);
+        setHandoffError(undefined);
+        setHandoffStatus("idle");
+        setPendingHandoff(undefined);
         setDraft("");
 
         if (typeof window !== "undefined") {
@@ -218,13 +282,16 @@ export function WidgetEmbedClient({
 
     function applySessionPayload(payload: IWidgetSessionResponse, appendMessages: boolean): void {
         setSessionId(payload.sessionId);
-        setMessages((currentMessages) =>
-            appendMessages ? [...currentMessages, ...(payload.messages ?? [])] : (payload.messages ?? [])
-        );
+        setMessages((currentMessages) => {
+            const nextMessages = appendMessages ? [...currentMessages, ...(payload.messages ?? [])] : (payload.messages ?? []);
+            messagesRef.current = nextMessages;
+            return nextMessages;
+        });
         setAwaitingInput(payload.awaitingInput);
         setAwaitingInputMode(payload.awaitingInputMode);
         setSuggestedReplies(payload.suggestedReplies ?? []);
         setIsCompleted(payload.isCompleted);
+        setPendingHandoff(payload.handoff);
 
         if (typeof window !== "undefined") {
             window.localStorage.setItem(sessionStorageKey, payload.sessionId);
@@ -276,6 +343,12 @@ export function WidgetEmbedClient({
                     </div>
                 ) : null}
 
+                {!error && handoffError ? (
+                    <div style={shellStyles.errorCard}>
+                        <Text style={shellStyles.errorText}>{handoffError}</Text>
+                    </div>
+                ) : null}
+
                 {!isLoading && !error && messages.length === 0 ? (
                     <div style={shellStyles.stateCard}>
                         <Text style={shellStyles.stateText}>This conversation is ready to begin.</Text>
@@ -312,6 +385,18 @@ export function WidgetEmbedClient({
             </div>
 
             <div style={shellStyles.composer}>
+                {handoffStatus === "sending" ? (
+                    <Text type="secondary" style={shellStyles.statusText}>
+                        Sending handoff details to the team...
+                    </Text>
+                ) : null}
+
+                {handoffStatus === "sent" ? (
+                    <Text type="secondary" style={shellStyles.statusText}>
+                        Handoff details were sent to the selected team inbox.
+                    </Text>
+                ) : null}
+
                 {awaitingInputMode === "choice" && suggestedReplies.length > 0 ? (
                     <div style={shellStyles.suggestedReplies}>
                         {suggestedReplies.map((reply) => (
@@ -389,6 +474,12 @@ function resolveStatusLabel(awaitingInput: boolean, isCompleted: boolean, isSend
     }
 
     return awaitingInput ? "Reply requested" : "Assistant is preparing a response";
+}
+
+function buildTranscriptText(messages: IWidgetMessage[]): string {
+    return messages
+        .map((message) => `${message.role === "user" ? "User" : "Bot"}: ${message.content}`)
+        .join("\n\n");
 }
 
 function resolveAssistantTitle(

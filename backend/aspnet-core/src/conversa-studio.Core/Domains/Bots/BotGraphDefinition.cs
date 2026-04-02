@@ -48,6 +48,32 @@ public class BotGraphMetadata
     /// Gets or sets the draft version label.
     /// </summary>
     public string Version { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the named handoff inboxes available to this bot.
+    /// </summary>
+    public List<BotHandoffInboxDefinition> HandoffInboxes { get; set; } = [];
+}
+
+/// <summary>
+/// Represents one named handoff inbox configured for a bot.
+/// </summary>
+public class BotHandoffInboxDefinition
+{
+    /// <summary>
+    /// Gets or sets the stable inbox key used by handoff nodes.
+    /// </summary>
+    public string Key { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the display label shown in the builder.
+    /// </summary>
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the recipient email for this inbox.
+    /// </summary>
+    public string Email { get; set; } = string.Empty;
 }
 
 /// <summary>

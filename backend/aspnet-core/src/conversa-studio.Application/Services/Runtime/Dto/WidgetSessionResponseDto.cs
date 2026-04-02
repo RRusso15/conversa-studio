@@ -41,4 +41,9 @@ public class WidgetSessionResponseDto
     /// Gets or sets whether the conversation has completed.
     /// </summary>
     public bool IsCompleted { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional handoff event for the current response.
+    /// </summary>
+    public WidgetHandoffDto Handoff { get; set; }
 }

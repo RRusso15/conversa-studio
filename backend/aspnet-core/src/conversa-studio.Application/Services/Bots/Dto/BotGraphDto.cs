@@ -48,6 +48,32 @@ public class BotGraphMetadataDto
     /// Gets or sets the version label.
     /// </summary>
     public string Version { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the named handoff inboxes available to this bot.
+    /// </summary>
+    public List<BotHandoffInboxDto> HandoffInboxes { get; set; } = [];
+}
+
+/// <summary>
+/// Represents one named handoff inbox in the transport graph payload.
+/// </summary>
+public class BotHandoffInboxDto
+{
+    /// <summary>
+    /// Gets or sets the stable inbox key.
+    /// </summary>
+    public string Key { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the display label.
+    /// </summary>
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the recipient email.
+    /// </summary>
+    public string Email { get; set; } = string.Empty;
 }
 
 /// <summary>

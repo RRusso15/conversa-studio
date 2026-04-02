@@ -55,6 +55,7 @@ import {
     normalizeAiConfig,
     normalizeCodeConfig,
     normalizeConditionConfig,
+    normalizeHandoffConfig,
     normalizeQuestionConfig
 } from "../variable-utils";
 
@@ -122,6 +123,9 @@ export function BuilderProvider({ graph, children }: BuilderProviderProps) {
         },
         updateBotName: (name: string) => {
             dispatch(updateMetadataAction({ name }));
+        },
+        updateBotMetadata: (metadata: Partial<BotGraph["metadata"]>) => {
+            dispatch(updateMetadataAction(metadata));
         },
         undo: () => {
             dispatch(undoAction());
@@ -448,7 +452,7 @@ function getNodeSummary(node: BotNode) {
         case "code":
             return `Run custom JavaScript with success and error routes.`;
         case "handoff":
-            return `Route the conversation to ${node.config.queueName || "a live team"}.`;
+            return `Send the conversation to ${node.config.inboxKey || node.config.queueName || "a live team"} and end the bot flow.`;
         case "end":
             return node.config.closingText.trim() || "End the conversation.";
         default:
@@ -643,7 +647,10 @@ export function advanceSimulator(
 
         if (currentNode.type === "handoff" && currentNode.config.kind === "handoff") {
             nextState.messages.push(createBotMessage(
-                `Connecting you to ${currentNode.config.queueName || "a human agent"}.`
+                interpolateVariableText(
+                    currentNode.config.confirmationMessage,
+                    nextState.variables
+                )
             ));
             nextState.currentNodeId = undefined;
             break;
@@ -800,6 +807,13 @@ function normalizeGraph(graph: BotGraph): BotGraph {
                 };
             }
 
+            if (node.config.kind === "handoff") {
+                return {
+                    ...node,
+                    config: normalizeHandoffConfig(node.config)
+                };
+            }
+
             if (node.config.kind !== "condition") {
                 return node;
             }
@@ -808,7 +822,15 @@ function normalizeGraph(graph: BotGraph): BotGraph {
                 ...node,
                 config: normalizeConditionConfig(node.config)
             };
-        })
+        }),
+        metadata: {
+            ...graph.metadata,
+            handoffInboxes: (graph.metadata.handoffInboxes ?? []).map((inbox, index) => ({
+                key: inbox.key?.trim() || `inbox-${index + 1}`,
+                label: inbox.label?.trim() || inbox.key?.trim() || `Inbox ${index + 1}`,
+                email: inbox.email?.trim() || ""
+            }))
+        }
     };
 }
 
