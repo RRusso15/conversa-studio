@@ -19,7 +19,7 @@ import {
 import { useRef, useState, type ChangeEvent } from "react";
 import { useBuilder } from "./builder-context";
 import { useBotActions, useBotState } from "@/providers/botProvider";
-import type { ConditionRule, HandoffInboxConfig } from "./types";
+import type { ConditionRule } from "./types";
 import { nodeRegistry } from "./node-registry";
 import { useBuilderStyles } from "./styles";
 import {
@@ -67,17 +67,12 @@ export function BuilderPropertiesPanel({
     selectedEdge,
     updateNodeConfig,
     updateNodeLabel,
-    updateBotMetadata,
     deleteSelectedNode,
     deleteSelectedEdge,
     replaceEdges,
     state,
   } = useBuilder();
   const handoffInboxes = state.graph.metadata.handoffInboxes ?? [];
-
-  const updateHandoffInboxes = (nextInboxes: HandoffInboxConfig[]) => {
-    updateBotMetadata({ handoffInboxes: nextInboxes });
-  };
 
   if (selectedEdge && !selectedNode) {
     return (
@@ -102,130 +97,10 @@ export function BuilderPropertiesPanel({
   if (!selectedNode) {
     return (
       <Card bordered={false} className={styles.panelCard}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
-          <Empty
-            description="Select a node to edit its properties."
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
-
-          <div className={styles.polishedPanelShell}>
-            <div className={styles.polishedPanelHeader}>
-              <div className={styles.polishedPanelTitle}>
-                <span>Handoff Inboxes</span>
-              </div>
-              <div className={styles.polishedPanelHeaderTags}>
-                <Tag className={styles.polishedPanelTag}>
-                  {handoffInboxes.length} configured
-                </Tag>
-              </div>
-            </div>
-            <div className={styles.polishedPanelBody}>
-              <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-                <Text className={styles.sectionNote}>
-                  Create named inboxes here, then select them from handoff nodes.
-                </Text>
-
-                {handoffInboxes.length === 0 ? (
-                  <Alert
-                    type="info"
-                    showIcon
-                    message="No handoff inboxes configured"
-                    description="Add at least one inbox before using the handoff node in a live bot."
-                  />
-                ) : null}
-
-                {handoffInboxes.map((inbox, index) => (
-                  <div key={`${inbox.key}-${index}`} className={`${styles.compactEditorCard} ${styles.compactEditorCardDanger}`}>
-                    <div className={styles.compactCardHeader}>
-                      <div>
-                        <Text className={styles.compactCardTitle}>Inbox {index + 1}</Text>
-                        <Text className={styles.compactCardSubtitle}>
-                          This target can be selected by any handoff node in the bot.
-                        </Text>
-                      </div>
-                      <Button
-                        danger
-                        icon={<MinusCircleOutlined />}
-                        onClick={() =>
-                          updateHandoffInboxes(
-                            handoffInboxes.filter((_, inboxIndex) => inboxIndex !== index),
-                          )
-                        }
-                      >
-                        Remove
-                      </Button>
-                    </div>
-
-                    <div className={styles.inlineFieldGrid}>
-                      <div>
-                        <Text className={styles.fieldLabel}>Inbox Key</Text>
-                        <Input
-                          value={inbox.key}
-                          placeholder="support"
-                          onChange={(event) =>
-                            updateHandoffInboxes(
-                              handoffInboxes.map((candidate, inboxIndex) =>
-                                inboxIndex === index
-                                  ? { ...candidate, key: event.target.value }
-                                  : candidate,
-                              ),
-                            )
-                          }
-                        />
-                      </div>
-
-                      <div>
-                        <Text className={styles.fieldLabel}>Display Label</Text>
-                        <Input
-                          value={inbox.label}
-                          placeholder="Support team"
-                          onChange={(event) =>
-                            updateHandoffInboxes(
-                              handoffInboxes.map((candidate, inboxIndex) =>
-                                inboxIndex === index
-                                  ? { ...candidate, label: event.target.value }
-                                  : candidate,
-                              ),
-                            )
-                          }
-                        />
-                      </div>
-
-                      <div>
-                        <Text className={styles.fieldLabel}>Recipient Email</Text>
-                        <Input
-                          value={inbox.email}
-                          placeholder="support@company.com"
-                          onChange={(event) =>
-                            updateHandoffInboxes(
-                              handoffInboxes.map((candidate, inboxIndex) =>
-                                inboxIndex === index
-                                  ? { ...candidate, email: event.target.value }
-                                  : candidate,
-                              ),
-                            )
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                <Button
-                  icon={<PlusOutlined />}
-                  onClick={() =>
-                    updateHandoffInboxes([
-                      ...handoffInboxes,
-                      createHandoffInbox(handoffInboxes.length + 1),
-                    ])
-                  }
-                >
-                  Add handoff inbox
-                </Button>
-              </Space>
-            </div>
-          </div>
-        </Space>
+        <Empty
+          description="Select a node to edit its properties."
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        />
       </Card>
     );
   }
@@ -1868,7 +1743,7 @@ export function BuilderPropertiesPanel({
                       type="warning"
                       showIcon
                       message="No handoff inboxes configured"
-                      description="Clear the node selection to add inboxes for this bot."
+                      description="Use Configure Inboxes in the left builder panel to add one."
                       style={{ marginTop: 12 }}
                     />
                   ) : null}
@@ -2020,14 +1895,6 @@ function formatAiSourceStatus(status: string) {
     default:
       return status;
   }
-}
-
-function createHandoffInbox(seed: number): HandoffInboxConfig {
-  return {
-    key: `inbox-${seed}`,
-    label: `Inbox ${seed}`,
-    email: "",
-  };
 }
 
 function readFileAsBase64(file: File): Promise<string> {

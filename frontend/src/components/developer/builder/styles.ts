@@ -222,6 +222,31 @@ export const useBuilderStyles = createStyles(({ css, token }) => ({
     height: 46px;
     border-radius: 14px;
   `,
+  paletteLayout: css`
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  `,
+  paletteContent: css`
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  `,
+  paletteFooter: css`
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid rgba(226, 232, 240, 0.9);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  `,
+  paletteUtilityButton: css`
+    width: 100%;
+    border-radius: 14px;
+    border-style: dashed !important;
+  `,
   flowNode: css`
     width: 240px;
     border-radius: 22px;
