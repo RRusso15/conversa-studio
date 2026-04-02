@@ -1,12 +1,21 @@
 using Abp.Auditing;
 using ConversaStudio.Sessions.Dto;
+using ConversaStudio.Authorization.Users;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ConversaStudio.Sessions;
 
 public class SessionAppService : ConversaStudioAppServiceBase, ISessionAppService
 {
+    private readonly UserManager _userManager;
+
+    public SessionAppService(UserManager userManager)
+    {
+        _userManager = userManager;
+    }
+
     [DisableAuditing]
     public async Task<GetCurrentLoginInformationsOutput> GetCurrentLoginInformations()
     {
@@ -27,7 +36,10 @@ public class SessionAppService : ConversaStudioAppServiceBase, ISessionAppServic
 
         if (AbpSession.UserId.HasValue)
         {
-            output.User = ObjectMapper.Map<UserLoginInfoDto>(await GetCurrentUserAsync());
+            var user = await GetCurrentUserAsync();
+            var userDto = ObjectMapper.Map<UserLoginInfoDto>(user);
+            userDto.RoleNames = (await _userManager.GetRolesAsync(user)).ToArray();
+            output.User = userDto;
         }
 
         return output;

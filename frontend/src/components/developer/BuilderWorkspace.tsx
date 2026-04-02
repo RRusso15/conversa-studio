@@ -379,17 +379,19 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
     >
       <BuilderToolbar
         botName={state.graph.metadata.name}
+        backHref="/developer/projects"
+        backLabel="Back to Projects"
         isDirty={state.isDirty}
         validationCount={state.validationResults.length}
         saveStatus={saveStatus}
-        deployLabel={activeBot?.publishedVersion && !activeBot.hasUnpublishedChanges ? "Manage Deployments" : "Publish & Deploy"}
+        primaryActionLabel={activeBot?.publishedVersion && !activeBot.hasUnpublishedChanges ? "Manage Deployments" : "Publish & Deploy"}
         onBotNameChange={updateBotName}
         onSave={handleSave}
         onExport={handleExport}
         onImport={handleImport}
         onValidate={handleValidate}
         onTest={() => setSimulatorOpen(true)}
-        onDeploy={handleDeploy}
+        onPrimaryAction={handleDeploy}
       />
 
       <input
@@ -419,7 +421,7 @@ function BuilderWorkspaceContent({ botId }: BuilderWorkspaceContentProps) {
 
         <aside className={styles.builderRightPanel}>
           <div className={`${styles.builderSideSection} ${styles.builderPropertiesSection}`}>
-            <BuilderPropertiesPanel compact={!screens.xl} />
+            <BuilderPropertiesPanel compact={!screens.xl} editorMode="bot" />
           </div>
           <div className={`${styles.builderSideSection} ${styles.builderValidationSection}`}>
             <BuilderValidationPanel />

@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DeleteOutlined,
   EyeOutlined,
   MessageOutlined,
-  PlusOutlined,
 } from "@ant-design/icons";
 import { Alert, App, Button, Card, Col, Empty, Popconfirm, Row, Skeleton, Space, Tag, Typography } from "antd";
+import { NewBotLauncherButton } from "./NewBotLauncherButton";
 import { PageHeader } from "./PageHeader";
 import { useStyles } from "./styles";
 import { useBotActions, useBotState } from "@/providers/botProvider";
@@ -53,11 +52,7 @@ export function ProjectsWorkspace() {
         title="Projects"
         description="Manage active bots, return to drafts, and start new build flows from one place."
         actions={
-          <Link href="/developer/builder/new">
-            <Button type="primary" icon={<PlusOutlined />}>
-              New Bot
-            </Button>
-          </Link>
+          <NewBotLauncherButton />
         }
       />
 
@@ -188,24 +183,20 @@ export function ProjectsWorkspace() {
         ) : null}
 
         <Col xs={24} md={12} xl={8}>
-          <Link href="/developer/builder/new">
             <Card className={styles.createCard}>
               <Space direction="vertical" size="small">
                 <span className={styles.createIcon}>
-                  <PlusOutlined />
+                  <MessageOutlined />
                 </span>
                 <Title level={4} style={{ marginBottom: 0 }}>
                   Create new bot
                 </Title>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  Start from scratch or enter the builder from a blank canvas.
+                  Start from a blank canvas, choose a template, or generate a draft from a prompt.
                 </Paragraph>
-                <Button type="link" icon={<EyeOutlined />}>
-                  Open builder
-                </Button>
+                <NewBotLauncherButton type="link" label="Choose a starting point" />
               </Space>
             </Card>
-          </Link>
         </Col>
       </Row>
     </>

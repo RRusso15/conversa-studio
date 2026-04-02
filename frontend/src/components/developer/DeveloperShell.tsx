@@ -4,9 +4,11 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { MenuOutlined, PlusOutlined } from "@ant-design/icons";
+import { MenuOutlined } from "@ant-design/icons";
 import { Button, Drawer, Grid, Layout, Space } from "antd";
+import { AuthRouteGuard } from "@/components/auth/AuthRouteGuard";
 import { DeveloperSidebar } from "./DeveloperSidebar";
+import { NewBotLauncherButton } from "./NewBotLauncherButton";
 import { useStyles } from "./styles";
 
 const { Content, Sider } = Layout;
@@ -21,7 +23,8 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
   const { styles } = useStyles();
 
   return (
-    <Layout className={styles.shell}>
+    <AuthRouteGuard allowedRoles={["Admin", "Developer"]}>
+      <Layout className={styles.shell}>
       <div className={styles.mobileHeader}>
         <Space>
           <Button
@@ -43,11 +46,7 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
           </Link>
         </Space>
 
-        <Link href="/developer/builder/new">
-          <Button type="primary" icon={<PlusOutlined />}>
-            New Bot
-          </Button>
-        </Link>
+        <NewBotLauncherButton />
       </div>
 
       <Drawer
@@ -74,6 +73,7 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
           </Content>
         </Layout>
       </Layout>
-    </Layout>
+      </Layout>
+    </AuthRouteGuard>
   );
 }

@@ -34,10 +34,12 @@ const { Paragraph, Text, Title } = Typography;
 
 interface BuilderPropertiesPanelProps {
   compact?: boolean;
+  editorMode?: "bot" | "template";
 }
 
 export function BuilderPropertiesPanel({
   compact = false,
+  editorMode = "bot",
 }: BuilderPropertiesPanelProps) {
   const { styles } = useBuilderStyles();
   const { notification } = App.useApp();
@@ -126,6 +128,7 @@ export function BuilderPropertiesPanel({
   const handoffConfig =
     selectedNode.config.kind === "handoff" ? selectedNode.config : undefined;
   const endConfig = selectedNode.config.kind === "end" ? selectedNode.config : undefined;
+  const isTemplateEditor = editorMode === "template";
   const activeAiKnowledge = activeBot?.aiKnowledge;
   const isPersistedBot = draftIdentity === "persisted" && Boolean(activeBot?.id);
   const aiReadySources = activeAiKnowledge?.readySourceCount ?? 0;
@@ -1201,91 +1204,100 @@ export function BuilderPropertiesPanel({
                 </div>
               </Form.Item>
               <Form.Item label="Knowledge Hub">
-                <div className={styles.polishedPanelShell}>
-                  <div className={styles.polishedPanelHeader}>
-                    <div className={styles.polishedPanelTitle}>
-                      <span>Shared Knowledge</span>
-                    </div>
-                    <div className={styles.polishedPanelHeaderTags}>
-                      <Tag className={styles.polishedPanelTag}>
-                        {activeAiKnowledge?.hasApiKey ? "API Key Added" : "API Key Missing"}
-                      </Tag>
-                      <Tag className={styles.polishedPanelTag}>
-                        {aiReadySources}/{aiSourceCount} Ready Sources
-                      </Tag>
-                      <Tag className={styles.polishedPanelTag}>
-                        {activeAiKnowledge?.provider || "Gemini"}
-                      </Tag>
-                    </div>
-                  </div>
-                  <div className={styles.polishedPanelBody}>
-                    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-                      <Alert
-                        type={
-                          !isPersistedBot
-                            ? "warning"
-                            : activeAiKnowledge?.isKnowledgeConfigured
-                              ? "success"
-                              : "warning"
-                        }
-                        showIcon
-                        message={
-                          !isPersistedBot
-                            ? "Save this bot first"
-                            : activeAiKnowledge?.isKnowledgeConfigured
-                              ? "Knowledge hub is ready"
-                              : "Knowledge hub needs setup"
-                        }
-                        description={
-                          !isPersistedBot
-                            ? "This bot needs to exist in the backend before you can store shared AI settings and sources."
-                            : activeAiKnowledge?.isKnowledgeConfigured
-                              ? "This bot has a Gemini key and at least one ready knowledge source."
-                              : "Add a Gemini API key and at least one ready knowledge source before publishing AI nodes."
-                        }
-                      />
-                      <div className={styles.compactCardList}>
-                        <div className={`${styles.compactEditorCard} ${styles.compactEditorCardAccent}`}>
-                          <div className={styles.compactCardHeader}>
-                            <div>
-                              <Text className={styles.compactCardTitle}>Runtime Provider</Text>
-                              <Text className={styles.compactCardSubtitle}>
-                                Gemini handles both embeddings and grounded generation for this bot.
-                              </Text>
-                            </div>
-                            <Tag className={styles.polishedPanelTag}>
-                              {activeAiKnowledge?.generationModel || "gemini-2.5-flash"}
-                            </Tag>
-                          </div>
-                          <Text className={styles.sectionNote}>
-                            Embeddings: {activeAiKnowledge?.embeddingModel || "gemini-embedding-001"}
-                          </Text>
-                        </div>
-                        <div className={`${styles.compactEditorCard} ${styles.compactEditorCardPurple}`}>
-                          <div className={styles.compactCardHeader}>
-                            <div>
-                              <Text className={styles.compactCardTitle}>Indexed Sources</Text>
-                              <Text className={styles.compactCardSubtitle}>
-                                Pasted text, PDFs, and single-page website snapshots all feed the same bot-level hub.
-                              </Text>
-                            </div>
-                            <Tag className={styles.polishedPanelTag}>{aiSourceCount} Total</Tag>
-                          </div>
-                          <Text className={styles.sectionNote}>
-                            Ready sources are available to every AI node in this bot.
-                          </Text>
-                        </div>
+                {isTemplateEditor ? (
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="AI knowledge is configured on the bot"
+                    description="Templates can include AI nodes, but Gemini keys and knowledge sources are configured after a developer creates a bot from this template."
+                  />
+                ) : (
+                  <div className={styles.polishedPanelShell}>
+                    <div className={styles.polishedPanelHeader}>
+                      <div className={styles.polishedPanelTitle}>
+                        <span>Shared Knowledge</span>
                       </div>
-                      <Button
-                        type="primary"
-                        onClick={openAiKnowledgeModal}
-                        disabled={!isPersistedBot}
-                      >
-                        Add Knowledge
-                      </Button>
-                    </Space>
+                      <div className={styles.polishedPanelHeaderTags}>
+                        <Tag className={styles.polishedPanelTag}>
+                          {activeAiKnowledge?.hasApiKey ? "API Key Added" : "API Key Missing"}
+                        </Tag>
+                        <Tag className={styles.polishedPanelTag}>
+                          {aiReadySources}/{aiSourceCount} Ready Sources
+                        </Tag>
+                        <Tag className={styles.polishedPanelTag}>
+                          {activeAiKnowledge?.provider || "Gemini"}
+                        </Tag>
+                      </div>
+                    </div>
+                    <div className={styles.polishedPanelBody}>
+                      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                        <Alert
+                          type={
+                            !isPersistedBot
+                              ? "warning"
+                              : activeAiKnowledge?.isKnowledgeConfigured
+                                ? "success"
+                                : "warning"
+                          }
+                          showIcon
+                          message={
+                            !isPersistedBot
+                              ? "Save this bot first"
+                              : activeAiKnowledge?.isKnowledgeConfigured
+                                ? "Knowledge hub is ready"
+                                : "Knowledge hub needs setup"
+                          }
+                          description={
+                            !isPersistedBot
+                              ? "This bot needs to exist in the backend before you can store shared AI settings and sources."
+                              : activeAiKnowledge?.isKnowledgeConfigured
+                                ? "This bot has a Gemini key and at least one ready knowledge source."
+                                : "Add a Gemini API key and at least one ready knowledge source before publishing AI nodes."
+                          }
+                        />
+                        <div className={styles.compactCardList}>
+                          <div className={`${styles.compactEditorCard} ${styles.compactEditorCardAccent}`}>
+                            <div className={styles.compactCardHeader}>
+                              <div>
+                                <Text className={styles.compactCardTitle}>Runtime Provider</Text>
+                                <Text className={styles.compactCardSubtitle}>
+                                  Gemini handles both embeddings and grounded generation for this bot.
+                                </Text>
+                              </div>
+                              <Tag className={styles.polishedPanelTag}>
+                                {activeAiKnowledge?.generationModel || "gemini-2.5-flash"}
+                              </Tag>
+                            </div>
+                            <Text className={styles.sectionNote}>
+                              Embeddings: {activeAiKnowledge?.embeddingModel || "gemini-embedding-001"}
+                            </Text>
+                          </div>
+                          <div className={`${styles.compactEditorCard} ${styles.compactEditorCardPurple}`}>
+                            <div className={styles.compactCardHeader}>
+                              <div>
+                                <Text className={styles.compactCardTitle}>Indexed Sources</Text>
+                                <Text className={styles.compactCardSubtitle}>
+                                  Pasted text, PDFs, and single-page website snapshots all feed the same bot-level hub.
+                                </Text>
+                              </div>
+                              <Tag className={styles.polishedPanelTag}>{aiSourceCount} Total</Tag>
+                            </div>
+                            <Text className={styles.sectionNote}>
+                              Ready sources are available to every AI node in this bot.
+                            </Text>
+                          </div>
+                        </div>
+                        <Button
+                          type="primary"
+                          onClick={openAiKnowledgeModal}
+                          disabled={!isPersistedBot}
+                        >
+                          Add Knowledge
+                        </Button>
+                      </Space>
+                    </div>
                   </div>
-                </div>
+                )}
               </Form.Item>
               <Form.Item label="Fallback Text">
                 <div className={styles.compactEditorCard}>
@@ -1306,14 +1318,15 @@ export function BuilderPropertiesPanel({
               </Form.Item>
               <VariableHints availableVariables={availableVariables} />
 
-              <Modal
-                centered
-                open={isAiKnowledgeModalOpen}
-                onCancel={() => setIsAiKnowledgeModalOpen(false)}
-                footer={null}
-                width={920}
-                destroyOnHidden={false}
-              >
+              {!isTemplateEditor ? (
+                <Modal
+                  centered
+                  open={isAiKnowledgeModalOpen}
+                  onCancel={() => setIsAiKnowledgeModalOpen(false)}
+                  footer={null}
+                  width={920}
+                  destroyOnHidden={false}
+                >
                 <Space direction="vertical" size="large" style={{ width: "100%" }}>
                   <div>
                     <Title level={4} style={{ marginBottom: 4 }}>
@@ -1567,7 +1580,8 @@ export function BuilderPropertiesPanel({
                     </>
                   )}
                 </Space>
-              </Modal>
+                </Modal>
+              ) : null}
             </>
           ) : null}
 

@@ -35,6 +35,7 @@ import {
     setTenantContext,
     type ITenantContext
 } from "@/utils/tenant-context";
+import { getDefaultAuthenticatedRoute } from "@/utils/auth-roles";
 
 interface AuthProviderProps {
     children: ReactNode;
@@ -68,8 +69,6 @@ const ACCOUNT_REGISTER_URL = "/api/services/app/Account/Register";
 const ACCOUNT_IS_TENANT_AVAILABLE_URL = "/api/services/app/Account/IsTenantAvailable";
 const SESSION_LOGIN_INFO_URL = "/api/services/app/Session/GetCurrentLoginInformations";
 const TOKEN_AUTH_URL = "/api/TokenAuth/Authenticate";
-const DEVELOPER_DASHBOARD_ROUTE = "/developer/dashboard";
-
 /**
  * Provides auth state and actions for sign-in, sign-up, and session bootstrap.
  */
@@ -150,7 +149,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 })
             );
 
-            router.push(DEVELOPER_DASHBOARD_ROUTE);
+            router.push(getDefaultAuthenticatedRoute(currentLoginInformations));
         } catch (error) {
             removeAuthCookie();
             dispatch(signInError());
@@ -216,7 +215,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         try {
             await fetchCurrentUser();
             dispatch(bootstrapAuthSuccess());
-        } catch (error) {
+        } catch {
             removeAuthCookie();
             removeTenantContext();
             dispatch(bootstrapAuthError());
