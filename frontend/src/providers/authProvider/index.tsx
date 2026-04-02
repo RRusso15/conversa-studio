@@ -126,7 +126,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 {
                     userNameOrEmailAddress: input.userNameOrEmailAddress,
                     password: input.password,
-                    rememberClient: input.rememberClient
+                    rememberClient: true
                 },
                 {
                     headers: {
@@ -139,7 +139,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 response.data,
                 "We could not sign you in."
             );
-            setAuthCookie(auth.accessToken, auth.expireInSeconds, input.rememberClient);
+            setAuthCookie(auth.accessToken, auth.expireInSeconds, true);
             const currentLoginInformations = await fetchCurrentUser(auth);
 
             dispatch(
@@ -191,8 +191,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             if (registerResult.canLogin) {
                 await signIn({
                     userNameOrEmailAddress: input.emailAddress,
-                    password: input.password,
-                    rememberClient: true
+                    password: input.password
                 });
             }
         } catch (error) {
@@ -214,7 +213,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         try {
             await fetchCurrentUser();
-            dispatch(bootstrapAuthSuccess());
         } catch {
             removeAuthCookie();
             removeTenantContext();
@@ -290,7 +288,7 @@ function toError(error: unknown, fallbackMessage: string): Error {
         "data" in error.response
     ) {
         const data = error.response.data as IAbpAjaxResponse<unknown>;
-        const message = data?.error?.message ?? fallbackMessage;
+        const message = data?.error?.details ?? data?.error?.message ?? fallbackMessage;
         return new Error(message);
     }
 

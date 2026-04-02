@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { App, Button, Checkbox, Form, Input, Typography } from "antd";
+import { App, Button, Form, Input, Typography } from "antd";
 import { useAuthActions } from "@/providers/authProvider";
 import { useStyles } from "./styles";
 
 export interface LoginFormValues {
   email: string;
   password: string;
-  rememberMe?: boolean;
 }
 
 const { Text } = Typography;
@@ -27,7 +26,6 @@ export function LoginForm() {
       await signIn({
         userNameOrEmailAddress: values.email,
         password: values.password,
-        rememberClient: values.rememberMe ?? false,
       });
       message.success("Signed in successfully.");
     } catch (error) {
@@ -80,14 +78,6 @@ export function LoginForm() {
         </Form.Item>
 
         <div className={styles.helperRow}>
-          <Form.Item<LoginFormValues>
-            name="rememberMe"
-            valuePropName="checked"
-            noStyle
-          >
-            <Checkbox>Remember me</Checkbox>
-          </Form.Item>
-
           <Button type="link" style={{ paddingInline: 0 }}>
             Forgot password?
           </Button>
