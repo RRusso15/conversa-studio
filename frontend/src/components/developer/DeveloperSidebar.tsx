@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogoutOutlined, PlusOutlined } from "@ant-design/icons";
+import { LogoutOutlined } from "@ant-design/icons";
 import {
   Button,
   Menu,
@@ -14,6 +14,7 @@ import {
   type MenuProps,
 } from "antd";
 import { developerNavItems } from "./navigation";
+import { NewBotLauncherButton } from "./NewBotLauncherButton";
 import { useStyles } from "./styles";
 import { useAuthActions, useAuthState } from "@/providers/authProvider";
 
@@ -81,17 +82,9 @@ export function DeveloperSidebar({ onNavigate }: DeveloperSidebarProps) {
         <span>Conversa Studio</span>
       </Link>
 
-      <Link href="/developer/builder/new" onClick={onNavigate}>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          size="large"
-          block
-          style={{ marginBottom: 18 }}
-        >
-          New Bot
-        </Button>
-      </Link>
+      <div style={{ marginBottom: 18 }}>
+        <NewBotLauncherButton block size="large" onNavigate={onNavigate} />
+      </div>
 
       <div className={styles.nav}>
         <Menu

@@ -5,6 +5,7 @@ using ConversaStudio.Authorization.Users;
 using ConversaStudio.Domains.Bots;
 using ConversaStudio.Domains.Deployments;
 using ConversaStudio.Domains.Runtime;
+using ConversaStudio.Domains.Templates;
 using ConversaStudio.Domains.Transcripts;
 using ConversaStudio.MultiTenancy;
 using Microsoft.EntityFrameworkCore;
@@ -44,6 +45,11 @@ public class ConversaStudioDbContext : AbpZeroDbContext<Tenant, Role, User, Conv
     /// </summary>
     public DbSet<TranscriptMessage> TranscriptMessages { get; set; }
 
+    /// <summary>
+    /// Gets or sets persisted reusable template definitions.
+    /// </summary>
+    public DbSet<TemplateDefinition> TemplateDefinitions { get; set; }
+
     public ConversaStudioDbContext(DbContextOptions<ConversaStudioDbContext> options)
         : base(options)
     {
@@ -80,6 +86,19 @@ public class ConversaStudioDbContext : AbpZeroDbContext<Tenant, Role, User, Conv
             entity.Property(deployment => deployment.ThemeColor).IsRequired().HasMaxLength(BotDeployment.MaxThemeColorLength);
             entity.HasIndex(deployment => deployment.DeploymentKey).IsUnique();
             entity.HasIndex(deployment => new { deployment.TenantId, deployment.BotDefinitionId, deployment.CreationTime });
+        });
+
+        modelBuilder.Entity<TemplateDefinition>(entity =>
+        {
+            entity.ToTable("AppTemplateDefinitions");
+            entity.Property(template => template.Name).IsRequired().HasMaxLength(TemplateDefinition.MaxNameLength);
+            entity.Property(template => template.Description).IsRequired().HasMaxLength(TemplateDefinition.MaxDescriptionLength);
+            entity.Property(template => template.Category).IsRequired().HasMaxLength(TemplateDefinition.MaxCategoryLength);
+            entity.Property(template => template.Status).IsRequired().HasMaxLength(TemplateDefinition.MaxStatusLength);
+            entity.Property(template => template.DraftGraphJson).IsRequired();
+            entity.Property(template => template.PublishedGraphJson);
+            entity.HasIndex(template => new { template.TenantId, template.CreationTime });
+            entity.HasIndex(template => new { template.TenantId, template.Status, template.LastModificationTime });
         });
 
         modelBuilder.Entity<RuntimeSession>(entity =>

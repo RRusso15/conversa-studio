@@ -18,32 +18,38 @@ const { Paragraph } = Typography;
 
 interface BuilderToolbarProps {
   botName: string;
+  backHref?: string;
+  backLabel?: string;
+  subtitle?: string;
   isDirty: boolean;
   validationCount: number;
   saveStatus: "idle" | "saving" | "saved" | "error" | "validation_blocked" | "permission_denied" | "api_mismatch";
-  deployLabel?: string;
+  primaryActionLabel?: string;
   onBotNameChange: (name: string) => void;
   onSave: () => void;
   onExport: () => void;
   onImport: () => void;
   onValidate: () => void;
   onTest: () => void;
-  onDeploy: () => void;
+  onPrimaryAction: () => void;
 }
 
 export function BuilderToolbar({
   botName,
+  backHref = "/developer/projects",
+  backLabel = "Back to Projects",
+  subtitle = "Build deterministic flows, AI-assisted routes, and validation-safe transitions.",
   isDirty,
   validationCount,
   saveStatus,
-  deployLabel,
+  primaryActionLabel,
   onBotNameChange,
   onSave,
   onExport,
   onImport,
   onValidate,
   onTest,
-  onDeploy,
+  onPrimaryAction,
 }: BuilderToolbarProps) {
   const { styles } = useBuilderStyles();
   const statusTag = (() => {
@@ -78,8 +84,8 @@ export function BuilderToolbar({
     <header className={styles.builderHeader}>
       <Flex justify="space-between" align="center" gap={16} wrap>
         <Space size="middle">
-          <Link href="/developer/projects">
-            <Button icon={<ArrowLeftOutlined />}>Back to Projects</Button>
+          <Link href={backHref}>
+            <Button icon={<ArrowLeftOutlined />}>{backLabel}</Button>
           </Link>
 
           <div>
@@ -99,7 +105,7 @@ export function BuilderToolbar({
               ) : null}
             </Space>
             <Paragraph type="secondary" style={{ margin: 0 }}>
-              Build deterministic flows, AI-assisted routes, and validation-safe transitions.
+              {subtitle}
             </Paragraph>
           </div>
         </Space>
@@ -121,8 +127,8 @@ export function BuilderToolbar({
         <Button icon={<PlayCircleOutlined />} onClick={onTest}>
           Test
         </Button>
-        <Button type="primary" icon={<RocketOutlined />} onClick={onDeploy}>
-          {deployLabel ?? "Deploy"}
+        <Button type="primary" icon={<RocketOutlined />} onClick={onPrimaryAction}>
+          {primaryActionLabel ?? "Deploy"}
         </Button>
       </Space>
     </header>

@@ -6,11 +6,11 @@ import {
   ArrowRightOutlined,
   BarChartOutlined,
   MessageOutlined,
-  PlusOutlined,
   RocketOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
 import { Alert, Button, Card, Col, List, Row, Skeleton, Space, Statistic, Tag, Typography } from "antd";
+import { NewBotLauncherButton } from "./NewBotLauncherButton";
 import { PageHeader } from "./PageHeader";
 import { useStyles } from "./styles";
 import { useBotActions, useBotState } from "@/providers/botProvider";
@@ -83,11 +83,7 @@ export function DashboardOverview() {
         title="Developer Dashboard"
         description="Keep an eye on your workspace, resume recent bots, and jump back into creation quickly."
         actions={
-          <Link href="/developer/builder/new">
-            <Button type="primary" icon={<PlusOutlined />}>
-              New Bot
-            </Button>
-          </Link>
+          <NewBotLauncherButton />
         }
       />
 

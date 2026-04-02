@@ -27,6 +27,7 @@ export interface IUserLoginInfo {
     surname: string;
     userName: string;
     emailAddress: string;
+    roleNames?: string[];
 }
 
 export interface ICurrentLoginInformations {
