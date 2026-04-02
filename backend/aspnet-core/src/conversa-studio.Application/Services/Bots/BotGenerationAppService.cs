@@ -38,51 +38,63 @@ public class BotGenerationAppService : ConversaStudioAppServiceBase, IBotGenerat
     [HttpPost]
     public async Task<GeneratedBotGraphDto> GenerateFromPrompt(GenerateBotGraphFromPromptRequest input)
     {
-        await GetCurrentUserAsync();
-
-        if (string.IsNullOrWhiteSpace(input.ApiKey))
+        try
         {
-            throw new UserFriendlyException("Add your Gemini API key to generate a bot from a prompt.");
-        }
+            await GetCurrentUserAsync();
 
-        if (string.IsNullOrWhiteSpace(input.Prompt))
-        {
-            throw new UserFriendlyException("Describe the bot you want to create.");
-        }
+            if (string.IsNullOrWhiteSpace(input.ApiKey))
+            {
+                throw new UserFriendlyException("Add your Gemini API key to generate a bot from a prompt.");
+            }
 
-        var requestedName = string.IsNullOrWhiteSpace(input.BotName) ? "Generated Bot" : input.BotName.Trim();
-        var firstAttemptGraph = await GenerateGraphAsync(input.ApiKey, BuildGenerationPrompt(input.Prompt, requestedName));
-        var firstAttemptIssues = GetBlockingIssues(firstAttemptGraph);
+            if (string.IsNullOrWhiteSpace(input.Prompt))
+            {
+                throw new UserFriendlyException("Describe the bot you want to create.");
+            }
 
-        if (firstAttemptIssues.Count == 0)
-        {
+            var requestedName = string.IsNullOrWhiteSpace(input.BotName) ? "Generated Bot" : input.BotName.Trim();
+            var firstAttemptGraph = await GenerateGraphAsync(input.ApiKey, BuildGenerationPrompt(input.Prompt, requestedName));
+            var firstAttemptIssues = GetBlockingIssues(firstAttemptGraph);
+
+            if (firstAttemptIssues.Count == 0)
+            {
+                return new GeneratedBotGraphDto
+                {
+                    Graph = BotGraphMapper.MapToDto(firstAttemptGraph),
+                    Model = GenerationModel
+                };
+            }
+
+            var repairedGraph = await GenerateGraphAsync(
+                input.ApiKey,
+                BuildRepairPrompt(input.Prompt, requestedName, firstAttemptGraph, firstAttemptIssues));
+            var repairedIssues = GetBlockingIssues(repairedGraph);
+
+            if (repairedIssues.Count > 0)
+            {
+                throw new UserFriendlyException(
+                    "The generated bot could not be made valid yet. Try a simpler prompt or be more specific about the flow you want.");
+            }
+
             return new GeneratedBotGraphDto
             {
-                Graph = BotGraphMapper.MapToDto(firstAttemptGraph),
-                Model = GenerationModel
+                Graph = BotGraphMapper.MapToDto(repairedGraph),
+                Model = GenerationModel,
+                Notes =
+                [
+                    "The first draft was repaired automatically to match the builder graph rules."
+                ]
             };
         }
-
-        var repairedGraph = await GenerateGraphAsync(
-            input.ApiKey,
-            BuildRepairPrompt(input.Prompt, requestedName, firstAttemptGraph, firstAttemptIssues));
-        var repairedIssues = GetBlockingIssues(repairedGraph);
-
-        if (repairedIssues.Count > 0)
+        catch (UserFriendlyException)
+        {
+            throw;
+        }
+        catch (Exception)
         {
             throw new UserFriendlyException(
-                "The generated bot could not be made valid yet. Try a simpler prompt or be more specific about the flow you want.");
+                "We could not turn that prompt into a valid bot yet. Try a more specific prompt or check your Gemini API key and try again.");
         }
-
-        return new GeneratedBotGraphDto
-        {
-            Graph = BotGraphMapper.MapToDto(repairedGraph),
-            Model = GenerationModel,
-            Notes =
-            [
-                "The first draft was repaired automatically to match the builder graph rules."
-            ]
-        };
     }
 
     private async Task<BotGraphDefinition> GenerateGraphAsync(string apiKey, string prompt)
@@ -178,7 +190,8 @@ User request:
         BotGraphDefinition invalidGraph,
         IReadOnlyList<BotValidationIssue> issues)
     {
-        var serializedGraph = JsonSerializer.Serialize(BotGraphMapper.MapToDto(invalidGraph), BotGraphMapper.SerializerOptions);
+        var sanitizedGraph = NormalizeGeneratedGraph(CloneGraph(invalidGraph));
+        var serializedGraph = JsonSerializer.Serialize(BotGraphMapper.MapToDto(sanitizedGraph), BotGraphMapper.SerializerOptions);
         var issueText = string.Join(Environment.NewLine, issues.Select(issue => $"- {issue.Message}"));
 
         return $@"Repair this bot graph JSON so it becomes valid for the builder.
@@ -214,9 +227,71 @@ Keep the same overall intent, but fix the structure so it becomes a valid BotGra
         {
             node.Type = (node.Type ?? string.Empty).Trim().ToLowerInvariant();
             node.Label = string.IsNullOrWhiteSpace(node.Label) ? ResolveDefaultLabel(node.Type) : node.Label.Trim();
+            node.Config = NormalizeJsonElement(node.Config);
         }
 
         return graph;
+    }
+
+    private static BotGraphDefinition CloneGraph(BotGraphDefinition graph)
+    {
+        return new BotGraphDefinition
+        {
+            Metadata = new BotGraphMetadata
+            {
+                Id = graph.Metadata.Id,
+                Name = graph.Metadata.Name,
+                Status = graph.Metadata.Status,
+                Version = graph.Metadata.Version,
+                HandoffInboxes = graph.Metadata.HandoffInboxes
+                    .Select(inbox => new BotHandoffInboxDefinition
+                    {
+                        Key = inbox.Key,
+                        Label = inbox.Label,
+                        Email = inbox.Email
+                    })
+                    .ToList()
+            },
+            Nodes = graph.Nodes
+                .Select(node => new BotNodeDefinition
+                {
+                    Id = node.Id,
+                    Type = node.Type,
+                    Label = node.Label,
+                    Position = new BotNodePosition
+                    {
+                        X = node.Position.X,
+                        Y = node.Position.Y
+                    },
+                    Config = NormalizeJsonElement(node.Config)
+                })
+                .ToList(),
+            Edges = graph.Edges
+                .Select(edge => new BotEdgeDefinition
+                {
+                    Id = edge.Id,
+                    Source = edge.Source,
+                    Target = edge.Target,
+                    SourceHandle = edge.SourceHandle,
+                    Label = edge.Label
+                })
+                .ToList()
+        };
+    }
+
+    private static JsonElement NormalizeJsonElement(JsonElement element)
+    {
+        if (element.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+        {
+            return CreateEmptyJsonObject();
+        }
+
+        return element.Clone();
+    }
+
+    private static JsonElement CreateEmptyJsonObject()
+    {
+        return JsonDocument.Parse("{}").RootElement.Clone();
     }
 
     private static string ExtractJsonPayload(string rawResponse)
